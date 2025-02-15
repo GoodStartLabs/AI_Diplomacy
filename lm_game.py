@@ -192,7 +192,7 @@ def get_valid_orders_with_retry(game,
             phase_summaries=phase_summaries,
             model_error_stats=model_error_stats
         )
-
+        
         # Validate each order
         invalid_info = []
         for move in orders:
@@ -207,7 +207,7 @@ def get_valid_orders_with_retry(game,
             order_part = tokens[2]       # e.g. "H" or "S A MAR"
 
             # Use the internal game validation method
-            validity = game._valid_order(power_name, unit, order_part, report=1)
+            validity = game._valid_order(game.powers[power_name], unit, order_part, report=1)
             if validity != 1:
                 invalid_info.append(
                     f"Order '{move}' returned validity={validity}. (None/-1=invalid, 0=partial, 1=valid)"
