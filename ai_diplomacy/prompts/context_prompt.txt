@@ -7,6 +7,9 @@ Current phase: {phase_expanded}
 
 {history_text}
 
+**CONVOY PATHS NOTE, YOU CAN IF YOU THINK ITS BEST CONVOY ENEMIES(DONT OVERDO IT)**
+{convoy_paths_text}
+
 **PAST PHASE SUMMARIES**
 {historical_summaries}
 
@@ -24,9 +27,6 @@ Current phase: {phase_expanded}
 
 **SUPPLY CENTER PROJECTION**
 {sc_projection_text}
-
-**CONVOY PATHS**
-{convoy_paths_text}
 
 **POSSIBLE ORDERS**
 {possible_orders_text}

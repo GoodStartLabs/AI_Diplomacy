@@ -61,7 +61,7 @@ def parse_arguments():
     parser.add_argument(
         "--max_year",
         type=int,
-        default=1910,
+        default=1930,
         help="Maximum year to simulate. The game will stop once this year is reached.",
     )
     parser.add_argument(

@@ -319,6 +319,7 @@ Create a unified summary that reads as a single coherent narrative while preserv
         """
         Create a recursively updated summary of phase history.
         Keeps recent phases intact and summarizes older ones.
+        Always preserves the most recent phase for better context.
         
         Returns a new dictionary with condensed history.
         """
@@ -336,8 +337,19 @@ Create a unified summary that reads as a single coherent narrative while preserv
                                   if p not in self.phase_summary_state['summarized_phases']
                                   and not p.startswith("SUMMARY_UNTIL_")]
         
-        # Keep the 3 most recent phases intact
-        recent_phases = unsummarized_phase_names[-3:] if len(unsummarized_phase_names) > 3 else unsummarized_phase_names
+        # Always keep the most recent phase intact regardless of any other logic
+        # Then add enough additional recent phases to have at least 2 intact phases
+        most_recent_phase = max(unsummarized_phase_names) if unsummarized_phase_names else None
+        
+        # If we have more than 2 phases, keep the most recent plus another 1-2 for context
+        if len(unsummarized_phase_names) > 2:
+            recent_phases = unsummarized_phase_names[-3:] 
+            logger.debug(f"CONTEXT | PHASE SUMMARIZATION | Keeping {len(recent_phases)} recent phases intact, including most recent: {most_recent_phase}")
+        else:
+            # If we have 2 or fewer phases, keep them all intact
+            recent_phases = unsummarized_phase_names
+            logger.debug(f"CONTEXT | PHASE SUMMARIZATION | Keeping all {len(recent_phases)} phases intact")
+            
         phases_to_summarize = [p for p in unsummarized_phase_names if p not in recent_phases]
         
         if not phases_to_summarize:
@@ -436,6 +448,11 @@ Create a unified summary that reads as a single coherent narrative while preserv
         logger.info(f"CONTEXT | PHASE SUMMARIZATION | Original: {orig_phases} phases + {orig_summaries} summaries → New: {new_phases} phases + {new_summaries} summaries")
         logger.debug(f"CONTEXT | PHASE SUMMARIZATION | Result contains {new_summaries} summaries + {len(recent_phases)} intact recent phases + {new_phases - len(recent_phases)} other preserved phases")
         
+        # Verify the most recent phase is preserved
+        if most_recent_phase and most_recent_phase not in result:
+            logger.warning(f"CONTEXT | PHASE SUMMARIZATION | Most recent phase {most_recent_phase} not in result! Adding it back.")
+            result[most_recent_phase] = phase_summaries[most_recent_phase]
+        
         # Log token sizes for before and after
         orig_tokens = sum(count_tokens(v) for v in phase_summaries.values())
         new_tokens = sum(count_tokens(v) for v in result.values())
@@ -453,6 +470,7 @@ Create a unified summary that reads as a single coherent narrative while preserv
     ) -> str:
         """
         Create a recursively updated summary of message history for a specific power.
+        Preserves raw messages from the most recent turn while summarizing older content.
         
         Args:
             message_history: Current unsummarized message history
@@ -494,9 +512,96 @@ Create a unified summary that reads as a single coherent narrative while preserv
         logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | Starting message summarization for {power_name}")
         logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | Current message history size: {message_tokens} tokens")
         
-        # Generate recursive summary
-        previous_summary = power_state['last_message_summary']
-        has_previous_summary = previous_summary is not None
+        # Extract and preserve the most recent turn's messages
+        recent_turn_messages = ""
+        remaining_history = message_history
+        
+        # Try to identify and extract the most recent turn's messages
+        if organized_by_relationship:
+            # For relationship-organized history, try to extract the latest communication sections
+            # Look for power relationship headers like "FRANCE-GERMANY:" or timestamp markers
+            
+            # First, look for a timestamp pattern to identify the most recent turn
+            time_pattern = r"\[([0-9]{2}:[0-9]{2}:[0-9]{2})\]|\(([0-9]{2}:[0-9]{2}:[0-9]{2})\)"
+            timestamps = re.findall(time_pattern, message_history)
+            
+            if timestamps:
+                # If we found timestamps, try to identify the latest message blocks
+                # Convert the flat string into lines for easier processing
+                lines = message_history.split('\n')
+                section_starts = []
+                
+                # Find all section start indices
+                for i, line in enumerate(lines):
+                    if re.match(r"^[A-Z]+-[A-Z]+:$", line.strip()) or "COMMUNICATION HISTORY:" in line:
+                        section_starts.append(i)
+                
+                # Add a sentinel index for the end of the file
+                section_starts.append(len(lines))
+                
+                # Identify sections with the most recent timestamp
+                recent_sections = []
+                for i in range(len(section_starts) - 1):
+                    section_content = '\n'.join(lines[section_starts[i]:section_starts[i+1]])
+                    if timestamps[-1][0] in section_content or timestamps[-1][1] in section_content:
+                        recent_sections.append((section_starts[i], section_starts[i+1]))
+                
+                # Extract recent sections
+                if recent_sections:
+                    logger.debug(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Identified {len(recent_sections)} recent message sections")
+                    
+                    # Rebuild the message history with recent sections preserved
+                    all_lines = []
+                    recent_lines = []
+                    sections_to_summarize = []
+                    
+                    # Mark sections for preservation or summarization
+                    current_pos = 0
+                    for start, end in recent_sections:
+                        # Add section before this recent section to summarization
+                        if current_pos < start:
+                            sections_to_summarize.append('\n'.join(lines[current_pos:start]))
+                        
+                        # Add this recent section to preservation
+                        recent_lines.extend(lines[start:end])
+                        current_pos = end
+                    
+                    # Add any remaining content after the last recent section
+                    if current_pos < len(lines):
+                        sections_to_summarize.append('\n'.join(lines[current_pos:]))
+                    
+                    # Set the recent and remaining content
+                    recent_turn_messages = '\n'.join(recent_lines)
+                    remaining_history = '\n'.join(sections_to_summarize)
+                    
+                    # Log what we're preserving vs summarizing
+                    recent_tokens = count_tokens(recent_turn_messages)
+                    remaining_tokens = count_tokens(remaining_history)
+                    logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Preserving {recent_tokens} tokens from most recent turn, summarizing {remaining_tokens} tokens")
+            
+            # If we couldn't extract by timestamp, try to preserve a reasonable portion
+            if not recent_turn_messages:
+                # Fallback approach: preserve approximately the last 25% of the content
+                message_lines = message_history.split('\n')
+                split_point = max(1, int(len(message_lines) * 0.75))  # Preserve last 25%
+                
+                remaining_history = '\n'.join(message_lines[:split_point])
+                recent_turn_messages = '\n'.join(message_lines[split_point:])
+                
+                recent_tokens = count_tokens(recent_turn_messages)
+                remaining_tokens = count_tokens(remaining_history)
+                logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Fallback: preserving last {recent_tokens} tokens (~25%), summarizing {remaining_tokens} tokens")
+        
+        # Use default approach if we couldn't extract the recent turn
+        if not recent_turn_messages:
+            # Preserve approximately the last 25% of content
+            split_point = max(1, int(len(message_history) * 0.75))  # Keep last 25%
+            remaining_history = message_history[:split_point]
+            recent_turn_messages = message_history[split_point:]
+            
+            recent_tokens = count_tokens(recent_turn_messages)
+            remaining_tokens = count_tokens(remaining_history)
+            logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Default: preserving last {recent_tokens} tokens (~25%), summarizing {remaining_tokens} tokens")
         
         # Create a meaningful ID for this message batch for tracking
         current_time = int(time.time())
@@ -504,53 +609,67 @@ Create a unified summary that reads as a single coherent narrative while preserv
         if message_batch_id not in power_state['summarized_messages']:
             power_state['summarized_messages'].add(message_batch_id)
         
+        # Generate recursive summary using previous summary and remaining history
+        previous_summary = power_state['last_message_summary']
+        has_previous_summary = previous_summary is not None
+        
         # Log summarization approach
-        if has_previous_summary:
+        if has_previous_summary and remaining_history:
             prev_summary_tokens = count_tokens(previous_summary)
-            logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Recursive approach: combining {prev_summary_tokens} token summary with {message_tokens} tokens of new messages")
-            logger.debug(f"CONTEXT | MESSAGE SUMMARIZATION | Performing recursive message summarization for {power_name}")
+            remaining_tokens = count_tokens(remaining_history)
+            logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Recursive approach: combining {prev_summary_tokens} token summary with {remaining_tokens} tokens of older messages")
             
             summary = self.generate_recursive_summary(
                 previous_summary,
-                message_history,
+                remaining_history,
                 prompt_type="recursive",
                 power_name=power_name
             )
-        else:
-            # No previous summary, do initial summarization
-            logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Initial summarization: {message_tokens} tokens of messages")
-            logger.debug(f"CONTEXT | MESSAGE SUMMARIZATION | Performing initial message summarization for {power_name} ({message_tokens} tokens)")
+        elif remaining_history:
+            # No previous summary, do initial summarization of older content
+            remaining_tokens = count_tokens(remaining_history)
+            logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Initial summarization: {remaining_tokens} tokens of older messages")
             
             summary = self.generate_recursive_summary(
                 None,
-                message_history,
+                remaining_history,
                 prompt_type="message",
                 power_name=power_name
             )
+        else:
+            # Nothing to summarize, use previous summary if available or empty summary
+            summary = previous_summary or "(No earlier message history to summarize)"
+            logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Using previous summary only, no older content to summarize")
         
-        # Update power state
+        # Update power state with the summary of older content
         power_state['last_message_summary'] = summary
         
         # Protect against empty summaries
         if not summary or summary.strip() == "":
             logger.warning(f"CONTEXT | MESSAGE SUMMARIZATION | Empty summary generated for {power_name}, using fallback")
-            summary = f"(Summary for {power_name}: No significant diplomatic interactions)"
+            summary = f"(Summary for {power_name}: No significant diplomatic interactions in earlier phases)"
             power_state['last_message_summary'] = summary
         
         # Track metrics for logging
         summary_tokens = count_tokens(summary)
-        reduction = 100 - (summary_tokens * 100 / message_tokens) if message_tokens > 0 else 0
+        recent_tokens = count_tokens(recent_turn_messages)
+        combined_tokens = summary_tokens + recent_tokens
+        reduction = 100 - (combined_tokens * 100 / message_tokens) if message_tokens > 0 else 0
         
-        logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | Completed for {power_name}: {message_tokens} → {summary_tokens} tokens ({reduction:.1f}% reduction)")
+        logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | Completed for {power_name}: {message_tokens} → {combined_tokens} tokens ({reduction:.1f}% reduction)")
+        logger.info(f"CONTEXT | MESSAGE SUMMARIZATION | {power_name} | Final breakdown: {summary_tokens} tokens summary + {recent_tokens} tokens recent messages")
         
-        # Add header to make it clear this is a summary
+        # Combine the summary with the preserved recent messages
         header = f"--- SUMMARIZED DIPLOMATIC HISTORY FOR {power_name} ---\n"
         if has_previous_summary:
             header += f"(Includes recursive summary of previous communications)\n\n"
         else:
             header += f"(Initial summary of communications)\n\n"
+        
+        # Add a clear separator between summary and recent messages
+        recent_header = "\n\n--- MOST RECENT COMMUNICATIONS (PRESERVED) ---\n\n"
             
-        return header + summary
+        return header + summary + recent_header + recent_turn_messages
     
     def get_optimized_phase_summaries(
         self, 
@@ -614,6 +733,7 @@ Create a unified summary that reads as a single coherent narrative while preserv
     ) -> str:
         """
         Main access point for getting optimized message history.
+        Ensures that the most recent messages are always preserved intact.
         
         Args:
             game_history: The GameHistory object
@@ -661,7 +781,64 @@ Create a unified summary that reads as a single coherent narrative while preserv
         
         logger.debug(f"CONTEXT | Checking message optimization for {power_name} with {message_tokens} tokens")
         
-        # Check if we need to create a recursive summary
+        # Check if we already have a summary with recent messages preserved
+        if "--- MOST RECENT COMMUNICATIONS (PRESERVED) ---" in message_history:
+            # The history already contains our preserved recent messages format
+            # We should extract the recent messages, check for new content, and handle appropriately
+            logger.info(f"CONTEXT | MESSAGE OPTIMIZATION | {power_name} | Detected existing summary with preserved recent messages")
+            
+            # Split history into sections
+            parts = message_history.split("--- MOST RECENT COMMUNICATIONS (PRESERVED) ---")
+            if len(parts) >= 2:
+                # Extract summary and preserved parts
+                previous_summary_part = parts[0].strip()
+                preserved_recent_part = parts[1].strip()
+                
+                # Check if we have new content to add to this history
+                new_content = ""
+                # If organized_history is different from what we previously processed,
+                # it may contain new messages that we haven't seen before
+                if organized_history and "--- MOST RECENT COMMUNICATIONS (PRESERVED) ---" not in organized_history:
+                    # This is likely new content that should be treated as the most recent
+                    new_content = organized_history
+                    logger.info(f"CONTEXT | Detected new content to add to existing summary structure: {count_tokens(new_content)} tokens")
+                
+                if new_content:
+                    # Combine the existing summary with the preserved content plus new content
+                    # The preserved content becomes part of what needs to be summarized
+                    content_to_summarize = preserved_recent_part
+                    
+                    # Extract the actual summary part without headers
+                    summary_text = previous_summary_part
+                    if "--- SUMMARIZED DIPLOMATIC HISTORY FOR" in summary_text:
+                        summary_lines = summary_text.split("\n")
+                        # Skip the header lines (usually 3)
+                        summary_text = "\n".join(summary_lines[3:])
+                    
+                    # Generate a new summary with the preserved content now included
+                    updated_summary = self.generate_recursive_summary(
+                        summary_text,
+                        content_to_summarize,
+                        prompt_type="recursive",
+                        power_name=power_name
+                    )
+                    
+                    # Update the power state
+                    power_state['last_message_summary'] = updated_summary
+                    
+                    # Create the new structure
+                    header = f"--- SUMMARIZED DIPLOMATIC HISTORY FOR {power_name} ---\n"
+                    header += f"(Includes recursive summary of previous communications)\n\n"
+                    recent_header = "\n\n--- MOST RECENT COMMUNICATIONS (PRESERVED) ---\n\n"
+                    
+                    # Return the new summary + recent content
+                    result = header + updated_summary + recent_header + new_content
+                    
+                    # Log the update
+                    logger.info(f"CONTEXT | MESSAGE OPTIMIZATION | {power_name} | Updated existing summary structure with {count_tokens(new_content)} tokens of new content")
+                    return result
+            
+        # Standard path: Check if we need to create a new summary
         if self.should_summarize_messages(message_history, power_name):
             # Create recursively condensed version
             logger.debug(f"CONTEXT | Creating optimized message history for {power_name}")
@@ -699,7 +876,7 @@ Create a unified summary that reads as a single coherent narrative while preserv
             # Log the optimization stats
             result_tokens = count_tokens(result)
             logger.info(f"CONTEXT | MESSAGE OPTIMIZATION | {power_name} | Original size: {message_tokens} tokens, Optimized size: {result_tokens} tokens")
-            logger.info(f"CONTEXT | MESSAGE OPTIMIZATION | {power_name} | Using {'recursive' if has_previous_summary else 'initial'} message summary")
+            logger.info(f"CONTEXT | MESSAGE OPTIMIZATION | {power_name} | Using {'recursive' if has_previous_summary else 'initial'} message summary with preserved recent content")
             
             # Safety check for empty result
             if not result or result.strip() == "":

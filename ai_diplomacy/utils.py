@@ -19,18 +19,19 @@ def assign_models_to_powers(randomize=True):
         "o3-mini",
         "claude-3-5-sonnet-20241022",
         "gemini-2.0-flash",
-        "gemini-2.0-flash-lite-preview-02-05",
+        "gemini-2.0-flash-lite",
         "gpt-4o",
         "gpt-4o-mini",
         "claude-3-5-haiku-20241022",
         "claude-3-7-sonnet-20250219",
+        "gemini-1.5-pro",
 
     ]"""
     model_list = [
         "o3-mini",
         "gemini-1.5-flash",
         "gemini-2.0-flash",
-        "gemini-2.0-flash-lite-preview-02-05",
+        "gemini-2.0-flash-lite",
         "gemini-1.5-pro",
         "gpt-4o-mini",
         "claude-3-5-haiku-20241022",
@@ -446,133 +447,173 @@ def generate_order_description(game, order, order_type, power_centers, supply_ce
 
 def format_convoy_paths(game, convoy_paths_possible, power_name):
     """
-    Format convoy paths by region and ownership, focusing on strategically relevant convoys.
+    Format convoy paths in a concise, actionable format focusing on strategic value.
     Input format: List of (start_loc, {required_fleets}, {possible_destinations})
     """
     # check if convoy_paths_possible is empty dictionary or list or none
     output = ""
     if not convoy_paths_possible:
-        return "CONVOY POSSIBILITIES: None currently available.\n"
+        return "CONVOY POSSIBILITIES: None available.\n"
 
-    # Get our units and all other powers' units
+    # Get our units and centers
     our_units = set(game.get_units(power_name))
-    our_unit_locs = {unit[2:5] for unit in our_units}
+    our_armies = {unit[2:5] for unit in our_units if unit.startswith('A ')}
+    our_fleets = {unit[2:5] for unit in our_units if unit.startswith('F ')}
+    our_centers = set(game.get_centers(power_name))
     
-    # Get all powers' units and centers for context
+    # Get all powers' units and centers
     power_units = {}
     power_centers = {}
     for pwr in game.powers:
         power_units[pwr] = {unit[2:5] for unit in game.get_units(pwr)}
         power_centers[pwr] = set(game.get_centers(pwr))
 
-    # Organize convoys by strategic relationship
-    convoys = {
-        "YOUR CONVOYS": [],           # Convoys using your armies
-        "CONVOYS YOU CAN ENABLE": [], # Using your fleets to help others
-        "ALLIED OPPORTUNITIES": [],    # Convoys that could help contain common enemies
-        "THREATS TO WATCH": []        # Convoys that could threaten your positions
-    }
-
     # Make sea regions more readable
     sea_regions = {
-        'NTH': "North Sea",
-        'MAO': "Mid-Atlantic",
-        'TYS': "Tyrrhenian Sea",
-        'BLA': "Black Sea",
-        'SKA': "Skagerrak",
-        'ION': "Ionian Sea",
-        'EAS': "Eastern Mediterranean",
-        'WES': "Western Mediterranean",
-        'BAL': "Baltic Sea",
-        'BOT': "Gulf of Bothnia",
-        'ADR': "Adriatic Sea",
-        'AEG': "Aegean Sea",
+        'NTH': "North Sea", 'MAO': "Mid-Atlantic", 'TYS': "Tyrrhenian Sea",
+        'BLA': "Black Sea", 'SKA': "Skagerrak", 'ION': "Ionian Sea",
+        'EAS': "Eastern Med", 'WES': "Western Med", 'BAL': "Baltic Sea",
+        'BOT': "Gulf of Bothnia", 'ADR': "Adriatic Sea", 'AEG': "Aegean Sea",
         'ENG': "English Channel"
     }
 
+    # Create a strategic analysis of convoy options
+    strategic_convoys = {
+        "Your Army Convoys": [],     # Convoys using your armies
+        "Your Fleet Support": [],    # Using your fleets to convoy others
+        "Threats": []                # Convoys that could threaten your positions
+    }
+    
+    # Track processed convoys to avoid redundancy
+    processed = set()
+    
+    # First pass: aggregate by sea region and filter for relevance
+    region_convoy_map = {}
+    
     for start, fleets, destinations in convoy_paths_possible:
-        # Skip if no destinations or fleets
+        # Skip if no destinations or required fleets
         if not destinations or not fleets:
             continue
-
-        # Identify the power that owns the army at start (if any)
+            
+        # Identify army owner
         army_owner = None
         for pwr, locs in power_units.items():
             if start in locs:
                 army_owner = pwr
                 break
-
-        # Determine if we own any of the required fleets
-        our_fleet_count = sum(1 for fleet_loc in fleets if fleet_loc in our_unit_locs)
+                
+        # Skip redundant convoy paths (already processed similar paths)
+        key = (start, tuple(sorted(fleets)), tuple(sorted(destinations)))
+        if key in processed:
+            continue
+        processed.add(key)
         
-        # Format the fleet path nicely
-        fleet_path = " + ".join(sea_regions.get(f, f) for f in fleets)
-
+        # Get count of our fleets in this convoy
+        our_fleet_count = sum(1 for f in fleets if f in our_fleets)
+        
+        # Gather destinations by ownership for more concise grouping
+        dest_by_owner = {}
         for dest in destinations:
-            # Get destination owner if any
             dest_owner = None
             for pwr, centers in power_centers.items():
                 if dest in centers:
                     dest_owner = pwr
                     break
+            dest_owner = dest_owner or "Neutral"
+            dest_by_owner.setdefault(dest_owner, []).append(dest)
+            
+        # Determine strategic category
+        if start in our_armies:
+            # Our army can be convoyed
+            strategic_convoys["Your Army Convoys"].append((start, fleets, dest_by_owner))
+        elif our_fleet_count > 0:
+            # We can help convoy someone else's army
+            strategic_convoys["Your Fleet Support"].append((army_owner, start, fleets, dest_by_owner))
+        elif any(dest in our_centers for dest_list in dest_by_owner.values() for dest in dest_list):
+            # Someone could convoy to attack our centers
+            strategic_convoys["Threats"].append((army_owner, start, fleets, dest_by_owner))
+            
+        # Also organize by region for secondary grouping
+        region_key = "+".join(sorted(fleets))
+        region_convoy_map.setdefault(region_key, []).append((start, destinations))
 
-            # Determine if destination is a supply center
-            is_sc = dest in game.map.scs
-            sc_note = " (SC)" if is_sc else ""
-            
-            # Create base convoy description
-            convoy_desc = f"A {start} -> {dest}{sc_note} via {fleet_path}"
-            
-            # Add strategic context based on relationships
-            if army_owner == power_name:
-                category = "YOUR CONVOYS"
-                if dest_owner:
-                    note = f"attack {dest_owner}'s position"
+    # Generate the output
+    output = "CONVOY POSSIBILITIES:\n"
+    
+    # Your army convoys (highest priority)
+    if strategic_convoys["Your Army Convoys"]:
+        output += "\n🚢 Your Army Convoy Options:\n"
+        for start, fleets, dest_by_owner in strategic_convoys["Your Army Convoys"]:
+            # Format a concise path
+            sea_path = " + ".join(sea_regions.get(f, f) for f in sorted(fleets))
+            # Group destinations by owner for cleaner display
+            dest_summary = []
+            for owner, dests in dest_by_owner.items():
+                if owner == "Neutral":
+                    dest_summary.append(f"Neutral: {', '.join(dests)}")
                 else:
-                    note = "gain strategic position" if not is_sc else "capture neutral SC"
-                convoys[category].append(f"{convoy_desc} ({note})")
-                
-            elif our_fleet_count > 0:
-                category = "CONVOYS YOU CAN ENABLE"
-                # Add diplomatic context
-                if army_owner:
-                    if dest_owner == power_name:
-                        note = f"WARNING: {army_owner} could attack your SC"
-                    else:
-                        note = f"help {army_owner} attack {dest_owner or 'neutral'} position"
-                else:
-                    note = "potential diplomatic bargaining chip"
-                convoys[category].append(f"{convoy_desc} ({note})")
-                
+                    dest_summary.append(f"{owner}: {', '.join(dests)}")
+            
+            output += f"  • A {start} via {sea_path} → {'; '.join(dest_summary)}\n"
+    
+    # Your fleet support (medium priority)
+    if strategic_convoys["Your Fleet Support"]:
+        output += "\n🌊 Your Fleets Can Enable:\n"
+        # Group by power to reduce repetition
+        by_power = {}
+        for power, start, fleets, dest_by_owner in strategic_convoys["Your Fleet Support"]:
+            by_power.setdefault(power or "Unknown", []).append((start, fleets, dest_by_owner))
+        
+        for power, convoys in by_power.items():
+            if len(convoys) > 3:  # If too many options, summarize
+                output += f"  • {power}'s armies: {len(convoys)} possible convoys (use as negotiation leverage)\n"
             else:
-                # Analyze if this convoy represents opportunity or threat
-                if dest_owner == power_name:
-                    category = "THREATS TO WATCH"
-                    note = f"{army_owner or 'potential'} attack on your position"
-                elif army_owner and dest_owner:
-                    category = "ALLIED OPPORTUNITIES"
-                    note = f"{army_owner} could attack {dest_owner} - potential alliance"
-                else:
-                    category = "ALLIED OPPORTUNITIES"
-                    note = "potential diplomatic leverage"
-                
-                convoys[category].append(f"{convoy_desc} ({note})")
-
-    # Format output
-    output = "CONVOY POSSIBILITIES:\n\n"
+                for start, fleets, dest_by_owner in convoys:
+                    # Compress destination display
+                    dest_count = sum(len(dests) for dests in dest_by_owner.values())
+                    if dest_count > 3:
+                        dest_display = f"{dest_count} possible destinations"
+                    else:
+                        dest_display = ", ".join(d for dlist in dest_by_owner.values() for d in dlist)
+                    
+                    sea_path = " + ".join(sea_regions.get(f, f) for f in sorted(fleets))
+                    output += f"  • {power}'s A {start} via {sea_path} → {dest_display}\n"
     
-    # Log convoy counts for debugging
-    convoy_counts = {category: len(convoys[category]) for category in convoys}
-    logger.debug(f"CONVOYS | {power_name} | Counts: " + 
-                 ", ".join(f"{category}: {count}" for category, count in convoy_counts.items()))
+    # Threats (show only critical ones)
+    if strategic_convoys["Threats"]:
+        output += "\n⚠️ Potential Threats:\n"
+        threat_count = 0
+        for power, start, fleets, dest_by_owner in strategic_convoys["Threats"]:
+            # Only show threats to our supply centers
+            our_threatened = []
+            for dest_list in dest_by_owner.values():
+                our_threatened.extend([d for d in dest_list if d in our_centers])
+            
+            if our_threatened:
+                threat_count += 1
+                if threat_count <= 3:  # Limit to most critical threats
+                    sea_path = " + ".join(sea_regions.get(f, f) for f in sorted(fleets))
+                    output += f"  • {power or 'Unknown'}'s A {start} via {sea_path} → {', '.join(our_threatened)}\n"
+        
+        if threat_count > 3:
+            output += f"  • Plus {threat_count - 3} more potential threats\n"
+            
+    # Add a summary of sea regions activity
+    if region_convoy_map:
+        output += "\n🌐 Active Convoy Regions:\n"
+        for region_key, convoys in region_convoy_map.items():
+            if len(region_key.split("+")) > 1:
+                # Multi-region convoys are strategically important
+                regions = [sea_regions.get(r, r) for r in region_key.split("+")]
+                start_count = len(set(start for start, _ in convoys))
+                dest_count = len(set(d for _, dests in convoys for d in dests))
+                output += f"  • {' + '.join(regions)}: {start_count} armies → {dest_count} destinations\n"
     
-    for category, convoy_list in convoys.items():
-        if convoy_list:
-            output += f"{category}:\n"
-            for convoy in sorted(convoy_list):
-                output += f"  {convoy}\n"
-            output += "\n"
-
+    # Log convoy analysis for debugging
+    conv_counts = {k: len(v) for k, v in strategic_convoys.items()}
+    logger.debug(f"CONVOYS | {power_name} | Analysis: " + 
+                 ", ".join(f"{k}: {v}" for k, v in conv_counts.items()))
+    
     return output
 
 def generate_threat_assessment(game, board_state, power_name):
