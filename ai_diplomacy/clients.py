@@ -416,7 +416,6 @@ class BaseModelClient:
         raw_response = self.generate_response(prompt)
 
         messages = []
-        import pdb; pdb.set_trace()
         if raw_response:
             try:
                 # Find the JSON block between double curly braces

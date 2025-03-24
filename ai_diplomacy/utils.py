@@ -1,5 +1,8 @@
 from dotenv import load_dotenv
 import logging
+import os
+from typing import Dict, Optional
+import random
 
 logger = logging.getLogger("utils")
 logger.setLevel(logging.INFO)
@@ -7,22 +10,38 @@ logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
+MODEL_OPTIONS = [
+    'o3-mini', 
+    'claude-3-5-sonnet-latest',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gpt-4o',
+    'gpt-4o-mini',
+    'claude-3-5-haiku-20241022'
+]
 
-def assign_models_to_powers():
+
+def assign_models_to_powers(seed: Optional[int] = None) -> Dict[str, str]:
     """
     Example usage: define which model each power uses.
     Return a dict: { power_name: model_id, ... }
     POWERS = ['AUSTRIA', 'ENGLAND', 'FRANCE', 'GERMANY', 'ITALY', 'RUSSIA', 'TURKEY']
     """
-
+    
+    if seed is not None:
+        random.seed(seed)
+        
+    # get random perm
+    random.shuffle(MODEL_OPTIONS)
+    
     return {
-        "FRANCE": "o3-mini",
-        "GERMANY": "claude-3-5-sonnet-latest",
-        "ENGLAND": "gemini-2.0-flash",
-        "RUSSIA": "claude-3.7-sonnet-latest",
-        "ITALY": "gpt-4o",
-        "AUSTRIA": "gpt-4o-mini",
-        "TURKEY": "claude-3-5-haiku-20241022",
+        "AUSTRIA": MODEL_OPTIONS[0],
+        "ENGLAND": MODEL_OPTIONS[1],
+        "FRANCE": MODEL_OPTIONS[2],
+        "GERMANY": MODEL_OPTIONS[3],
+        "ITALY": MODEL_OPTIONS[4],
+        "RUSSIA": MODEL_OPTIONS[5],
+        "TURKEY": MODEL_OPTIONS[6],
     }
 
 

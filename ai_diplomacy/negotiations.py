@@ -29,7 +29,7 @@ def conduct_negotiations(game, game_history, model_error_stats, max_rounds=3):
     # We do up to 'max_rounds' single-message turns for each power
     for round_index in range(max_rounds):
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=1
+            max_workers=len(active_powers)
         ) as executor:
             futures = {}
             for power_name in active_powers:

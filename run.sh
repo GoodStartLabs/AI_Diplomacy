@@ -1,7 +1,17 @@
 #!/bin/bash
+#SBATCH --job-name=diplomo        # Job name
+#SBATCH --output=diplomo.log      # Standard output and error log
+#SBATCH --time=12:00:00          # Time limit hh:mm:ss
+#SBATCH --gres=gpu:0           # Request 1 GPU (remove if not needed)
 
 # note the summaries aren't actually used so the model doesn't matter here
-python lm_game.py \
-    --max_year 1905 \
-    --num_negotiation_rounds 1 \
-    --models "gpt-4o-mini, gpt-4o-mini, gpt-4o-mini, gpt-4o-mini, gpt-4o-mini, gpt-4o-mini, gpt-4o-mini"
+
+# Set seeds
+seeds=(0 1 2 3 4)
+
+for seed in "${seeds[@]}"; do
+    python3 lm_game.py \
+        --max_year 1910 \
+        --num_negotiation_rounds 0 \
+        --seed "$seed"
+done

@@ -69,6 +69,12 @@ def parse_arguments():
         action="store_true",
         help="Enable the planning phase for each power to set strategic directives.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed for the random number generator.",
+    )
     return parser.parse_args()
 
 
@@ -124,7 +130,7 @@ def main():
             return
         game.power_model_map = dict(zip(powers_order, provided_models))
     else:
-        game.power_model_map = assign_models_to_powers()
+        game.power_model_map = assign_models_to_powers(args.seed)
 
     while not game.is_game_done:
         phase_start = time.time()
