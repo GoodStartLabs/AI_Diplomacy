@@ -275,6 +275,33 @@ Supported models include:
 - Anthropic: `claude-3-5-sonnet-20241022`, `claude-opus-4-20250514`
 - Google: `gemini-2.0-flash`, `gemini-2.5-pro-preview`
 - OpenRouter: Various models including Llama, Qwen, DeepSeek
+- Specialized Agents: `cicero` (Facebook's strategic Diplomacy agent)
+
+### Cicero Integration
+
+The system includes integration with Facebook Research's Cicero agent, the first AI to achieve human-level performance in Diplomacy. The integration provides multiple fallback mechanisms:
+
+1. **Direct Import** (requires full Cicero installation with Python 3.7/3.8)
+2. **Subprocess Bridge** (runs Cicero in isolated conda environment)
+3. **Enhanced Strategic Agent** (fallback that mimics Cicero's strategic approach)
+
+To use Cicero, simply assign it to a power:
+```python
+def assign_models_to_powers() -> Dict[str, str]:
+    return {
+        "AUSTRIA": "cicero",  # Will use best available Cicero method
+        "ENGLAND": "gpt-4o",
+        # ... other powers
+    }
+```
+
+The current implementation on Apple Silicon (M1/M2/M3) uses the enhanced strategic agent, which provides:
+- Strategic order selection based on move type priorities
+- Aggression and cooperation parameters
+- Support for complex coordinated moves
+- Fallback logic ensuring game continuity
+
+For full Cicero integration on x86_64 Linux systems, the cloned `diplomacy_cicero/` repository can be activated with proper dependencies.
 
 ### Game Output and Analysis
 

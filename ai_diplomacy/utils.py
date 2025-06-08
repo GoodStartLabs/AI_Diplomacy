@@ -26,8 +26,8 @@ def assign_models_to_powers() -> Dict[str, str]:
     POWERS = ['AUSTRIA', 'ENGLAND', 'FRANCE', 'GERMANY', 'ITALY', 'RUSSIA', 'TURKEY']
     Models supported: o3-mini, o4-mini, o3, gpt-4o, gpt-4o-mini, 
                     claude-opus-4-20250514, claude-sonnet-4-20250514, claude-3-5-haiku-20241022, claude-3-5-sonnet-20241022, claude-3-7-sonnet-20250219 
-                    gemini-2.0-flash, gemini-2.5-flash-preview-04-17, gemini-2.5-pro-preview-03-25, 
-                    deepseek-chat, deepseek-reasoner
+                    gemini-2.0-flash, gemini-2.5-flash-preview-04-17, gemini-2.5-pro-preview-03-25, gemini-2.5-pro-preview-05-06, gemini-2.5-pro-preview-06-05
+                    deepseek-chat, deepseek-reasoner, cicero
                     openrouter-meta-llama/llama-3.3-70b-instruct, openrouter-qwen/qwen3-235b-a22b, openrouter-microsoft/phi-4-reasoning-plus:free,
                     openrouter-deepseek/deepseek-prover-v2:free, openrouter-meta-llama/llama-4-maverick:free, openrouter-nvidia/llama-3.3-nemotron-super-49b-v1:free, 
                     openrouter-google/gemma-3-12b-it:free, openrouter-google/gemini-2.5-flash-preview-05-20
@@ -36,12 +36,12 @@ def assign_models_to_powers() -> Dict[str, str]:
     # POWER MODELS
     """
     return {
-        "AUSTRIA": "o3",
-        "ENGLAND": "gpt-4.1-2025-04-14",
-        "FRANCE": "o4-mini",
-        "GERMANY": "gpt-4o",
-        "ITALY": "gpt-4.1-2025-04-14",
-        "RUSSIA": "gpt-4o",
+        "AUSTRIA": "gemini-2.5-flash-preview-04-17",
+        "ENGLAND": "openrouter-meta-llama/llama-4-maverick:free",
+        "FRANCE": "gemini-2.5-pro-preview-06-05",
+        "GERMANY": "o3",
+        "ITALY": "gemini-2.5-pro-preview-05-06",
+        "RUSSIA": "gemini-2.5-pro-preview-03-25",
         "TURKEY": "o4-mini",
     }
     """
@@ -49,15 +49,15 @@ def assign_models_to_powers() -> Dict[str, str]:
     # TEST MODELS
     
     return {
-        "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview",
-        "ENGLAND": "openrouter-google/gemini-2.5-flash-preview",
-        "FRANCE": "openrouter-google/gemini-2.5-flash-preview",
-        "GERMANY": "openrouter-google/gemini-2.5-flash-preview",
-        "ITALY": "openrouter-google/gemini-2.5-flash-preview",  
-        "RUSSIA": "openrouter-google/gemini-2.5-flash-preview",
-        "TURKEY": "openrouter-google/gemini-2.5-flash-preview",
+        "AUSTRIA": "cicero",
+        "ENGLAND": "gemini-2.5-flash-preview-04-17",
+        "FRANCE": "gemini-2.5-flash-preview-04-17",
+        "GERMANY": "gemini-2.5-flash-preview-04-17",
+        "ITALY": "gemini-2.5-flash-preview-04-17",  
+        "RUSSIA": "gemini-2.5-flash-preview-04-17",
+        "TURKEY": "gemini-2.5-flash-preview-04-17",
     }
-    
+      
 
 def gather_possible_orders(game: Game, power_name: str) -> Dict[str, List[str]]:
     """

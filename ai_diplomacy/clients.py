@@ -1007,8 +1007,12 @@ def load_model_client(model_id: str) -> BaseModelClient:
     """
     # Basic pattern matching or direct mapping
     lower_id = model_id.lower()
-    # Check for OpenRouter first to handle prefixed models like openrouter-deepseek
-    if "openrouter" in lower_id or "quasar" in lower_id:
+    # Check for Cicero first
+    if "cicero" in lower_id:
+        from .cicero_client import CiceroClient
+        return CiceroClient(model_id)
+    # Check for OpenRouter to handle prefixed models like openrouter-deepseek
+    elif "openrouter" in lower_id or "quasar" in lower_id:
         return OpenRouterClient(model_id)
     elif "claude" in lower_id:
         return ClaudeClient(model_id)
