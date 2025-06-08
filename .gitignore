@@ -154,3 +154,7 @@ model_power_statistics.csv
 # Playwrite test results
 **/test-results/
 **/playwright-report/
+
+# General Node modules
+node_modules/
+ai_diplomacy/node_modules/
