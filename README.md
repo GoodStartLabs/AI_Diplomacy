@@ -277,31 +277,72 @@ Supported models include:
 - OpenRouter: Various models including Llama, Qwen, DeepSeek
 - Specialized Agents: `cicero` (Facebook's strategic Diplomacy agent)
 
-### Cicero Integration
+### Cicero Integration (x86_64 Linux ONLY)
 
-The system includes integration with Facebook Research's Cicero agent, the first AI to achieve human-level performance in Diplomacy. The integration provides multiple fallback mechanisms:
+The system includes integration with Facebook Research's Cicero agent, the first AI to achieve human-level performance in Diplomacy. 
 
-1. **Direct Import** (requires full Cicero installation with Python 3.7/3.8)
-2. **Subprocess Bridge** (runs Cicero in isolated conda environment)
-3. **Enhanced Strategic Agent** (fallback that mimics Cicero's strategic approach)
+**IMPORTANT**: This integration requires REAL Cicero - NO FALLBACKS. If Cicero is not properly installed, the system will FAIL.
 
-To use Cicero, simply assign it to a power:
+#### Hard Requirements
+
+1. **Operating System**: x86_64 Linux (Ubuntu 20.04 recommended)
+   - Apple Silicon Macs are NOT supported
+   - ARM64 architecture will NOT work
+
+2. **Python**: Version 3.7 or 3.8 ONLY
+
+3. **Dependencies**: Exact versions required
+   - PyTorch 1.7.1
+   - NumPy 1.20.3
+   - All dependencies from Cicero's requirements.txt
+
+4. **Model Weights**: 2GB+ neural network model must be downloaded
+
+5. **Hardware**: 
+   - CPU: Will work but expect 30-60 seconds per turn
+   - GPU: Recommended for 2-5 seconds per turn (CUDA 11.0)
+
+To use Cicero:
 ```python
 def assign_models_to_powers() -> Dict[str, str]:
     return {
-        "AUSTRIA": "cicero",  # Will use best available Cicero method
+        "AUSTRIA": "cicero",  # REQUIRES full Cicero installation
         "ENGLAND": "gpt-4o",
         # ... other powers
     }
 ```
 
-The current implementation on Apple Silicon (M1/M2/M3) uses the enhanced strategic agent, which provides:
-- Strategic order selection based on move type priorities
-- Aggression and cooperation parameters
-- Support for complex coordinated moves
-- Fallback logic ensuring game continuity
+#### Full Cicero Setup (REQUIRED for any Cicero usage)
 
-For full Cicero integration on x86_64 Linux systems, the included `diplomacy_cicero/` submodule can be activated with proper dependencies. The Cicero repository is automatically cloned when using `git clone --recursive`.
+```bash
+# 1. Ensure submodule is initialized
+git submodule init && git submodule update
+
+# 2. Create conda environment
+conda create -n cicero_env python=3.8 -y
+conda activate cicero_env
+
+# 3. Install Cicero dependencies
+cd diplomacy_cicero
+pip install -r requirements.txt
+
+# 4. Build Cicero components
+make
+
+# 5. Download model weights (2GB+)
+python download_model.py
+
+# 6. Return to main directory
+cd ..
+```
+
+Or simply use the Makefile:
+```bash
+make setup-cicero  # Sets up environment
+make test-cicero   # Tests integration
+```
+
+**WARNING**: If any step fails, Cicero will NOT work. There are NO fallbacks. The game will fail to run if you assign "cicero" to a power without completing the full setup.
 
 ### Game Output and Analysis
 
@@ -482,6 +523,19 @@ npm run dev
 ```
 
 ## Getting Started
+
+### Quick Start with Makefile
+
+A Makefile is provided for common operations:
+
+```bash
+make help           # Show all available commands
+make install        # Install dependencies
+make test-cicero    # Test Cicero integration
+make run-game       # Run a test game
+make run-animation  # Start the visualization server
+make analyze-latest # Analyze the most recent game
+```
 
 ### Installation
 

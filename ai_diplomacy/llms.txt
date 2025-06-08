@@ -167,53 +167,30 @@ This document provides an analysis of key Python modules within the `ai_diplomac
 * Generate "news reports" of battles and diplomatic developments
 * Create power-specific propaganda/spin on events
 
-#### 1.13. `cicero_client.py` (COMPLETE)
-**Goal:** To integrate Facebook Research's Cicero agent, the first AI to achieve human-level performance in Diplomacy.
-**Status:** Fully implemented with three-tier fallback system for maximum compatibility.
+#### 1.13. `cicero_client.py` (REQUIRES FULL CICERO)
+**Goal:** To integrate Facebook Research's REAL Cicero agent - NO FALLBACKS.
+**Status:** Implemented with HARD REQUIREMENTS - will FAIL without proper setup.
+
+**CRITICAL REQUIREMENTS:**
+* **Operating System**: x86_64 Linux ONLY (Ubuntu 20.04 recommended)
+* **Python**: 3.7 or 3.8 ONLY
+* **Dependencies**: PyTorch 1.7.1, NumPy 1.20.3, exact versions from requirements.txt
+* **Model**: 2GB+ neural network weights MUST be downloaded
+* **NO FALLBACKS**: If ANY requirement is missing, the system FAILS
 
 **Key Components:**
-* `CiceroClient` class inheriting from `BaseModelClient`
-* Three integration methods attempted in order:
-  1. **Direct Import**: Tries to import Cicero directly (requires Python 3.7/3.8 and full Cicero installation)
-  2. **Subprocess Bridge**: Runs Cicero in isolated conda environment via `cicero_bridge.py`
-  3. **Enhanced Mock Agent**: Strategic fallback using `EnhancedCiceroAgent`
+* `CiceroClient` class with strict requirement checking
+* Direct import of REAL Cicero components only
+* Hard failures if Cicero not available
+* No mock implementations
+* No strategic alternatives
 
-**Integration Features:**
-* Automatic detection of best available method
-* Graceful fallback ensures games always run
-* Compatible with async game architecture
-* Full logging integration
-* Strategic order selection mimicking Cicero's approach
-
-#### 1.14. `cicero_agent_enhanced.py` (COMPLETE)
-**Goal:** To provide a strategic agent that mimics Cicero's approach when full Cicero is unavailable.
-**Status:** Fully implemented as fallback for Cicero integration.
-
-**Key Features:**
-* Configurable aggression level (0.0-1.0)
-* Cooperation threshold for alliance decisions
-* Strategic order prioritization:
-  - Moves to key territories (supply centers, strategic positions)
-  - Support orders for coordination
-  - Convoy operations
-  - Hold orders as last resort
-* Memory placeholders for future state tracking
-* Designed to be drop-in replacement for real Cicero
-
-**Integration:**
-* Used by `CiceroClient` when real Cicero unavailable
-* Provides consistent interface with other model clients
-* Ensures Apple Silicon compatibility (M1/M2/M3)
-
-#### 1.15. `cicero_bridge.py` (OPTIONAL COMPONENT)
-**Goal:** To enable subprocess-based Cicero execution in isolated Python environment.
-**Status:** Implemented but optional - only used if conda environment exists.
-
-**Key Features:**
-* Runs Cicero in separate Python 3.7/3.8 environment
-* JSON-based communication protocol
-* Async subprocess execution
-* Error handling and fallback to enhanced agent
+**What was REMOVED:**
+* ALL fallback mechanisms deleted
+* Enhanced agent deleted
+* Subprocess bridge deleted (was fake anyway)
+* Strategic selection deleted
+* Mock implementations deleted
 
 ---
 
@@ -354,18 +331,13 @@ The main game loop orchestrates all components in a sophisticated async flow:
 +-------+--------+            +-------+--------+            +-------+--------+
 |prompt_constructor|          |possible_order_ |           |   prompts/     |
 |(Prompt Building)|           |context.py      |           |(Templates)     |
-+-------+--------+            |(BFS/Analysis)  |            +-------+--------+
-        |                     +----------------+                    |
-        |                                                          |
-        |                     +----------------+                    |
-        +-------------------->| cicero_client  |<------------------+
-                              |(Cicero Agent)  |
-                              +-------+--------+
++----------------+            |(BFS/Analysis)  |            +----------------+
+                              +----------------+
                                       |
                               +-------v--------+
-                              |cicero_agent_   |
-                              |enhanced.py     |
-                              |(Fallback)      |
+                              | cicero_client  |
+                              |(REAL Cicero    |
+                              | x86_64 ONLY)   |
                               +----------------+
 ```
 
@@ -393,5 +365,5 @@ The main game loop orchestrates all components in a sophisticated async flow:
 - Integrated BFS pathfinding for strategic order context
 - Created centralized prompt construction system
 - Added power-specific system prompts for personality
-- Integrated Facebook's Cicero agent with three-tier fallback system
-- Added enhanced strategic agent for Apple Silicon compatibility
+- Added Cicero integration framework (x86_64 Linux only, NO FALLBACKS)
+- Removed all mock implementations - REAL Cicero or nothing
