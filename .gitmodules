@@ -1,0 +1,3 @@
+[submodule "diplomacy_cicero"]
+	path = diplomacy_cicero
+	url = https://github.com/facebookresearch/diplomacy_cicero.git

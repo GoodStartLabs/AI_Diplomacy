@@ -301,7 +301,7 @@ The current implementation on Apple Silicon (M1/M2/M3) uses the enhanced strateg
 - Support for complex coordinated moves
 - Fallback logic ensuring game continuity
 
-For full Cicero integration on x86_64 Linux systems, the cloned `diplomacy_cicero/` repository can be activated with proper dependencies.
+For full Cicero integration on x86_64 Linux systems, the included `diplomacy_cicero/` submodule can be activated with proper dependencies. The Cicero repository is automatically cloned when using `git clone --recursive`.
 
 ### Game Output and Analysis
 
@@ -489,6 +489,17 @@ The latest version of the package can be installed with:
 
 ```python3
 pip install diplomacy
+```
+
+To clone this repository with the Cicero submodule:
+```bash
+git clone --recursive https://github.com/yourusername/AI_Diplomacy.git
+```
+
+Or if you've already cloned without submodules:
+```bash
+git submodule init
+git submodule update
 ```
 
 The package is compatible with Python 3.5, 3.6, and 3.7.
