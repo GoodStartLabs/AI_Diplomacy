@@ -1,0 +1,98 @@
+// diplomacy/utils/keywords.ts
+// Contains aliases and keywords
+// Keywords are always single words
+// Aliases are only converted in a second pass, so if they contain a keyword, you should replace
+// the keyword with its abbreviation.
+
+export const KEYWORDS: Record<string, string> = {
+    '>': '',
+    '-': '-',
+    'ARMY': 'A',
+    'FLEET': 'F',
+    'WING': 'W', // Note: WING 'W' is not a standard DATC unit type, might be specific to a variant
+    'THE': '',
+    'NC': '/NC',
+    'SC': '/SC',
+    'EC': '/EC',
+    'WC': '/WC',
+    'MOVE': '',
+    'MOVES': '',
+    'MOVING': '',
+    'ATTACK': '',
+    'ATTACKS': '',
+    'ATTACKING': '',
+    'RETREAT': 'R',
+    'RETREATS': 'R',
+    'RETREATING': 'R',
+    'SUPPORT': 'S',
+    'SUPPORTS': 'S',
+    'SUPPORTING': 'S',
+    'CONVOY': 'C',
+    'CONVOYS': 'C',
+    'CONVOYING': 'C',
+    'HOLD': 'H',
+    'HOLDS': 'H',
+    'HOLDING': 'H',
+    'BUILD': 'B',
+    'BUILDS': 'B',
+    'BUILDING': 'B',
+    'DISBAND': 'D',
+    'DISBANDS': 'D',
+    'DISBANDING': 'D',
+    'DESTROY': 'D',
+    'DESTROYS': 'D',
+    'DESTROYING': 'D',
+    'REMOVE': 'D',
+    'REMOVES': 'D',
+    'REMOVING': 'D',
+    'WAIVE': 'V', // Note: 'V' for Waive is unusual; standard is often just WAIVE or no build/disband order
+    'WAIVES': 'V',
+    'WAIVING': 'V',
+    'WAIVED': 'V',
+    'KEEP': 'K', // Note: 'K' for Keep is non-standard
+    'KEEPS': 'K',
+    'KEEPING': 'K',
+    'PROXY': 'P', // Non-standard
+    'PROXIES': 'P',
+    'PROXYING': 'P',
+    'IS': '',
+    'WILL': '',
+    'IN': '',
+    'AT': '',
+    'ON': '',
+    'TO': '',
+    'OF': '\\',
+    'FROM': '\\',
+    'WITH': '?',
+    'TSR': '=', // Trans-Siberian Railroad?
+    'VIA': 'VIA',
+    'THROUGH': '~',
+    'OVER': '~',
+    'BY': '~',
+    'OR': '|',
+    'BOUNCE': '|',
+    'CUT': '|',
+    'VOID': '?',
+    'DISLODGED': '~',
+    'DESTROYED': '*'
+};
+
+export const ALIASES: Record<string, string> = {
+    'NORTH COAST \\': '/NC \\',
+    'SOUTH COAST \\': '/SC \\',
+    'EAST COAST \\': '/EC \\',
+    'WEST COAST \\': '/WC \\',
+    'AN A': 'A',
+    'A F': 'F',
+    'A W': 'W',
+    'NO C': '?',
+    '~ C': '^',
+    '~ =': '=',
+    '? =': '=',
+    '~ LAND': '_',
+    '~ WATER': '_',
+    '~ SEA': '_',
+    'VIA C': 'VIA',
+    'TRANS SIBERIAN RAILROAD': '=',
+    'V B': 'B V' // Waive Build? This alias seems unusual.
+};

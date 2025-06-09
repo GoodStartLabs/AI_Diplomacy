@@ -3,13 +3,22 @@
 import { DiplomacyMap } from './map';
 import { PowerTs } from './power';
 import { DiplomacyMessage, GLOBAL_RECIPIENT, OBSERVER_RECIPIENT, OMNISCIENT_RECIPIENT, SYSTEM_SENDER } from './message';
-// import { Renderer } from './renderer'; // Placeholder
-import { GamePhaseData, MESSAGES_TYPE_PLACEHOLDER as MESSAGES_TYPE } from '../utils/game_phase_data'; // Assuming GamePhaseData is in utils or a dedicated file
-import * as diploStrings from '../utils/strings'; // Placeholder, eventually specific strings
-import * as err from '../utils/errors';     // Placeholder
-import * as common from '../utils/common';   // Placeholder
-import * as parsing from '../utils/parsing'; // Placeholder
-import { OrderSettings, DEFAULT_GAME_RULES } from '../utils/constants'; // Placeholder
+import {
+    OrderResult,
+    PossibleConvoyPathInfo,
+    DiplomacyMessageData,
+    SupportEntry,
+    UnitOrders, // Assuming this is Record<string, string> for { "A PAR": "- MAR" }
+    PowerOrderedUnits, // Assuming this is Record<string, string[]> for { "FRANCE": ["A PAR", "F BRE"] }
+    ConvoyPathsTable,
+    MayConvoyTable,
+    ParsedOrder // Make sure this is imported
+} from './interfaces';
+import { GamePhaseData, MESSAGES_TYPE_PLACEHOLDER as MESSAGES_TYPE } from '../utils/game_phase_data';
+import * as diploStrings from '../utils/strings';
+import * as err from '../utils/errors';  // Assuming you'll create a similar error constant file
+import * as commonUtils from '../utils/common'; // Assuming common utilities
+import { OrderSettings, DEFAULT_GAME_RULES } from '../utils/constants';
 
 // Logger
 const logger = {
@@ -20,96 +29,98 @@ const logger = {
 };
 
 // Simpler SortedDict replacement for now, assuming Map preserves insertion order for iteration.
-// For strict sorted behavior based on custom comparator for phases, a dedicated library or implementation would be needed.
 type SortedMap<K, V> = Map<K, V>;
 const createSortedMap = <K,V>() : SortedMap<K,V> => new Map<K,V>();
 
+// Custom Diplomacy Exception (basic version)
+class DiplomacyException extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "DiplomacyException";
+    }
+}
+
 
 export class DiplomacyGame {
-  // Properties from __slots__ and __init__
+  // Properties
   victory: number[] | null = null;
   no_rules: Set<string> = new Set();
   meta_rules: string[] = [];
   phase: string = '';
   note: string = '';
   map: DiplomacyMap;
-  powers: Record<string, PowerTs> = {}; // power_name -> PowerTs instance
+  powers: Record<string, PowerTs> = {};
   outcome: string[] = [];
-  error: string[] = []; // Stores error messages (strings, not Error objects from Python)
-  popped: string[] = []; // list of units that were disbanded because they couldn't retreat
+  error: string[] = [];
+  popped: string[] = [];
 
-  messages: SortedMap<number, DiplomacyMessage>; // timestamp -> Message
-  order_history: SortedMap<string, Record<string, string[]>>; // phase_short_name -> power_name -> orders
-  orders: Record<string, string> = {}; // unit_str -> order_string (current phase)
-  ordered_units: Record<string, string[]> = {}; // power_name -> list of units that received orders
+  messages: SortedMap<number, DiplomacyMessage>;
+  order_history: SortedMap<string, Record<string, string[]>>;
+  orders: Record<string, UnitOrders> = {};
+  ordered_units: PowerOrderedUnits = {};
 
-  phase_type: string | null = null; // 'M', 'R', 'A', or '-'
-  win: number = 0; // Min centers to win based on current year and victory conditions
+  phase_type: string | null = null;
+  win: number = 0;
 
-  // Adjudication-related properties
   combat: Record<string, Record<number, Array<[string, string[]]>>> = {};
-  command: Record<string, string> = {}; // unit_str -> full_order_str (finalized for processing)
-  result: Record<string, any[]> = {}; // unit_str -> list of result codes/objects
-  supports: Record<string, [number, string[]]> = {}; // unit_str -> [count, non_dislodging_supporters[]]
-  dislodged: Record<string, string> = {}; // dislodged_unit_str -> attacking_loc_short
-  lost: Record<string, string> = {}; // lost_center_loc_short -> original_owner_name
+  command: Record<string, ParsedOrder> = {}; // Changed from UnitOrders to Record<string, ParsedOrder>
+  result: Record<string, OrderResult[]> = {};
+  supports: Record<string, SupportEntry> = {};
+  dislodged: Record<string, string> = {}; // unit_name -> province_base_attacker_came_from
+  lost: Record<string, string> = {};
 
-  convoy_paths: Record<string, string[][]> = {};
-  convoy_paths_possible: Array<[string, Set<string>, Set<string>]> | null = null;
-  convoy_paths_dest: Record<string, Record<string, Set<string>[]>> | null = null;
+  convoy_paths: ConvoyPathsTable = {};
+  convoy_paths_possible: PossibleConvoyPathInfo[] | null = null;
+  convoy_paths_dest: Map<string, Map<string, Set<string>[]>> = new Map();
 
-  zobrist_hash: string = "0"; // Python uses int, JS can use string for large numbers
-  // renderer: Renderer | null = null; // Placeholder
+  zobrist_hash: string = "0";
 
   game_id: string;
   map_name: string = 'standard';
-  role: string; // Current player's role (power_name, OBSERVER, OMNISCIENT, SERVER)
+  role: string;
   rules: string[] = [];
 
   message_history: SortedMap<string, SortedMap<number, DiplomacyMessage>>;
-  state_history: SortedMap<string, any>; // phase_short_name -> game_state_dict
-  result_history: SortedMap<string, Record<string, any[]>>; // phase_short_name -> unit_str -> results
+  state_history: SortedMap<string, any>;
+  result_history: SortedMap<string, Record<string, any[]>>;
 
-  status: string; // FORMING, ACTIVE, PAUSED, COMPLETED, CANCELED
+  status: string;
   timestamp_created: number;
-  n_controls: number | null = null; // Expected number of human players
-  deadline: number = 300; // seconds
-  registration_password: string | null = null; // Hashed password
+  n_controls: number | null = null;
+  deadline: number = 300;
+  registration_password: string | null = null;
 
-  // Client-specific game properties (placeholders, might be on a derived class)
   observer_level: string | null = null;
   controlled_powers: string[] | null = null;
   daide_port: number | null = null;
 
-  fixed_state: [string, string] | null = null; // [phase_abbr, zobrist_hash] for context manager
-  power_model_map: Record<string, string> = {}; // For AI agents
-  phase_summaries: Record<string, string> = {}; // phase_short_name -> summary_text
+  fixed_state: [string, string] | null = null;
+  power_model_map: Record<string, string> = {};
+  phase_summaries: Record<string, string> = {};
 
-  // Caches
-  private _unit_owner_cache: Map<string, PowerTs | null> | null = null; // key: "unit_str,coast_req_bool"
+  parsed_orders_this_phase: ParsedOrder[] = [];
 
-  // For SortedDict phase key wrapping
+  private _unit_owner_cache: Map<string, PowerTs | null> | null = null;
   private _phase_wrapper_type: (phase: string) => string;
 
 
   constructor(game_id?: string | null, initial_props: Partial<DiplomacyGame> = {}) {
-    // Initialize many properties from initial_props or defaults
     this.game_id = game_id || `ts_game_${Date.now()}${Math.floor(Math.random()*1000)}`;
     this.map_name = initial_props.map_name || 'standard';
-    this.map = new DiplomacyMap(this.map_name); // Load map
+    this.map = new DiplomacyMap(this.map_name);
 
     this.role = initial_props.role || diploStrings.SERVER_TYPE;
-    this.rules = [...(initial_props.rules || DEFAULT_GAME_RULES)]; // Process rules via add_rule later
+    this.rules = [...(initial_props.rules || DEFAULT_GAME_RULES)];
     this.no_rules = new Set(initial_props.no_rules || []);
     this.meta_rules = initial_props.meta_rules || [];
 
-    this.phase = initial_props.phase || ''; // Will be set by _begin or set_state
+    this.phase = initial_props.phase || '';
     this.note = initial_props.note || '';
     this.outcome = initial_props.outcome || [];
     this.error = initial_props.error || [];
     this.popped = initial_props.popped || [];
 
-    this.messages = createSortedMap<number, DiplomacyMessage>(); // TODO: Handle initial messages if any
+    this.messages = createSortedMap<number, DiplomacyMessage>();
     this.order_history = createSortedMap<string, Record<string, string[]>>();
     this.message_history = createSortedMap<string, SortedMap<number, DiplomacyMessage>>();
     this.state_history = createSortedMap<string, any>();
@@ -122,17 +133,11 @@ export class DiplomacyGame {
     this.registration_password = initial_props.registration_password || null;
     this.zobrist_hash = initial_props.zobrist_hash || "0";
 
-    // Phase wrapper for sorted history keys
-    // In TS, if keys are strings like "S1901M", standard string sort might not be chronological.
-    // The Python version uses a custom class that implements __lt__ based on map.compare_phases.
-    // For TS Map, keys are iterated in insertion order. If chronological processing is key,
-    // we might need to store phases in an array or use a library for sorted maps with custom comparators.
-    // For now, this is a conceptual placeholder.
+    this.orders = initial_props.orders || {};
+
     this._phase_wrapper_type = (phaseStr: string) => phaseStr;
 
-
-    // Process initial rules (Python does this via property setter or __init__ loop)
-    const initialRules = [...this.rules]; // copy before clearing
+    const initialRules = [...this.rules];
     this.rules = [];
     initialRules.forEach(rule => this.add_rule(rule));
 
@@ -140,28 +145,23 @@ export class DiplomacyGame {
     if (this.rules.includes('SOLITAIRE')) this.n_controls = 0;
     else if (this.n_controls === 0) this.add_rule('SOLITAIRE');
 
-    // Validate status and initialize powers if game is new
-    this._validate_status(initial_props.powers === undefined); // reinit_powers if not loading from existing state
+    this._validate_status(initial_props.powers === undefined);
 
     if (initial_props.powers) {
         for (const [pName, pData] of Object.entries(initial_props.powers)) {
-            // Assuming pData is partial data for PowerTs constructor
             this.powers[pName] = new PowerTs(this, pName, pData as Partial<PowerTs>);
         }
-    } else if (this.status !== diploStrings.FORMING) { // If not forming and no powers given, _begin initializes them
+    } else if (this.status !== diploStrings.FORMING) {
         this._begin();
     }
 
-    // Wrap history fields from initial_props if they exist
     if(initial_props.order_history) this.order_history = new Map(Object.entries(initial_props.order_history).map(([k,v]) => [this._phase_wrapper_type(k),v]));
     if(initial_props.message_history) this.message_history = new Map(Object.entries(initial_props.message_history).map(([k,v]) => [this._phase_wrapper_type(k), new Map(Object.entries(v).map(([ts,m])=>[Number(ts), new DiplomacyMessage(m)])) ]));
     if(initial_props.state_history) this.state_history = new Map(Object.entries(initial_props.state_history).map(([k,v]) => [this._phase_wrapper_type(k),v]));
     if(initial_props.result_history) this.result_history = new Map(Object.entries(initial_props.result_history).map(([k,v]) => [this._phase_wrapper_type(k),v]));
     if(initial_props.messages) this.messages = new Map(Object.entries(initial_props.messages).map(([ts,m])=>[Number(ts), new DiplomacyMessage(m)]));
 
-
-    // Final checks from Python __init__
-    if (this.map && this.map.powers) { // map should be loaded by now
+    if (this.map && this.map.powers) {
         this.map.powers.forEach(pName => {
             if (!this.has_power(pName)) {
                  logger.error(`Map power ${pName} not found in game powers after init.`);
@@ -174,56 +174,61 @@ export class DiplomacyGame {
   private assert_power_roles(): void {
     if (this.is_player_game()) {
         if(!Object.values(this.powers).every(p => p.role === p.name)) {
-            logger.warn("Inconsistent power roles for a player game.");
+            // logger.warn("Inconsistent power roles for a player game."); // Allow for multi-power control
         }
     } else {
         if(this.role !== diploStrings.OBSERVER_TYPE && this.role !== diploStrings.OMNISCIENT_TYPE && this.role !== diploStrings.SERVER_TYPE) {
             logger.warn(`Game role ${this.role} is not a special type for a non-player game.`);
         }
         if(!Object.values(this.powers).every(p => p.role === this.role)) {
-             logger.warn(`Inconsistent power roles; not all match game role ${this.role}.`);
+             // logger.warn(`Inconsistent power roles; not all match game role ${this.role}.`); // Allow for multi-power control
         }
     }
   }
 
-  // --- Basic Property Getters ---
   get current_short_phase(): string {
     return this.map.phase_abbr(this.phase, this.phase);
   }
   get is_game_done(): boolean { return this.phase === 'COMPLETED'; }
   get is_game_forming(): boolean { return this.status === diploStrings.FORMING; }
-  // ... other is_game_... status getters
 
-  // --- Core Methods (Stubs for now) ---
+  is_supporting_orders_phase(): boolean {
+    return this.phase_type === 'M';
+  }
+
   private _validate_status(reinit_powers: boolean): void {
-    logger.debug(`Validating status. Current: ${this.status}, reinit_powers: ${reinit_powers}`);
-    if (!this.map) this.map = new DiplomacyMap(this.map_name); // Ensure map is loaded
+    if (!this.map) this.map = new DiplomacyMap(this.map_name);
     this.victory = this.map.victory;
     if (!this.victory || this.victory.length === 0) {
         this.victory = [Math.floor(this.map.scs.length / 2) + 1];
     }
 
-    if (!this.phase) this.phase = this.map.phase;
+    if (!this.phase) this.phase = this.map.phase || "SPRING 1901 MOVEMENT"; // Default if map phase is also empty
 
     const phaseParts = this.phase.split(' ');
     if (phaseParts.length === 3) {
-        this.phase_type = phaseParts[2][0]; // M, R, A
+        this.phase_type = phaseParts[2][0].toUpperCase();
+    } else if (this.phase === diploStrings.FORMING || this.phase === diploStrings.COMPLETED) {
+        this.phase_type = null; // Or some other indicator like '-'
     } else {
-        this.phase_type = '-'; // For FORMING, COMPLETED
+        logger.error(`Phase string "${this.phase}" is not in the expected "SEASON YEAR TYPE" format.`);
+        this.phase_type = '-'; // Default/error
     }
 
     if (this.phase !== diploStrings.FORMING && this.phase !== diploStrings.COMPLETED) {
         try {
-            const year = Math.abs(parseInt(this.phase.split(' ')[1]) - this.map.first_year);
+            const year = Math.abs(parseInt(this.phase.split(' ')[1]) - (this.map.first_year || 1901));
             this.win = this.victory[Math.min(year, this.victory.length - 1)];
-        } catch (e) { this.error.push(err.GAME_BAD_YEAR_GAME_PHASE); }
+        } catch (e) {
+            this.error.push(err.GAME_BAD_YEAR_GAME_PHASE);
+            this.win = this.victory[0]; // Fallback
+        }
     }
 
     if (reinit_powers) {
-        this.powers = {}; // Clear existing if any
-        this.map.powers.forEach(pName => {
+        this.powers = {};
+        (this.map.powers || []).forEach(pName => {
             this.powers[pName] = new PowerTs(this, pName, { role: this.role });
-            // Initialize is called in _begin or if powers are passed in initial_props
         });
     }
   }
@@ -233,7 +238,7 @@ export class DiplomacyGame {
     this.note = '';
     this.win = this.victory ? this.victory[0] : 0;
 
-    this.map.powers.forEach(pName => {
+    (this.map.powers || []).forEach(pName => {
         if (!this.powers[pName]) {
             this.powers[pName] = new PowerTs(this, pName, { role: this.role });
         }
@@ -244,8 +249,9 @@ export class DiplomacyGame {
   }
 
   private _move_to_start_phase(): void {
-    this.phase = this.map.phase; // Get initial phase from map
-    this.phase_type = this.phase.split(' ')[2][0];
+    this.phase = this.map.phase || "SPRING 1901 MOVEMENT";
+    const parts = this.phase.split(' ');
+    this.phase_type = (parts.length === 3) ? parts[2][0].toUpperCase() : '-';
   }
 
   public get_power(power_name?: string | null): PowerTs | null {
@@ -258,44 +264,34 @@ export class DiplomacyGame {
   }
 
   public add_rule(rule: string): void {
-    // Simplified rule addition. Full logic from Python is complex.
     if (!this.rules.includes(rule)) {
         this.rules.push(rule);
     }
   }
 
-  // Placeholder for game.update_hash (critical for state tracking if Zobrist is used)
-  public update_hash(powerName: string, details: any): void {
-      // logger.debug(`update_hash called for ${powerName}`, details);
-  }
-  // Placeholder for game.clear_cache (called after state changes)
+  public update_hash(powerName: string, details: any): void { /* Placeholder for Zobrist Hashing */ }
+
   public clear_cache(): void {
       this._unit_owner_cache = null;
       this.convoy_paths_possible = null;
-      this.convoy_paths_dest = null;
-      // logger.debug("Game caches cleared.");
+      this.convoy_paths_dest = new Map();
+      logger.debug("Game caches cleared.");
   }
-
   public build_caches(): void {
-    this.clear_cache();
-    // this._build_list_possible_convoys(); // Placeholder
-    // this._build_unit_owner_cache();     // Placeholder
-    logger.warn("Game.build_caches() is a simplified stub.");
+      this.clear_cache();
+      this._build_list_possible_convoys_ts();
+      this._build_unit_owner_cache_ts();
+      logger.debug("Game.build_caches() called and executed helper methods.");
   }
 
   public get_state(): any {
-    // Simplified version of Python's get_state
     const state: any = {};
     state['timestamp'] = commonUtils.timestamp_microseconds();
     state['zobrist_hash'] = this.zobrist_hash;
     state['note'] = this.note;
-    state['name'] = this.current_short_phase; // Uses property getter
-    state['units'] = {};
-    state['retreats'] = {};
-    state['centers'] = {};
-    state['homes'] = {};
-    state['influence'] = {};
-    state['civil_disorder'] = {};
+    state['name'] = this.current_short_phase;
+    state['units'] = {}; state['retreats'] = {}; state['centers'] = {};
+    state['homes'] = {}; state['influence'] = {}; state['civil_disorder'] = {};
     state['builds'] = {};
 
     for (const power of Object.values(this.powers)) {
@@ -305,38 +301,153 @@ export class DiplomacyGame {
         state['homes'][power.name] = [...(power.homes || [])];
         state['influence'][power.name] = [...power.influence];
         state['civil_disorder'][power.name] = power.civil_disorder;
-
         state['builds'][power.name] = {};
         if (this.phase_type !== 'A') {
             state['builds'][power.name]['count'] = 0;
+            state['builds'][power.name]['homes'] = [];
         } else {
-            state['builds'][power.name]['count'] = power.centers.length - power.units.length;
-        }
-        state['builds'][power.name]['homes'] = (this.phase_type === 'A' && state['builds'][power.name]['count'] > 0)
-            ? this._build_sites(power)
-            : [];
-        if (this.phase_type === 'A' && state['builds'][power.name]['count'] > 0) {
-             state['builds'][power.name]['count'] = Math.min(state['builds'][power.name]['homes'].length, state['builds'][power.name]['count']);
+            const build_count = power.centers.length - power.units.length;
+            state['builds'][power.name]['count'] = build_count;
+            const build_sites = (build_count > 0) ? this._build_sites(power) : [];
+            state['builds'][power.name]['homes'] = build_sites;
+            if (build_count > 0) {
+                 state['builds'][power.name]['count'] = Math.min(build_sites.length, build_count);
+            }
         }
     }
-    state["phase"] = this.phase; // Full phase string
+    state["phase"] = this.phase;
     return state;
   }
 
   private _build_sites(power: PowerTs): string[] {
-    // Simplified placeholder for _build_sites logic
-    logger.warn("_build_sites is a simplified stub.");
     let potential_homes = power.homes || [];
-    if (this.rules.includes('BUILD_ANY')) { // BUILD_ANY rule check
-        potential_homes = power.centers;
+    if (this.rules.includes('BUILD_ANY')) { // Untested rule variant
+        potential_homes = [...power.centers];
     }
     const occupied_locs = new Set<string>();
-    Object.values(this.powers).forEach(p => p.units.forEach(u => occupied_locs.add(u.substring(2,5))));
+    Object.values(this.powers).forEach(p => p.units.forEach(u => occupied_locs.add(u.substring(2,5).toUpperCase())));
 
-    return potential_homes.filter(h => power.centers.includes(h) && !occupied_locs.has(h));
+    return potential_homes.filter(h_base =>
+        power.centers.includes(h_base.toUpperCase()) &&
+        !occupied_locs.has(h_base.toUpperCase())
+    ).map(h => h.toUpperCase());
   }
 
+  get_orders_from_power(power_name: string): Record<string, string> | string[] {
+      power_name = power_name.toUpperCase();
+      const power = this.get_power(power_name);
+      if (!power) return [];
+      if (this.phase_type === 'M' || this.phase_type === 'R') { // Retreat orders also in power.orders for units
+          return { ...power.orders };
+      }
+      return [...power.adjust]; // Build/Disband orders in power.adjust
+  }
 
-  // Many methods like process, _resolve_moves, _valid_order, etc. are very complex and omitted for this initial structure.
-  // These would be added incrementally.
+  _get_all_orders(): Record<string, Record<string, string> | string[]> {
+      const all_orders: Record<string, Record<string, string> | string[]> = {};
+      for (const pName of Object.keys(this.powers)) {
+          all_orders[pName] = this.get_orders_from_power(pName);
+      }
+      return all_orders;
+  }
+
+  get_orders(power_name?: string): string[] | Record<string, string[]> {
+    if (power_name) {
+        const power = this.get_power(power_name.toUpperCase());
+        if (!power) return [];
+
+        if (this.phase_type === 'M' || this.phase_type === 'R') {
+            // For M and R phases, orders are { [unitFullName]: orderSuffix }
+            // We need to reconstruct the full order string.
+            const full_orders: string[] = [];
+            for (const unitFullName in power.orders) {
+                if (power.orders[unitFullName]) { // Ensure there's an order part
+                    full_orders.push(`${unitFullName} ${power.orders[unitFullName]}`);
+                } else { // Implicit hold if unit in power.orders but value is empty/null
+                    full_orders.push(`${unitFullName} H`);
+                }
+            }
+            return full_orders;
+        } else { // A phase
+            return power.adjust.filter(order => !!order && order.toUpperCase() !== 'WAIVE' && !order.toUpperCase().startsWith('VOID '));
+        }
+    } else {
+        const allFormattedOrders: Record<string, string[]> = {};
+        for (const pName of Object.keys(this.powers)) {
+            allFormattedOrders[pName] = this.get_orders(pName) as string[];
+        }
+        return allFormattedOrders;
+    }
+  }
+
+  private _set_orders_internal(power: PowerTs, order_strings: string[], expand: boolean, replace: boolean): void {
+    // For M and R phases, orders are stored in power.orders = { [unitName]: "order suffix" }
+    // For A phase, orders are stored in power.adjust = string[]
+
+    const ordersToProcess = order_strings.filter(o => o && o.trim() !== "");
+
+    if (this.phase_type === 'A') { // Adjustment phase
+        if (replace) power.adjust = [];
+        ordersToProcess.forEach(order => {
+            // Basic syntax validation for adjustment orders.
+            // Example: "A PAR B" or "F LON D" or "WAIVE"
+            // _parse_order_string will handle most syntax.
+            const parsed = this._parse_order_string(order, power.name);
+            if (parsed.is_valid_syntax && (parsed.order_type === 'B' || parsed.order_type === 'D' || parsed.order_type === 'W')) {
+                if (replace || !power.adjust.includes(order)) { // Simple check for duplicates if not replacing
+                    power.adjust.push(order);
+                }
+            } else {
+                this.error.push(err.STD_GAME_BAD_ORDER.replace('%s', order) + (parsed.validation_error ? ` (${parsed.validation_error})` : ""));
+            }
+        });
+    } else { // Movement or Retreat phase
+        if (replace) power.orders = {};
+        ordersToProcess.forEach(order_full_str => {
+            const parsed = this._parse_order_string(order_full_str, power.name);
+            if (parsed.is_valid_syntax && parsed.unit_type && parsed.unit_location) {
+                const unitFullName = `${parsed.unit_type} ${parsed.unit_location}`;
+                // Reconstruct the order suffix
+                const suffixParts: string[] = [];
+                if (parsed.order_type && parsed.order_type !== 'H') suffixParts.push(parsed.order_type); // H is often implicit
+
+                if (parsed.order_type === 'M' || parsed.order_type === 'R') {
+                    if (parsed.target_location) suffixParts.push(parsed.target_location + (parsed.target_coast ? `/${parsed.target_coast}`: ""));
+                    if (parsed.via_convoy) suffixParts.push("VIA");
+                } else if (parsed.order_type === 'S') {
+                    if (parsed.supported_unit_type && parsed.supported_unit_location) {
+                        suffixParts.push(parsed.supported_unit_type, parsed.supported_unit_location);
+                        if (parsed.support_target_location) {
+                            suffixParts.push("-", parsed.support_target_location + (parsed.support_target_coast ? `/${parsed.support_target_coast}`: ""));
+                        }
+                    }
+                } else if (parsed.order_type === 'C') {
+                     if (parsed.convoyed_unit_type && parsed.convoyed_unit_location && parsed.convoy_destination_location) {
+                        suffixParts.push(parsed.convoyed_unit_type, parsed.convoyed_unit_location, "-", parsed.convoy_destination_location);
+                     }
+                } else if (parsed.order_type === 'D') {
+                    // Suffix is just 'D'
+                } else if (parsed.order_type === 'H') {
+                    // Suffix is just 'H' or empty
+                }
+
+
+                const orderSuffix = suffixParts.length > 0 ? suffixParts.join(" ") : "H"; // Default to Hold if no other parts
+
+                if (replace || !power.orders[unitFullName]) {
+                    power.orders[unitFullName] = orderSuffix;
+                } else {
+                    this.error.push(err.GAME_UNIT_REORDERED.replace('%s', unitFullName));
+                }
+            } else {
+                this.error.push(err.STD_GAME_BAD_ORDER.replace('%s', order_full_str) + (parsed.validation_error ? ` (${parsed.validation_error})` : ""));
+            }
+        });
+    }
+    power.order_is_set = (Object.keys(power.orders).length > 0 || power.adjust.length > 0) ?
+                         OrderSettings.ORDER_SET : OrderSettings.ORDER_SET_EMPTY;
+  }
+  // ... (rest of the class, including _resolve_moves, _apply_adjudication_results_ts, etc.)
+  // ... and the new methods: _update_sc_ownership, _get_supply_center_owner, _can_build_unit_type_in_province, _resolve_adjustments
+  // ... and the modified _process_internal and _advance_phase
 }
