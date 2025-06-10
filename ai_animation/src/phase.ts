@@ -13,6 +13,7 @@ import { closeVictoryModal, showVictoryModal } from "./components/victoryModal";
 import { notifyPhaseChange } from "./webhooks/phaseNotifier";
 import { updateLeaderboard } from "./components/leaderboard";
 import { updateRotatingDisplay } from "./components/rotatingDisplay";
+import { startBackgroundAudio, stopBackgroundAudio } from "./backgroundAudio";
 
 const MOMENT_THRESHOLD = 8.0
 // If we're in debug mode or instant mode, show it quick, otherwise show it for 30 seconds
@@ -46,12 +47,25 @@ export function _setPhase(phaseIndex: number) {
     displayPhase(true)
   } else {
     // Clear any existing animations to prevent overlap
-    if (gameState.playbackTimer) {
-      clearTimeout(gameState.playbackTimer);
-      gameState.playbackTimer = 0;
+    // (playbackTimer is replaced by event queue system)
+
+    // Ensure any open two-power conversations are closed immediately before resetting event queue
+    if (gameState.isDisplayingMoment) {
+      closeTwoPowerConversation(true); // immediate = true
     }
 
-    // Reset animation state
+    // Reset event queue for new phase with cleanup callback
+    gameState.eventQueue.reset(() => {
+      // Ensure proper state cleanup when events are canceled
+      gameState.messagesPlaying = false;
+      gameState.isAnimating = false;
+    });
+    
+    if (gameState.isPlaying) {
+      gameState.eventQueue.start();
+    }
+
+    // Reset animation state (redundant but kept for clarity)
     gameState.isAnimating = false;
     gameState.messagesPlaying = false;
 
@@ -100,6 +114,12 @@ export function togglePlayback(explicitSet: boolean | undefined = undefined) {
     nextBtn.disabled = true;
     logger.log("Starting playback...");
 
+    // Start background audio when playback starts
+    startBackgroundAudio();
+
+    // Start event queue for deterministic animations
+    gameState.eventQueue.start();
+
     if (gameState.cameraPanAnim) gameState.cameraPanAnim.getAll()[1].start()
 
     // First, show the messages of the current phase if it's the initial playback
@@ -115,10 +135,24 @@ export function togglePlayback(explicitSet: boolean | undefined = undefined) {
   } else {
     if (gameState.cameraPanAnim) gameState.cameraPanAnim.getAll()[0].pause();
     playBtn.textContent = "▶ Play";
-    if (gameState.playbackTimer) {
-      clearTimeout(gameState.playbackTimer);
-      gameState.playbackTimer = null;
+    // (playbackTimer is replaced by event queue system)
+    
+    // Stop background audio when pausing
+    stopBackgroundAudio();
+    
+    // Ensure any open two-power conversations are closed when pausing
+    if (gameState.isDisplayingMoment) {
+      closeTwoPowerConversation(true); // immediate = true
     }
+    
+    // Stop and reset event queue when pausing with cleanup
+    gameState.eventQueue.stop();
+    gameState.eventQueue.reset(() => {
+      // Ensure proper state cleanup when events are canceled
+      gameState.messagesPlaying = false;
+      gameState.isAnimating = false;
+    });
+    
     gameState.messagesPlaying = false;
     prevBtn.disabled = false;
     nextBtn.disabled = false;
@@ -141,11 +175,9 @@ export function nextPhase() {
         moment: moment
       })
       if (gameState.isPlaying) {
-
-        setTimeout(() => {
-          closeTwoPowerConversation()
-          _setPhase(gameState.phaseIndex + 1)
-        }, MOMENT_DISPLAY_TIMEOUT_MS)
+        // The conversation will close itself and then advance the phase
+        // We don't need to schedule a timeout here anymore since the conversation manages its own timing
+        console.log("Two-power conversation will handle its own timing and phase advancement");
       } else {
         _setPhase(gameState.phaseIndex + 1)
       }
@@ -293,7 +325,7 @@ export function advanceToNextPhase() {
   // First show summary if available
   if (currentPhase.summary && currentPhase.summary.trim() !== '') {
     // Delay speech in streaming mode
-    setTimeout(() => {
+    gameState.eventQueue.scheduleDelay(speechDelay, () => {
       // Speak the summary and advance after
       if (!gameState.isSpeaking) {
         speakSummary(currentPhase.summary)
@@ -314,7 +346,7 @@ export function advanceToNextPhase() {
       } else {
         console.error("Attempted to start speaking when already speaking...");
       }
-    }, speechDelay);
+    }, `speech-delay-${Date.now()}`);
   } else {
     console.log("No summary available, skipping speech");
     // No summary to speak, advance immediately
@@ -364,9 +396,9 @@ function displayFinalPhase() {
       maxCenters,
       finalStandings,
     });
-    setTimeout(() => {
+    gameState.eventQueue.scheduleDelay(config.victoryModalDisplayMs, () => {
       gameState.loadNextGame(true)
-    }, config.victoryModalDisplayMs)
+    }, `victory-modal-timeout-${Date.now()}`)
 
   } else {
     logger.log("Could not determine game winner");

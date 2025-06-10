@@ -267,7 +267,7 @@ export function updateChatWindows(stepMessages = false) {
         index++; // Only increment after animation completes
 
         // Schedule next message with proper delay
-        setTimeout(showNext, config.effectivePlaybackSpeed);
+        gameState.eventQueue.scheduleDelay(config.effectivePlaybackSpeed, showNext, `show-next-message-${index}-${Date.now()}`);
       };
 
       // Add the message with word animation
@@ -284,7 +284,7 @@ export function updateChatWindows(stepMessages = false) {
     };
 
     // Start the message sequence with initial delay
-    setTimeout(showNext, 50);
+    gameState.eventQueue.scheduleDelay(50, showNext, `start-message-sequence-${Date.now()}`);
   }
 }
 
@@ -409,11 +409,11 @@ function animateMessageWords(message: string, contentSpanId: string, targetPower
       console.log(`Finished animating message with ${words.length} words in ${targetPower} chat`);
 
       // Add a slight delay after the last word for readability
-      setTimeout(() => {
+      gameState.eventQueue.scheduleDelay(Math.min(config.effectivePlaybackSpeed / 3, 150), () => {
         if (onComplete) {
           onComplete(); // Call the completion callback
         }
-      }, Math.min(config.effectivePlaybackSpeed / 3, 150));
+      }, `message-complete-${Date.now()}`);
 
       return;
     }
@@ -433,7 +433,7 @@ function animateMessageWords(message: string, contentSpanId: string, targetPower
     // In streaming mode, use a more consistent delay to prevent overlap
     const baseDelay = config.effectivePlaybackSpeed
     const delay = Math.max(50, Math.min(200, baseDelay * (wordLength / 4)));
-    setTimeout(addNextWord, delay);
+    gameState.eventQueue.scheduleDelay(delay, addNextWord, `add-word-${wordIndex}-${Date.now()}`);
 
     // Scroll to ensure newest content is visible
     // Use requestAnimationFrame to batch DOM updates in streaming mode
@@ -749,7 +749,7 @@ export function addToNewsBanner(newText: string): void {
   bannerEl.style.transition = `opacity ${transitionDuration}s ease-out`;
   bannerEl.style.opacity = '0';
 
-  setTimeout(() => {
+  gameState.eventQueue.scheduleDelay(config.isInstantMode ? 0 : 300, () => {
     // If the banner only has the default text or is empty, replace it
     if (
       bannerEl.textContent?.trim() === 'Diplomatic actions unfolding...' ||
@@ -763,5 +763,5 @@ export function addToNewsBanner(newText: string): void {
 
     // Fade back in
     bannerEl.style.opacity = '1';
-  }, config.isInstantMode ? 0 : 300);
+  }, `banner-fade-in-${Date.now()}`);
 }

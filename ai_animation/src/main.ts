@@ -46,10 +46,19 @@ function initScene() {
         updateLeaderboard();
 
         if (phaseStartIdx !== undefined) {
-          setTimeout(() => {
+          gameState.eventQueue.start();
+          gameState.eventQueue.scheduleDelay(500, () => {
             // FIXME: Race condition waiting to happen. I'm delaying this call as I'm too tired to do this properly right now.
             _setPhase(phaseStartIdx)
-          }, 500)
+          }, `phase-start-delay-${Date.now()}`)
+        } else if (!isStreamingMode && !config.isTestingMode) {
+          // Auto-start playback for normal mode (not streaming, no specific phase, not testing)
+          // Note: Background audio will start when togglePlayback is called (which provides user interaction context)
+          gameState.eventQueue.start();
+          gameState.eventQueue.scheduleDelay(1000, () => {
+            console.log("Auto-starting playback after game load");
+            togglePlayback(true); // true = explicitly set to playing
+          }, `auto-start-playback-${Date.now()}`);
         }
       })
 
@@ -60,9 +69,10 @@ function initScene() {
       }
       if (isStreamingMode) {
         startBackgroundAudio()
-        setTimeout(() => {
+        gameState.eventQueue.start();
+        gameState.eventQueue.scheduleDelay(2000, () => {
           togglePlayback()
-        }, 2000)
+        }, `streaming-mode-start-${Date.now()}`)
       }
     })
   }).catch(err => {
@@ -117,9 +127,11 @@ function createCameraPan(): Group {
  * Handles camera movement, animations, and game state transitions
  */
 function animate() {
-
-
   requestAnimationFrame(animate);
+  
+  // Update event queue
+  gameState.eventQueue.update();
+  
   if (gameState.isPlaying) {
     // Update the camera angle
     // FIXME: This has to call the update functino twice inorder to avoid a bug in Tween.js, see here  https://github.com/tweenjs/tween.js/issues/677
@@ -128,10 +140,10 @@ function animate() {
 
     // If all animations are complete 
     if (gameState.unitAnimations.length === 0 && !gameState.messagesPlaying && !gameState.isSpeaking && !gameState.nextPhaseScheduled) {
-      // Schedule next phase after a pause delay
+      // Schedule next phase after a pause delay using event queue
       console.log(`Scheduling next phase in ${config.effectivePlaybackSpeed}ms`);
       gameState.nextPhaseScheduled = true;
-      gameState.playbackTimer = setTimeout(() => {
+      gameState.eventQueue.scheduleDelay(config.effectivePlaybackSpeed, () => {
         try {
           advanceToNextPhase()
         } catch {
@@ -139,7 +151,7 @@ function animate() {
           //    We should instead bee figuring out why units aren't where we expect them to be when the engine has said that is a valid move
           nextPhase()
         }
-      }, config.effectivePlaybackSpeed);
+      }, `next-phase-${Date.now()}`);
     }
   } else {
     // Manual camera controls when not in playback mode
@@ -219,14 +231,27 @@ nextBtn.addEventListener('click', () => {
   nextPhase()
 });
 
-playBtn.addEventListener('click', () => { togglePlayback() });
+playBtn.addEventListener('click', () => { 
+  // Ensure background audio is ready when user manually clicks play
+  startBackgroundAudio();
+  togglePlayback();
+});
 
 speedSelector.addEventListener('change', e => {
   config.playbackSpeed = parseInt(e.target.value);
-  // If we're currently playing, restart the timer with the new speed
-  if (gameState.isPlaying && gameState.playbackTimer) {
-    clearTimeout(gameState.playbackTimer);
-    gameState.playbackTimer = setTimeout(() => advanceToNextPhase(), config.effectivePlaybackSpeed);
+  // If we're currently playing, restart the event queue with the new speed
+  if (gameState.isPlaying) {
+    // Reset and restart event queue to pick up new speed
+    gameState.eventQueue.reset();
+    gameState.eventQueue.start();
+    gameState.nextPhaseScheduled = true;
+    gameState.eventQueue.scheduleDelay(config.effectivePlaybackSpeed, () => {
+      try {
+        advanceToNextPhase()
+      } catch {
+        nextPhase()
+      }
+    }, `speed-change-next-phase-${Date.now()}`);
   }
 });
 

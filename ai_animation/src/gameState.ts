@@ -13,6 +13,7 @@ import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { MomentsDataSchema, Moment, NormalizedMomentsData } from "./types/moments";
 import { updateLeaderboard } from "./components/leaderboard";
 import { closeVictoryModal } from "./components/victoryModal.ts";
+import { EventQueue } from "./types/events";
 
 //FIXME: This whole file is a mess. Need to organize and format
 
@@ -112,15 +113,15 @@ class GameState {
   // Animations needed for this turn
   unitAnimations: Tween[]
 
-  //
-  playbackTimer!: number
-
   // Camera Animation during playing
   cameraPanAnim!: TweenGroup
 
   // Global timing for animations
   globalTime: number
   deltaTime: number
+
+  // Event queue for deterministic animations
+  eventQueue: EventQueue
 
   constructor(boardName: AvailableMaps) {
     this.phaseIndex = 0
@@ -141,6 +142,7 @@ class GameState {
     this.unitAnimations = []
     this.globalTime = 0
     this.deltaTime = 0
+    this.eventQueue = new EventQueue()
     this.loadBoardState()
   }
 
@@ -303,6 +305,13 @@ class GameState {
    * Loads the next game in the order, reseting the board and gameState
    */
   loadNextGame = (setPlayback: boolean = false) => {
+    // Ensure any open overlays are cleaned up before loading next game
+    if (this.isDisplayingMoment) {
+      // Import at runtime to avoid circular dependency
+      import('./components/twoPowerConversation').then(({ closeTwoPowerConversation }) => {
+        closeTwoPowerConversation(true);
+      });
+    }
 
     let gameId = this.gameId + 1
     let contPlaying = false
@@ -312,9 +321,9 @@ class GameState {
     this.loadGameFile(gameId).then(() => {
       gameState.gameId = gameId
       if (contPlaying) {
-        setTimeout(() => {
+        this.eventQueue.scheduleDelay(config.victoryModalDisplayMs, () => {
           togglePlayback(true)
-        }, config.victoryModalDisplayMs)
+        }, `load-next-game-playback-${Date.now()}`)
       }
     }).catch(() => {
       console.warn("caught error trying to advance game. Setting gameId to 0 and restarting...")

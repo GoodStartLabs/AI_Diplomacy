@@ -125,7 +125,7 @@ export function updateRotatingDisplay(
     //containerElement.style.opacity = '0';
 
     // Update content after fade-out
-    setTimeout(() => {
+    gameState.eventQueue.scheduleDelay(300, () => {
       // Render the appropriate view based on current display type
       switch (currentDisplayType) {
         case DisplayType.SC_HISTORY_CHART:
@@ -141,7 +141,7 @@ export function updateRotatingDisplay(
 
       // Update last rendered type
       lastRenderedDisplayType = currentDisplayType;
-    }, 300);
+    }, `rotating-display-update-${Date.now()}`);
   }
 }
 

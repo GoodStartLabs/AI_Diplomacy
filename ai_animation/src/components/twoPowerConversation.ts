@@ -41,6 +41,26 @@ export function showTwoPowerConversation(options: TwoPowerDialogueOptions): void
     return;
   }
 
+  // Mark as displaying moment immediately
+  gameState.isDisplayingMoment = true;
+
+  // Schedule the conversation to be shown through event queue
+  gameState.eventQueue.scheduleDelay(0, () => {
+    showConversationModalSequence(power1, power2, title, moment, conversationMessages, onClose);
+  }, `show-conversation-${Date.now()}`);
+}
+
+/**
+ * Shows the conversation modal and sequences all messages through the event queue
+ */
+function showConversationModalSequence(
+  power1: string, 
+  power2: string, 
+  title: string | undefined, 
+  moment: Moment | undefined, 
+  conversationMessages: ConversationMessage[], 
+  onClose?: () => void
+): void {
   // Create overlay
   dialogueOverlay = createDialogueOverlay();
 
@@ -60,28 +80,107 @@ export function showTwoPowerConversation(options: TwoPowerDialogueOptions): void
   dialogueOverlay.appendChild(dialogueContainer);
   document.body.appendChild(dialogueOverlay);
 
-  gameState.isDisplayingMoment = true;
-
   // Set up event listeners
   setupEventListeners(onClose);
 
-  // Animate messages
-  animateMessages(conversationArea, conversationMessages, power1, power2);
+  // Trigger fade in
+  gameState.eventQueue.scheduleDelay(10, () => dialogueOverlay!.style.opacity = '1', `fade-in-overlay-${Date.now()}`);
+
+  // Schedule messages to be displayed sequentially through event queue
+  scheduleMessageSequence(conversationArea, conversationMessages, power1, power2);
+}
+
+/**
+ * Schedules all messages to be displayed sequentially through the event queue
+ */
+function scheduleMessageSequence(
+  container: HTMLElement,
+  messages: ConversationMessage[],
+  power1: string,
+  power2: string
+): void {
+  let currentDelay = 500; // Start after modal is fully visible
+  
+  // Calculate timing based on mode
+  const messageDisplayTime = config.isInstantMode ? 100 : config.effectivePlaybackSpeed;
+  const messageAnimationTime = config.isInstantMode ? 50 : 300;
+  
+  messages.forEach((message, index) => {
+    // Schedule each message display
+    gameState.eventQueue.scheduleDelay(currentDelay, () => {
+      displaySingleMessage(container, message, power1, power2);
+    }, `display-message-${index}-${Date.now()}`);
+    
+    // Increment delay for next message
+    currentDelay += messageDisplayTime + messageAnimationTime;
+  });
+  
+  // Schedule conversation close after all messages are shown
+  const totalConversationTime = currentDelay + (config.isInstantMode ? 500 : 2000); // Extra delay before closing
+  gameState.eventQueue.scheduleDelay(totalConversationTime, () => {
+    closeTwoPowerConversation();
+    
+    // After closing conversation, advance to next phase if playing
+    if (gameState.isPlaying) {
+      // Import _setPhase dynamically to avoid circular dependency
+      import('../phase').then(({ _setPhase }) => {
+        _setPhase(gameState.phaseIndex + 1);
+      });
+    }
+  }, `close-conversation-after-messages-${Date.now()}`);
+}
+
+/**
+ * Displays a single message with animation
+ */
+function displaySingleMessage(
+  container: HTMLElement,
+  message: ConversationMessage,
+  power1: string,
+  power2: string
+): void {
+  const messageElement = createMessageElement(message, power1, power2);
+  container.appendChild(messageElement);
+
+  // Animate message appearance
+  messageElement.style.opacity = '0';
+  messageElement.style.transform = 'translateY(20px)';
+
+  // Use event queue for smooth animation
+  gameState.eventQueue.scheduleDelay(50, () => {
+    messageElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    messageElement.style.opacity = '1';
+    messageElement.style.transform = 'translateY(0)';
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+  }, `animate-message-${Date.now()}`);
 }
 
 /**
  * Closes the two-power conversation dialogue
+ * @param immediate If true, removes overlay immediately without animation
  */
-export function closeTwoPowerConversation(): void {
+export function closeTwoPowerConversation(immediate: boolean = false): void {
   if (dialogueOverlay) {
-    dialogueOverlay.classList.add('fade-out');
-    setTimeout(() => {
+    if (immediate) {
+      // Immediate cleanup for phase transitions
       if (dialogueOverlay?.parentNode) {
         dialogueOverlay.parentNode.removeChild(dialogueOverlay);
       }
       dialogueOverlay = null;
       gameState.isDisplayingMoment = false;
-    }, 300);
+    } else {
+      // Normal fade-out animation
+      dialogueOverlay.classList.add('fade-out');
+      gameState.eventQueue.scheduleDelay(300, () => {
+        if (dialogueOverlay?.parentNode) {
+          dialogueOverlay.parentNode.removeChild(dialogueOverlay);
+        }
+        dialogueOverlay = null;
+        gameState.isDisplayingMoment = false;
+      }, `close-conversation-${Date.now()}`);
+    }
   }
 }
 
@@ -131,7 +230,7 @@ function createDialogueOverlay(): HTMLElement {
     `;
 
   // Trigger fade in
-  setTimeout(() => overlay.style.opacity = '1', 10);
+  gameState.eventQueue.scheduleDelay(10, () => overlay.style.opacity = '1', `fade-in-overlay-${Date.now()}`);
 
   return overlay;
 }
@@ -395,8 +494,15 @@ function setupEventListeners(onClose?: () => void): void {
 
   const closeButton = dialogueOverlay.querySelector('.close-button');
   const handleClose = () => {
-    closeTwoPowerConversation();
+    closeTwoPowerConversation(true); // immediate close for manual actions
     onClose?.();
+    
+    // When manually closed, still advance phase if playing
+    if (gameState.isPlaying) {
+      import('../phase').then(({ _setPhase }) => {
+        _setPhase(gameState.phaseIndex + 1);
+      });
+    }
   };
 
   // Close button click
@@ -419,37 +525,6 @@ function setupEventListeners(onClose?: () => void): void {
   });
 }
 
-/**
- * Animates the display of messages in the conversation
- */
-async function animateMessages(
-  container: HTMLElement,
-  messages: ConversationMessage[],
-  power1: string,
-  power2: string
-): Promise<void> {
-  for (const message of messages) {
-    const messageElement = createMessageElement(message, power1, power2);
-    container.appendChild(messageElement);
-
-    // Animate message appearance
-    messageElement.style.opacity = '0';
-    messageElement.style.transform = 'translateY(20px)';
-
-    await new Promise(resolve => {
-      setTimeout(() => {
-        messageElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        messageElement.style.opacity = '1';
-        messageElement.style.transform = 'translateY(0)';
-
-        // Scroll to bottom
-        container.scrollTop = container.scrollHeight;
-
-        setTimeout(resolve, 300 + (1000 / config.effectivePlaybackSpeed));
-      }, 100);
-    });
-  }
-}
 
 /**
  * Creates a message element for display
