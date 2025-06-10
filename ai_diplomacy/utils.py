@@ -26,7 +26,7 @@ def assign_models_to_powers() -> Dict[str, str]:
     POWERS = ['AUSTRIA', 'ENGLAND', 'FRANCE', 'GERMANY', 'ITALY', 'RUSSIA', 'TURKEY']
     Models supported: o3-mini, o4-mini, o3, gpt-4o, gpt-4o-mini, 
                     claude-opus-4-20250514, claude-sonnet-4-20250514, claude-3-5-haiku-20241022, claude-3-5-sonnet-20241022, claude-3-7-sonnet-20250219 
-                    gemini-2.0-flash, gemini-2.5-flash-preview-04-17, gemini-2.5-pro-preview-03-25, 
+                    gemini-2.0-flash, gemini-2.5-flash-preview-04-17, gemini-2.5-pro-preview-03-25, gemini-2.5-pro-preview-05-06, gemini-2.5-pro-preview-06-05
                     deepseek-chat, deepseek-reasoner
                     openrouter-meta-llama/llama-3.3-70b-instruct, openrouter-qwen/qwen3-235b-a22b, openrouter-microsoft/phi-4-reasoning-plus:free,
                     openrouter-deepseek/deepseek-prover-v2:free, openrouter-meta-llama/llama-4-maverick:free, openrouter-nvidia/llama-3.3-nemotron-super-49b-v1:free, 
@@ -36,8 +36,8 @@ def assign_models_to_powers() -> Dict[str, str]:
     # 3v3 TEAM MODE CONFIGURATION
     return {
         "AUSTRIA": "openrouter-thedrummer/valkyrie-49b-v1",  # Solo player
-        "ENGLAND": "gemini-2.5-pro-preview-03-25",  # Team Gemini
-        "FRANCE": "gemini-2.5-pro-preview-03-25",   # Team Gemini
+        "ENGLAND": "gemini-2.5-pro-preview-05-06",  # Team Gemini
+        "FRANCE": "gemini-2.5-pro-preview-06-05",   # Team Gemini
         "GERMANY": "gemini-2.5-pro-preview-03-25",  # Team Gemini
         "ITALY": "o4-mini",    # Team O4-Mini
         "RUSSIA": "o4-mini",   # Team O4-Mini
