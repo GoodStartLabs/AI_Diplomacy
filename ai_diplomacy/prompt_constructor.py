@@ -4,7 +4,7 @@ Module for constructing prompts for LLM interactions in the Diplomacy game.
 import logging
 from typing import Dict, List, Optional, Any # Added Any for game type placeholder
 
-from .utils import load_prompt
+from .utils import load_prompt, get_power_team, get_teammates, get_team_supply_centers
 from .possible_order_context import generate_rich_order_context
 from .game_history import GameHistory # Assuming GameHistory is correctly importable
 
@@ -87,10 +87,24 @@ def build_context_prompt(
         else:
             centers_lines.append(f"  {p}: {c}")
     centers_repr = "\n".join(centers_lines)
+    
+    # Get team information for this power
+    team_name = get_power_team(power_name)
+    teammates = get_teammates(power_name)
+    team_supply_centers = get_team_supply_centers(game, power_name)
+    
+    # Format teammates list
+    if teammates:
+        teammates_str = ", ".join(teammates)
+    else:
+        teammates_str = "None (Solo Player)"
 
     context = context_template.format(
         power_name=power_name,
         current_phase=year_phase,
+        team_name=team_name,
+        teammates=teammates_str,
+        team_supply_centers=team_supply_centers,
         all_unit_locations=units_repr,
         all_supply_centers=centers_repr,
         messages_this_round=messages_this_round_text,

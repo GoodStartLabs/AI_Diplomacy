@@ -33,31 +33,59 @@ def assign_models_to_powers() -> Dict[str, str]:
                     openrouter-google/gemma-3-12b-it:free, openrouter-google/gemini-2.5-flash-preview-05-20
     """
     
-    # POWER MODELS
-    """
+    # 3v3 TEAM MODE CONFIGURATION
     return {
-        "AUSTRIA": "o3",
-        "ENGLAND": "gpt-4.1-2025-04-14",
-        "FRANCE": "o4-mini",
-        "GERMANY": "gpt-4o",
-        "ITALY": "gpt-4.1-2025-04-14",
-        "RUSSIA": "gpt-4o",
-        "TURKEY": "o4-mini",
+        "AUSTRIA": "openrouter-thedrummer/valkyrie-49b-v1",  # Solo player
+        "ENGLAND": "gemini-2.5-pro-preview-03-25",  # Team Gemini
+        "FRANCE": "gemini-2.5-pro-preview-03-25",   # Team Gemini
+        "GERMANY": "gemini-2.5-pro-preview-03-25",  # Team Gemini
+        "ITALY": "o4-mini",    # Team O4-Mini
+        "RUSSIA": "o4-mini",   # Team O4-Mini
+        "TURKEY": "o4-mini",   # Team O4-Mini
     }
+
+
+def get_power_team(power_name: str) -> str:
     """
+    Returns the team name for a given power in 3v3 mode.
+    """
+    team_gemini = ['ENGLAND', 'FRANCE', 'GERMANY']
+    team_o4_mini = ['ITALY', 'RUSSIA', 'TURKEY']
     
-    # TEST MODELS
+    if power_name in team_gemini:
+        return "Team Gemini"
+    elif power_name in team_o4_mini:
+        return "Team O4-Mini"
+    else:
+        return "Solo Player"
+
+
+def get_teammates(power_name: str) -> List[str]:
+    """
+    Returns the list of teammates for a given power (excluding itself).
+    """
+    team_gemini = ['ENGLAND', 'FRANCE', 'GERMANY']
+    team_o4_mini = ['ITALY', 'RUSSIA', 'TURKEY']
     
-    return {
-        "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview",
-        "ENGLAND": "openrouter-google/gemini-2.5-flash-preview",
-        "FRANCE": "openrouter-google/gemini-2.5-flash-preview",
-        "GERMANY": "openrouter-google/gemini-2.5-flash-preview",
-        "ITALY": "openrouter-google/gemini-2.5-flash-preview",  
-        "RUSSIA": "openrouter-google/gemini-2.5-flash-preview",
-        "TURKEY": "openrouter-google/gemini-2.5-flash-preview",
-    }
-    
+    if power_name in team_gemini:
+        return [p for p in team_gemini if p != power_name]
+    elif power_name in team_o4_mini:
+        return [p for p in team_o4_mini if p != power_name]
+    else:
+        return []  # Solo player has no teammates
+
+
+def get_team_supply_centers(game: Game, power_name: str) -> int:
+    """
+    Returns the total supply centers controlled by the team.
+    """
+    teammates = get_teammates(power_name) + [power_name]
+    total = 0
+    for teammate in teammates:
+        if teammate in game.powers and not game.powers[teammate].is_eliminated():
+            total += len(game.powers[teammate].centers)
+    return total
+
 
 def gather_possible_orders(game: Game, power_name: str) -> Dict[str, List[str]]:
     """

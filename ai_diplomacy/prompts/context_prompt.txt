@@ -6,6 +6,12 @@ Use the information below to inform your approach.
 Power: {power_name}
 Phase: {current_phase}
 
+TEAM STATUS
+Your Team: {team_name}
+Your Teammates: {teammates}
+Team Supply Centers: {team_supply_centers} total
+Victory Condition: Your team wins if ANY teammate reaches 18 centers (you share victory!)
+
 PLAYER STATUS
 Current Goals: {agent_goals}
 Relationships: {agent_relationships}

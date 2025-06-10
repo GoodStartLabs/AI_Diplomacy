@@ -5,11 +5,13 @@ Generate one or more strategic messages to advance your interests.
 Always prioritize responding to the messages in the "RECENT MESSAGES REQUIRING YOUR ATTENTION" section.
 
 Consider:
-- Your current goals
-- Relationships with other powers
+- Your current goals and TEAM OBJECTIVES
+- Relationships with other powers (prioritize teammates)
+- Coordinate closely with teammates through private messages
 - Ongoing conversations and the need to maintain consistent threads
 - Messages that need direct responses in the "REQUIRING YOUR ATTENTION" section
 - Powers that have been ignoring your messages (adjust your approach accordingly)
+- Remember: Your teammates share your victory condition!
 
 When dealing with non-responsive powers:
 - Ask direct questions that demand yes/no answers
