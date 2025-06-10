@@ -283,3 +283,149 @@ export async function advanceGameManually(
 
   return false; // Didn't reach victory
 }
+
+/**
+ * Helper function to wait for messages to complete animating in current phase
+ */
+export async function waitForMessagesToComplete(page: Page, timeoutMs = 10000): Promise<void> {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < timeoutMs) {
+    const isAnimating = await page.evaluate(() => window.gameState?.messagesPlaying || false);
+    
+    if (!isAnimating) {
+      return; // Messages completed
+    }
+    
+    await page.waitForTimeout(100);
+  }
+  
+  throw new Error('Timeout waiting for messages to complete animation');
+}
+
+/**
+ * Helper function to get current power that the player is assigned
+ */
+export async function getCurrentPower(page: Page): Promise<string | null> {
+  try {
+    return await page.evaluate(() => window.gameState?.currentPower || null);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Helper function to count visible chat messages across all chat windows
+ */
+export async function countVisibleChatMessages(page: Page): Promise<number> {
+  try {
+    return await page.evaluate(() => {
+      const chatMessages = document.querySelectorAll('.chat-message');
+      return chatMessages.length;
+    });
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Helper function to get all chat messages with their metadata
+ */
+export async function getAllChatMessages(page: Page): Promise<Array<{
+  content: string;
+  chatWindow: string;
+  phase: string;
+}>> {
+  try {
+    return await page.evaluate(() => {
+      const messages: Array<{
+        content: string;
+        chatWindow: string;
+        phase: string;
+      }> = [];
+      
+      const chatMessages = document.querySelectorAll('.chat-message');
+      chatMessages.forEach(messageElement => {
+        const chatWindow = messageElement.closest('.chat-window');
+        const chatWindowId = chatWindow?.id || 'unknown';
+        
+        // Extract message content (excluding sender label)
+        const contentSpan = messageElement.querySelector('span:not([class*="power-"])');
+        const timeDiv = messageElement.querySelector('.message-time');
+        
+        if (contentSpan && timeDiv) {
+          messages.push({
+            content: contentSpan.textContent || '',
+            chatWindow: chatWindowId,
+            phase: timeDiv.textContent || ''
+          });
+        }
+      });
+      
+      return messages;
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Helper function to enable instant mode for faster testing
+ */
+export async function enableInstantMode(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    if (window.config) {
+      window.config.setInstantMode(true);
+    }
+  });
+}
+
+/**
+ * Helper function to check if the event queue has any pending events
+ */
+export async function hasEventQueueEvents(page: Page): Promise<boolean> {
+  try {
+    return await page.evaluate(() => {
+      return window.gameState?.eventQueue?.pendingEvents?.length > 0 || false;
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper function to monitor message animation state continuously
+ * Returns a function to call to get the animation history
+ */
+export async function startMessageAnimationMonitoring(page: Page): Promise<() => Promise<Array<{
+  timestamp: number;
+  isAnimating: boolean;
+  phase: string;
+  messageCount: number;
+}>>> {
+  // Set up monitoring in the browser context
+  await page.evaluate(() => {
+    window.messageAnimationHistory = [];
+    
+    const monitor = () => {
+      const isAnimating = window.gameState?.messagesPlaying || false;
+      const phase = document.querySelector('#phase-display')?.textContent?.replace('Era: ', '') || '';
+      const messageCount = document.querySelectorAll('.chat-message').length;
+      
+      window.messageAnimationHistory.push({
+        timestamp: Date.now(),
+        isAnimating,
+        phase,
+        messageCount
+      });
+    };
+    
+    // Monitor every 50ms
+    window.messageAnimationInterval = setInterval(monitor, 50);
+  });
+  
+  // Return function to get the history
+  return async () => {
+    return await page.evaluate(() => window.messageAnimationHistory || []);
+  };
+}

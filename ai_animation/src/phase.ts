@@ -17,7 +17,7 @@ import { startBackgroundAudio, stopBackgroundAudio } from "./backgroundAudio";
 
 const MOMENT_THRESHOLD = 8.0
 // If we're in debug mode or instant mode, show it quick, otherwise show it for 30 seconds
-const MOMENT_DISPLAY_TIMEOUT_MS = config.isDebugMode || config.isInstantMode ? 100 : 30000
+const MOMENT_DISPLAY_TIMEOUT_MS = config.isDebugMode ? 100 : config.momentDisplayTimeout
 
 // FIXME: Going to previous phases is borked. Units do not animate properly, map doesn't update.
 export function _setPhase(phaseIndex: number) {
@@ -320,7 +320,7 @@ export function advanceToNextPhase() {
     console.log(`Processing phase transition for ${currentPhase.name}`);
   }
 
-  const speechDelay = 2000
+  const speechDelay = config.speechDelay
 
   // First show summary if available
   if (currentPhase.summary && currentPhase.summary.trim() !== '') {

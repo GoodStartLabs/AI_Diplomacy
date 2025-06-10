@@ -67,12 +67,8 @@ async function testElevenLabsKey() {
  * @returns Promise that resolves when audio completes or rejects on error
  */
 export async function speakSummary(summaryText: string): Promise<void> {
-  if (!config.speechEnabled || config.isInstantMode) {
-    if (config.isInstantMode) {
-      console.log("Instant mode enabled, skipping TTS");
-    } else {
-      console.log("Speech disabled via config, skipping TTS");
-    }
+  if (!config.speechEnabled) {
+    console.log("Speech disabled via config, skipping TTS");
     return;
   }
 

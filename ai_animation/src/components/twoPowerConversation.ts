@@ -37,8 +37,10 @@ export function showTwoPowerConversation(options: TwoPowerDialogueOptions): void
   const conversationMessages = messages || getMessagesBetweenPowers(power1, power2);
 
   if (conversationMessages.length === 0) {
-    console.warn(`No messages found between ${power1} and ${power2}`);
-    return;
+    throw new Error(
+      `High-interest moment detected between ${power1} and ${power2} but no messages found. ` +
+      `This indicates a data quality issue - moments should only be created when there are actual conversations to display.`
+    );
   }
 
   // Mark as displaying moment immediately
@@ -99,11 +101,11 @@ function scheduleMessageSequence(
   power1: string,
   power2: string
 ): void {
-  let currentDelay = 500; // Start after modal is fully visible
+  let currentDelay = config.conversationModalDelay; // Start after modal is fully visible
   
-  // Calculate timing based on mode
-  const messageDisplayTime = config.isInstantMode ? 100 : config.effectivePlaybackSpeed;
-  const messageAnimationTime = config.isInstantMode ? 50 : 300;
+  // Calculate timing from config
+  const messageDisplayTime = config.conversationMessageDisplay;
+  const messageAnimationTime = config.conversationMessageAnimation;
   
   messages.forEach((message, index) => {
     // Schedule each message display
@@ -116,7 +118,7 @@ function scheduleMessageSequence(
   });
   
   // Schedule conversation close after all messages are shown
-  const totalConversationTime = currentDelay + (config.isInstantMode ? 500 : 2000); // Extra delay before closing
+  const totalConversationTime = currentDelay + config.conversationFinalDelay; // Extra delay before closing
   gameState.eventQueue.scheduleDelay(totalConversationTime, () => {
     closeTwoPowerConversation();
     
