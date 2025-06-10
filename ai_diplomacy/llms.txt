@@ -324,3 +324,8 @@ The main game loop orchestrates all components in a sophisticated async flow:
 - Integrated BFS pathfinding for strategic order context
 - Created centralized prompt construction system
 - Added power-specific system prompts for personality
+- **Draw Voting System** (January 2025):
+  - Full draw proposal and voting mechanism
+  - AI agents evaluate stalemate conditions and vote strategically
+  - Draw vote history tracking and integration across all contexts
+  - Command-line parameters for draw control

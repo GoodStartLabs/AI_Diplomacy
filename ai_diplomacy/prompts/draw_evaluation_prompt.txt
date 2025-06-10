@@ -1,0 +1,54 @@
+You are playing as {power_name} in a game of Diplomacy. You need to decide whether to vote for a draw to end the game.
+
+Current Game State:
+- Year: {current_year}
+- Your Supply Centers: {my_supply_centers}
+- Total Supply Centers Needed to Win: 18
+
+Power Rankings:
+{power_rankings}
+
+Recent Game Progress (Supply Center History):
+{recent_history}
+
+Recent Diplomatic Exchanges:
+{recent_conversations}
+
+Alliance History:
+{alliance_history}
+
+Your Current Relationships:
+{relationships}
+
+Your Goals:
+{goals}
+
+Your Private Strategic Assessment:
+{private_diary_summary}
+
+Stalemate Analysis:
+{stalemate_info}
+
+DRAW VOTING CONTEXT:
+- A draw requires all surviving powers to vote YES
+- If you vote YES, you're signaling willingness to end the game with the current territorial distribution
+- If you vote NO, the game continues
+- NEUTRAL means you're undecided
+
+Consider these factors:
+1. **Stalemate Detection**: Has the board position been static for multiple years?
+2. **Victory Possibility**: Can you realistically achieve 18 supply centers?
+3. **Alliance Dynamics**: Are your allies also likely to vote for a draw?
+4. **Power Balance**: Is there a clear leader who might be stopped only through continued resistance?
+5. **Game Duration**: Extremely long games (past 1920) often end in draws
+6. **Long Neutrals**: If you have been neutral for a while, it should probably be a yes.
+7. **Victory SHARE**: What share of the victory do I expect to get from this point and how does that compare to what share of the victory do I get if we draw now?
+
+Based on the above analysis, what is your vote on ending the game in a draw?
+
+Respond in the following JSON format:
+{{
+    "factors_considered": ["factor1", "factor2", "factor3"],
+    "reasoning": "Brief explanation of your decision",
+    "vote": "yes/no/neutral" 
+}}
