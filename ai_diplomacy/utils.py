@@ -35,7 +35,7 @@ def assign_models_to_powers() -> Dict[str, str]:
     """
     
     # POWER MODELS
-    """
+    
     return {
         "AUSTRIA": "deepseek-reasoner",
         "ENGLAND": "openrouter-microsoft/phi-4-reasoning-plus",
@@ -45,12 +45,12 @@ def assign_models_to_powers() -> Dict[str, str]:
         "RUSSIA": "openrouter-qwen/qwq-32b",
         "TURKEY": "openrouter-meta-llama/llama-4-maverick",
     }
-    """
+    
     
     
     
     # TEST MODELS
-    
+    """
     return {
         "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview",
         "ENGLAND": "openrouter-google/gemini-2.5-flash-preview",
@@ -60,6 +60,7 @@ def assign_models_to_powers() -> Dict[str, str]:
         "RUSSIA": "openrouter-google/gemini-2.5-flash-preview",
         "TURKEY": "openrouter-google/gemini-2.5-flash-preview",
     }
+    """
     
     
 
