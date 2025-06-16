@@ -157,7 +157,5 @@ model_power_statistics.csv
 **/playwright-report/
 /diplomacy_cicero
 
-# dev stuff
-bct.txt
-analysis_summary.txt
-analysis_summary_debug.txt
+## LLM stuff
+**/.claude/

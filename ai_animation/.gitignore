@@ -26,7 +26,8 @@ dist-ssr
 # AI things
 .claude/
 
-public/games/
+./public/games/
+./public/games
 
 # Playwright
 /test-results/

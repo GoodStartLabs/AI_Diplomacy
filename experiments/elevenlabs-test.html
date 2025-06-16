@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElevenLabs API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #response {
+            white-space: pre-wrap;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>ElevenLabs API Test</h1>
+    
+    <div class="container">
+        <h2>API Configuration</h2>
+        <label for="apiKey">API Key:</label>
+        <input type="text" id="apiKey" placeholder="Enter your ElevenLabs API key">
+        
+        <label for="voiceId">Voice ID:</label>
+        <input type="text" id="voiceId" value="onwK4e9ZLuTAKqWW03F9" placeholder="Voice ID">
+        
+        <label for="modelId">Model ID:</label>
+        <input type="text" id="modelId" value="eleven_multilingual_v2" placeholder="Model ID">
+    </div>
+    
+    <div class="container">
+        <h2>Test Text-to-Speech</h2>
+        <label for="textInput">Text to convert to speech:</label>
+        <textarea id="textInput" rows="4" placeholder="Enter text to convert to speech">This is a test of the ElevenLabs API. If you can hear this, your API key is working correctly.</textarea>
+        
+        <button id="testBtn">Test API</button>
+        <button id="listVoicesBtn">List Available Voices</button>
+        
+        <div class="status" id="status"></div>
+        
+        <h3>Audio Result:</h3>
+        <audio id="audioPlayer" controls style="width: 100%; display: none;"></audio>
+        
+        <h3>API Response:</h3>
+        <div id="response"></div>
+    </div>
+    
+    <script>
+        document.getElementById('testBtn').addEventListener('click', testTTS);
+        document.getElementById('listVoicesBtn').addEventListener('click', listVoices);
+        
+        // Check for API key in localStorage
+        if (localStorage.getItem('elevenLabsApiKey')) {
+            document.getElementById('apiKey').value = localStorage.getItem('elevenLabsApiKey');
+        }
+        
+        async function testTTS() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const voiceId = document.getElementById('voiceId').value.trim();
+            const modelId = document.getElementById('modelId').value.trim();
+            const text = document.getElementById('textInput').value.trim();
+            const statusEl = document.getElementById('status');
+            const responseEl = document.getElementById('response');
+            const audioPlayer = document.getElementById('audioPlayer');
+            
+            // Save API key for convenience
+            localStorage.setItem('elevenLabsApiKey', apiKey);
+            
+            if (!apiKey) {
+                statusEl.textContent = 'Please enter an API key';
+                statusEl.className = 'status error';
+                return;
+            }
+            
+            if (!text) {
+                statusEl.textContent = 'Please enter some text';
+                statusEl.className = 'status error';
+                return;
+            }
+            
+            statusEl.textContent = 'Sending request to ElevenLabs...';
+            statusEl.className = 'status loading';
+            responseEl.textContent = '';
+            audioPlayer.style.display = 'none';
+            
+            try {
+                // Log the request details
+                console.log('Request details:', {
+                    url: `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+                    headers: {
+                        'xi-api-key': apiKey.substring(0, 4) + '...',
+                        'Content-Type': 'application/json',
+                        'Accept': 'audio/mpeg'
+                    },
+                    body: {
+                        text: text.substring(0, 20) + '...',
+                        model_id: modelId
+                    }
+                });
+                
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'xi-api-key': apiKey,
+                        'Content-Type': 'application/json',
+                        'Accept': 'audio/mpeg'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        model_id: modelId
+                    })
+                });
+                
+                // Log the response status
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
+                }
+                
+                // Convert response to blob and play audio
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                audioPlayer.src = audioUrl;
+                audioPlayer.style.display = 'block';
+                audioPlayer.play();
+                
+                statusEl.textContent = 'Success! Audio is playing.';
+                statusEl.className = 'status success';
+                responseEl.textContent = 'Audio generated successfully. Check the audio player above.';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                statusEl.textContent = 'Error: ' + error.message;
+                statusEl.className = 'status error';
+                responseEl.textContent = 'Full error details:\n' + error.stack;
+            }
+        }
+        
+        async function listVoices() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const statusEl = document.getElementById('status');
+            const responseEl = document.getElementById('response');
+            
+            // Save API key for convenience
+            localStorage.setItem('elevenLabsApiKey', apiKey);
+            
+            if (!apiKey) {
+                statusEl.textContent = 'Please enter an API key';
+                statusEl.className = 'status error';
+                return;
+            }
+            
+            statusEl.textContent = 'Fetching available voices...';
+            statusEl.className = 'status loading';
+            
+            try {
+                const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+                    method: 'GET',
+                    headers: {
+                        'xi-api-key': apiKey,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
+                }
+                
+                const data = await response.json();
+                
+                statusEl.textContent = 'Successfully retrieved voices!';
+                statusEl.className = 'status success';
+                
+                // Format the voice list nicely
+                let voiceList = 'Available Voices:\n\n';
+                data.voices.forEach(voice => {
+                    voiceList += `Name: ${voice.name}\n`;
+                    voiceList += `Voice ID: ${voice.voice_id}\n`;
+                    voiceList += `Description: ${voice.description || 'No description'}\n\n`;
+                });
+                
+                responseEl.textContent = voiceList;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                statusEl.textContent = 'Error: ' + error.message;
+                statusEl.className = 'status error';
+                responseEl.textContent = 'Full error details:\n' + error.stack;
+            }
+        }
+    </script>
+</body>
+</html> 

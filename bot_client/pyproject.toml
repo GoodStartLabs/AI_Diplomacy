@@ -1,0 +1,18 @@
+[project]
+name = "bot-client"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=0.54.0",
+    "diplomacy",
+    "dotenv>=0.9.9",
+    "json-repair>=0.46.2",
+    "json5>=0.12.0",
+    "openai>=1.87.0",
+    "tornado>=6.5.1",
+]
+
+[tool.uv.sources]
+diplomacy = { path = "../diplomacy", editable = true }
