@@ -87,7 +87,7 @@ function createVictoryOverlay(): HTMLElement {
   document.head.appendChild(style);
 
   // Trigger fade in
-  setTimeout(() => overlay.style.opacity = '1', 10);
+  gameState.eventQueue.scheduleDelay(10, () => overlay.style.opacity = '1', `victory-modal-fade-in-${Date.now()}`);
 
   return overlay;
 }

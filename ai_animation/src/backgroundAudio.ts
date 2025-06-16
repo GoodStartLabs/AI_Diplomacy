@@ -41,10 +41,20 @@ export function initializeBackgroundAudio(): void {
  * Will only work after user interaction due to browser policies
  */
 export function startBackgroundAudio(): void {
-  if (backgroundAudio && backgroundAudio.paused) {
-    backgroundAudio.play().catch(err => {
-      console.log('Background audio autoplay blocked, will retry on user interaction:', err);
+  if (!backgroundAudio) {
+    console.warn('Background audio not initialized');
+    return;
+  }
+  
+  if (backgroundAudio.paused) {
+    console.log('Starting background audio...');
+    backgroundAudio.play().then(() => {
+      console.log('Background audio started successfully');
+    }).catch(err => {
+      console.warn('Background audio autoplay blocked, will retry on user interaction:', err);
     });
+  } else {
+    console.log('Background audio already playing');
   }
 }
 
@@ -52,8 +62,16 @@ export function startBackgroundAudio(): void {
  * Stop background audio
  */
 export function stopBackgroundAudio(): void {
-  if (backgroundAudio && !backgroundAudio.paused) {
+  if (!backgroundAudio) {
+    console.warn('Background audio not initialized');
+    return;
+  }
+  
+  if (!backgroundAudio.paused) {
+    console.log('Stopping background audio...');
     backgroundAudio.pause();
+  } else {
+    console.log('Background audio already paused');
   }
 }
 

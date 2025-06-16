@@ -60,7 +60,7 @@ export const LieSchema = z.object({
   liar: PowerENUMSchema,
   recipient: PowerENUMSchema,
   promise: z.string(),
-  diary_intent: z.string(),
+  diary_intent: z.string().nullable(),
   actual_action: z.string(),
   intentional: z.boolean(),
   explanation: z.string()

@@ -3,21 +3,14 @@ import { config } from '../config';
 import { getPowerDisplayName } from '../utils/powerNames';
 import { PowerENUM } from '../types/map';
 import { Moment } from '../types/moments';
-
-interface ConversationMessage {
-  sender: string;
-  recipient: string;
-  message: string;
-  time_sent?: string;
-  [key: string]: any;
-}
+import { Message } from '../types/gameState';
 
 interface TwoPowerDialogueOptions {
-  power1: string;
-  power2: string;
-  messages?: ConversationMessage[];
+  moment: Moment;
+  power1?: PowerENUM;
+  power2?: PowerENUM;
+  messages?: Message[];
   title?: string;
-  moment?: Moment;
   onClose?: () => void;
 }
 
@@ -28,21 +21,38 @@ let dialogueOverlay: HTMLElement | null = null;
  * @param options Configuration for the dialogue display
  */
 export function showTwoPowerConversation(options: TwoPowerDialogueOptions): void {
-  const { power1, power2, messages, title, moment, onClose } = options;
+  const { moment, power1, power2, title, onClose } = options;
 
   // Close any existing dialogue
   closeTwoPowerConversation();
 
-  // Get messages to display - either provided or filtered from current phase
-  const conversationMessages = messages || getMessagesBetweenPowers(power1, power2);
-
-  if (conversationMessages.length === 0) {
-    console.warn(`No messages found between ${power1} and ${power2}`);
-    return;
+  if (moment.raw_messages.length === 0) {
+    throw new Error(
+      `High-interest moment detected between ${power1} and ${power2} but no messages found. ` +
+      `This indicates a data quality issue - moments should only be created when there are actual conversations to display.`
+    );
   }
 
+  showConversationModalSequence(title, moment, onClose);
+}
+
+/**
+ * Shows the conversation modal and sequences all messages through the event queue
+ */
+function showConversationModalSequence(
+  title: string | undefined,
+  moment: Moment,
+  onClose?: () => void,
+  power1?: string,
+  power2?: string,
+): void {
   // Create overlay
   dialogueOverlay = createDialogueOverlay();
+
+  if (!power1 || !power2) {
+    power1 = moment.powers_involved[0]
+    power2 = moment.powers_involved[1]
+  }
 
   // Create dialogue container
   const dialogueContainer = createDialogueContainer(power1, power2, title, moment);
@@ -60,53 +70,114 @@ export function showTwoPowerConversation(options: TwoPowerDialogueOptions): void
   dialogueOverlay.appendChild(dialogueContainer);
   document.body.appendChild(dialogueOverlay);
 
-  gameState.isDisplayingMoment = true;
-
-  // Set up event listeners
+  // Set up event listeners for close functionality
   setupEventListeners(onClose);
 
-  // Animate messages
-  animateMessages(conversationArea, conversationMessages, power1, power2);
+  dialogueOverlay!.style.opacity = '1'
+
+  // Schedule messages to be displayed sequentially through event queue
+  console.log(`Starting two-power conversation with ${moment.raw_messages.length} messages`);
+  scheduleMessageSequence(conversationArea, moment.raw_messages, power1, power2, onClose);
 }
 
 /**
- * Closes the two-power conversation dialogue
+ * Schedules all messages to be displayed sequentially through the event queue
  */
-export function closeTwoPowerConversation(): void {
-  if (dialogueOverlay) {
-    dialogueOverlay.classList.add('fade-out');
-    setTimeout(() => {
-      if (dialogueOverlay?.parentNode) {
-        dialogueOverlay.parentNode.removeChild(dialogueOverlay);
-      }
-      dialogueOverlay = null;
-      gameState.isDisplayingMoment = false;
-    }, 300);
+function scheduleMessageSequence(
+  container: HTMLElement,
+  messages: Message[],
+  power1: string,
+  power2: string,
+  callbackOnClose?: () => void
+): void {
+  let messageIndex = 0;
+
+  // Function to show the next message
+  const showNext = () => {
+    // All messages have been displayed
+    if (messageIndex >= messages.length) {
+      console.log(`All ${messages.length} conversation messages displayed, scheduling close in ${config.conversationFinalDelay}ms`);
+      // Schedule conversation close after all messages are shown
+      gameState.eventQueue.scheduleDelay(config.conversationFinalDelay, () => {
+        console.log('Closing two-power conversation and calling onClose callback');
+        closeTwoPowerConversation();
+        if (callbackOnClose) callbackOnClose();
+      }, `close-conversation-after-messages-${Date.now()}`);
+      return;
+    }
+
+    // Get the next message
+    const message = messages[messageIndex];
+
+    // Function to call after message animation completes
+    const onMessageComplete = () => {
+      messageIndex++;
+      console.log(`Conversation message ${messageIndex} of ${messages.length} completed`);
+      // Schedule next message with proper delay
+      gameState.eventQueue.scheduleDelay(config.messageBetweenDelay, showNext, `show-next-conversation-message-${messageIndex}-${Date.now()}`);
+    };
+
+    // Display the message with word-by-word animation
+    displaySingleMessage(container, message, power1, power2, onMessageComplete);
+  };
+
+  // Start the message sequence with initial delay
+  gameState.eventQueue.scheduleDelay(config.conversationModalDelay, showNext, `start-conversation-sequence-${Date.now()}`);
+}
+
+/**
+ * Displays a single message with word-by-word animation
+ */
+function displaySingleMessage(
+  container: HTMLElement,
+  message: Message,
+  power1: string,
+  power2: string,
+  callbackFn?: () => void
+): void {
+  const messageElement = createMessageElement(message, power1, power2);
+  container.appendChild(messageElement);
+
+  // Animate message appearance
+  messageElement.style.opacity = '0';
+  messageElement.style.transform = 'translateY(20px)';
+  messageElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+  messageElement.style.opacity = '1';
+  messageElement.style.transform = 'translateY(0)';
+
+  // Scroll to bottom
+  container.scrollTop = container.scrollHeight;
+
+  // Start word-by-word animation for the message content
+  const messageBubble = messageElement.querySelector('.message-bubble');
+  if (messageBubble) {
+    animateMessageWords(message.message, messageBubble as HTMLElement, container, callbackFn);
+  } else {
+    // Fallback if message bubble not found
+    if (callbackFn) callbackFn();
   }
 }
 
 /**
- * Gets messages between two specific powers from current phase
+ * Closes the two-power conversation dialogue
+ * @param immediate If true, removes overlay immediately without animation
  */
-function getMessagesBetweenPowers(power1: string, power2: string): ConversationMessage[] {
-  const currentPhase = gameState.gameData?.phases[gameState.phaseIndex];
-  if (!currentPhase?.messages) return [];
-
-  return currentPhase.messages.filter((msg) => {
-    const sender = msg.sender?.toUpperCase();
-    const recipient = msg.recipient?.toUpperCase();
-    const p1 = power1.toUpperCase();
-    const p2 = power2.toUpperCase();
-
-    return (sender === p1 && recipient === p2) ||
-      (sender === p2 && recipient === p1);
-  }).sort((a, b) => {
-    // Sort by time_sent if available, otherwise maintain original order
-    if (a.time_sent && b.time_sent) {
-      return a.time_sent > b.time_sent;
+export function closeTwoPowerConversation(immediate: boolean = false): void {
+  dialogueOverlay = document.getElementById("dialogue-overlay")
+  if (dialogueOverlay) {
+    if (immediate) {
+      // Immediate cleanup for phase transitions
+      if (dialogueOverlay?.parentNode) {
+        dialogueOverlay.parentNode.removeChild(dialogueOverlay);
+      }
+      dialogueOverlay = null;
+    } else {
+      if (dialogueOverlay?.parentNode) {
+        dialogueOverlay.parentNode.removeChild(dialogueOverlay);
+      }
+      dialogueOverlay = null;
     }
-    return 0;
-  });
+  }
 }
 
 /**
@@ -114,7 +185,7 @@ function getMessagesBetweenPowers(power1: string, power2: string): ConversationM
  */
 function createDialogueOverlay(): HTMLElement {
   const overlay = document.createElement('div');
-  overlay.className = 'dialogue-overlay';
+  overlay.id = 'dialogue-overlay';
   overlay.style.cssText = `
         position: fixed;
         top: 0;
@@ -131,7 +202,7 @@ function createDialogueOverlay(): HTMLElement {
     `;
 
   // Trigger fade in
-  setTimeout(() => overlay.style.opacity = '1', 10);
+  gameState.eventQueue.scheduleDelay(10, () => overlay.style.opacity = '1', `fade-in-overlay-${Date.now()}`);
 
   return overlay;
 }
@@ -395,8 +466,15 @@ function setupEventListeners(onClose?: () => void): void {
 
   const closeButton = dialogueOverlay.querySelector('.close-button');
   const handleClose = () => {
-    closeTwoPowerConversation();
+    closeTwoPowerConversation(true); // immediate close for manual actions
     onClose?.();
+
+    // When manually closed, still advance phase if playing
+    if (gameState.isPlaying) {
+      import('../phase').then(({ _setPhase }) => {
+        _setPhase(gameState.phaseIndex + 1);
+      });
+    }
   };
 
   // Close button click
@@ -419,42 +497,11 @@ function setupEventListeners(onClose?: () => void): void {
   });
 }
 
-/**
- * Animates the display of messages in the conversation
- */
-async function animateMessages(
-  container: HTMLElement,
-  messages: ConversationMessage[],
-  power1: string,
-  power2: string
-): Promise<void> {
-  for (const message of messages) {
-    const messageElement = createMessageElement(message, power1, power2);
-    container.appendChild(messageElement);
-
-    // Animate message appearance
-    messageElement.style.opacity = '0';
-    messageElement.style.transform = 'translateY(20px)';
-
-    await new Promise(resolve => {
-      setTimeout(() => {
-        messageElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        messageElement.style.opacity = '1';
-        messageElement.style.transform = 'translateY(0)';
-
-        // Scroll to bottom
-        container.scrollTop = container.scrollHeight;
-
-        setTimeout(resolve, 300 + (1000 / config.effectivePlaybackSpeed));
-      }, 100);
-    });
-  }
-}
 
 /**
  * Creates a message element for display
  */
-function createMessageElement(message: ConversationMessage, power1: string, power2: string): HTMLElement {
+function createMessageElement(message: Message, power1: string, power2: string): HTMLElement {
   const messageDiv = document.createElement('div');
   const isFromPower1 = message.sender.toUpperCase() === power1.toUpperCase();
 
@@ -477,9 +524,9 @@ function createMessageElement(message: ConversationMessage, power1: string, powe
         color: #4f3b16;
     `;
 
-  // Message bubble
+  // Message bubble (initially empty for word-by-word animation)
   const messageBubble = document.createElement('div');
-  messageBubble.textContent = message.message;
+  messageBubble.className = 'message-bubble';
   messageBubble.style.cssText = `
         background: ${isFromPower1 ? '#e6f3ff' : '#fff3e6'};
         border: 2px solid ${isFromPower1 ? '#4a90e2' : '#e67e22'};
@@ -496,4 +543,57 @@ function createMessageElement(message: ConversationMessage, power1: string, powe
   messageDiv.appendChild(messageBubble);
 
   return messageDiv;
+}
+
+/**
+ * Animates message text one word at a time (adapted from chatWindows.ts)
+ */
+function animateMessageWords(
+  message: string,
+  contentElement: HTMLElement,
+  container: HTMLElement,
+  onComplete: (() => void) | null
+): void {
+  const words = message.split(/\s+/);
+
+  // Clear any existing content
+  contentElement.textContent = '';
+  let wordIndex = 0;
+
+  // Function to add the next word
+  const addNextWord = () => {
+    if (wordIndex >= words.length) {
+      // All words added - message is complete
+      console.log(`Finished animating conversation message with ${words.length} words`);
+
+      // Add a slight delay after the last word for readability
+      gameState.eventQueue.scheduleDelay(config.messageCompletionDelay, () => {
+        if (onComplete) {
+          onComplete(); // Call the completion callback
+        }
+      }, `conversation-message-complete-${Date.now()}`);
+
+      return;
+    }
+
+    // Add space if not the first word
+    if (wordIndex > 0) {
+      contentElement.textContent += ' ';
+    }
+
+    // Add the next word
+    contentElement.textContent += words[wordIndex];
+    wordIndex++;
+
+    // Calculate delay based on word length and playback speed
+    const wordLength = words[wordIndex - 1].length;
+    const delay = Math.max(config.messageWordDelay, Math.min(200, config.messageWordDelay * (wordLength / 4)));
+    gameState.eventQueue.scheduleDelay(delay, addNextWord, `add-conversation-word-${wordIndex}-${Date.now()}`);
+
+    // Scroll to ensure newest content is visible
+    container.scrollTop = container.scrollHeight;
+  };
+
+  // Start animation
+  addNextWord();
 }

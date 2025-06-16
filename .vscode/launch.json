@@ -2,13 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "firefox",
+      "type": "pwa-chrome",
       "request": "launch",
-      "name": "Firefox Debug 9223",
-      "url": "http://localhost:5173",
+      "name": "Chrome Debug 5179",
+      "url": "http://localhost:5179",
       "webRoot": "${workspaceFolder}/ai_animation/",
       "sourceMapPathOverrides": {
-        "http://localhost:5173/*": "${webRoot}/*"
+        "http://localhost:5179/*": "${webRoot}/*"
       },
       "runtimeArgs": [
         "--remote-debugging-port=9223"

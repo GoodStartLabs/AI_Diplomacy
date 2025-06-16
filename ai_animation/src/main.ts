@@ -9,7 +9,7 @@ import { initRotatingDisplay, } from "./components/rotatingDisplay";
 import { debugMenuInstance } from "./debug/debugMenu";
 import { initializeBackgroundAudio, startBackgroundAudio } from "./backgroundAudio";
 import { updateLeaderboard } from "./components/leaderboard";
-import { _setPhase, advanceToNextPhase, displayInitialPhase, nextPhase, previousPhase } from "./phase";
+import { _setPhase, nextPhase, previousPhase } from "./phase";
 import { togglePlayback } from "./phase";
 
 //TODO: Create a function that finds a suitable unit location within a given polygon, for placing units better 
@@ -17,6 +17,9 @@ import { togglePlayback } from "./phase";
 
 const isStreamingMode = import.meta.env.VITE_STREAMING_MODE
 const phaseStartIdx = undefined;
+
+// Panic flag to stop execution when critical errors occur
+let hasPanicked = false;
 
 // --- INITIALIZE SCENE ---
 function initScene() {
@@ -46,10 +49,18 @@ function initScene() {
         updateLeaderboard();
 
         if (phaseStartIdx !== undefined) {
-          setTimeout(() => {
-            // FIXME: Race condition waiting to happen. I'm delaying this call as I'm too tired to do this properly right now.
+          gameState.eventQueue.start();
+          gameState.eventQueue.scheduleDelay(500, () => {
             _setPhase(phaseStartIdx)
-          }, 500)
+          }, `phase-start-delay-${Date.now()}`)
+        } else if (!isStreamingMode && !config.isTestingMode) {
+          // Auto-start playback for normal mode (not streaming, no specific phase, not testing)
+          // Note: Background audio will start when togglePlayback is called (which provides user interaction context)
+          gameState.eventQueue.start();
+          gameState.eventQueue.scheduleDelay(1000, () => {
+            console.log("Auto-starting playback after game load");
+            togglePlayback(true); // true = explicitly set to playing
+          }, `auto-start-playback-${Date.now()}`);
         }
       })
 
@@ -60,9 +71,10 @@ function initScene() {
       }
       if (isStreamingMode) {
         startBackgroundAudio()
-        setTimeout(() => {
+        gameState.eventQueue.start();
+        gameState.eventQueue.scheduleDelay(2000, () => {
           togglePlayback()
-        }, 2000)
+        }, `streaming-mode-start-${Date.now()}`)
       }
     })
   }).catch(err => {
@@ -111,55 +123,14 @@ function createCameraPan(): Group {
   return new Group(moveToStartSweepAnim, cameraSweepOperation);
 }
 
-// --- ANIMATION LOOP ---
-/*
- * Main animation loop that runs continuously
- * Handles camera movement, animations, and game state transitions
- */
-function animate() {
-
-
-  requestAnimationFrame(animate);
-  if (gameState.isPlaying) {
-    // Update the camera angle
-    // FIXME: This has to call the update functino twice inorder to avoid a bug in Tween.js, see here  https://github.com/tweenjs/tween.js/issues/677
-    gameState.cameraPanAnim.update();
-    gameState.cameraPanAnim.update();
-
-    // If all animations are complete 
-    if (gameState.unitAnimations.length === 0 && !gameState.messagesPlaying && !gameState.isSpeaking && !gameState.nextPhaseScheduled) {
-      // Schedule next phase after a pause delay
-      console.log(`Scheduling next phase in ${config.effectivePlaybackSpeed}ms`);
-      gameState.nextPhaseScheduled = true;
-      gameState.playbackTimer = setTimeout(() => {
-        try {
-          advanceToNextPhase()
-        } catch {
-          // FIXME: This is a dumb patch for us not being able to find the unit we expect to find.
-          //    We should instead bee figuring out why units aren't where we expect them to be when the engine has said that is a valid move
-          nextPhase()
-        }
-      }, config.effectivePlaybackSpeed);
-    }
-  } else {
-    // Manual camera controls when not in playback mode
-    gameState.camControls.update();
-  }
+function updateAnimations() {
 
   // Check if all animations are complete
   if (gameState.unitAnimations.length > 0) {
     // Filter out completed animations
-    const previousCount = gameState.unitAnimations.length;
     gameState.unitAnimations = gameState.unitAnimations.filter(anim => anim.isPlaying());
-
-    // Log when animations complete
-    if (previousCount > 0 && gameState.unitAnimations.length === 0) {
-      console.log("All unit animations have completed");
-    }
-
     // Call update on each active animation
     gameState.unitAnimations.forEach((anim) => anim.update())
-
   }
 
   // Update any pulsing or wave animations on supply centers or units
@@ -182,10 +153,38 @@ function animate() {
       }
     });
   }
+}
+// --- ANIMATION LOOP ---
+/*
+ * Main animation loop that runs continuously
+ * Handles camera movement, animations, and game state transitions
+ */
+function animate() {
+  if (hasPanicked) return; // Stop the loop if we've panicked
+  
+  try {
+    // All things that aren't ThreeJS items happen in the eventQueue. The queue if filled with the first phase before the animate is kicked off, then all subsequent events are updated when other events finish. F
+    // For instance, when the messages finish playing, they should kick off the check to see if we should advance turns.
+    gameState.eventQueue.update();
+  } catch (error) {
+    console.error('CRITICAL ERROR - STOPPING EXECUTION:', error);
+    hasPanicked = true;
+    return; // Exit without scheduling next frame
+  }
+  
+  requestAnimationFrame(animate);
 
+  if (gameState.isPlaying) {
+    // Update the camera angle
+    // FIXME: This has to call the update functino twice inorder to avoid a bug in Tween.js, see here  https://github.com/tweenjs/tween.js/issues/677
+    gameState.cameraPanAnim.update();
+    gameState.cameraPanAnim.update();
+
+  }
+
+  updateAnimations()
   gameState.camControls.update();
   gameState.renderer.render(gameState.scene, gameState.camera);
-
 }
 
 
@@ -219,14 +218,27 @@ nextBtn.addEventListener('click', () => {
   nextPhase()
 });
 
-playBtn.addEventListener('click', () => { togglePlayback() });
+playBtn.addEventListener('click', () => {
+  // Ensure background audio is ready when user manually clicks play
+  startBackgroundAudio();
+  togglePlayback();
+});
 
 speedSelector.addEventListener('change', e => {
   config.playbackSpeed = parseInt(e.target.value);
-  // If we're currently playing, restart the timer with the new speed
-  if (gameState.isPlaying && gameState.playbackTimer) {
-    clearTimeout(gameState.playbackTimer);
-    gameState.playbackTimer = setTimeout(() => advanceToNextPhase(), config.effectivePlaybackSpeed);
+  // If we're currently playing, restart the event queue with the new speed
+  if (gameState.isPlaying) {
+    // Reset and restart event queue to pick up new speed
+    gameState.eventQueue.reset();
+    gameState.eventQueue.start();
+    gameState.nextPhaseScheduled = true;
+    gameState.eventQueue.scheduleDelay(config.effectivePlaybackSpeed, () => {
+      try {
+        advanceToNextPhase()
+      } catch {
+        nextPhase()
+      }
+    }, `speed-change-next-phase-${Date.now()}`);
   }
 });
 

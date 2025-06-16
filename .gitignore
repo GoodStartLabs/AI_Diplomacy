@@ -154,3 +154,4 @@ model_power_statistics.csv
 # Playwrite test results
 **/test-results/
 **/playwright-report/
+/diplomacy_cicero

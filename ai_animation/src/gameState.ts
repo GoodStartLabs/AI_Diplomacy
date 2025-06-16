@@ -4,7 +4,7 @@ import type { GameSchemaType, Message } from "./types/gameState";
 import { debugMenuInstance } from "./debug/debugMenu.ts"
 import { config } from "./config.ts"
 import { GameSchema, type MessageSchema } from "./types/gameState";
-import { prevBtn, nextBtn, playBtn, speedSelector, mapView, updateGameIdDisplay } from "./domElements";
+import { prevBtn, nextBtn, playBtn, speedSelector, mapView, updateGameIdDisplay, updatePhaseDisplay } from "./domElements";
 import { createChatWindows } from "./domElements/chatWindows";
 import { logger } from "./logger";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
@@ -13,6 +13,7 @@ import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { MomentsDataSchema, Moment, NormalizedMomentsData } from "./types/moments";
 import { updateLeaderboard } from "./components/leaderboard";
 import { closeVictoryModal } from "./components/victoryModal.ts";
+import { EventQueue } from "./types/events";
 
 //FIXME: This whole file is a mess. Need to organize and format
 
@@ -86,18 +87,11 @@ class GameState {
   gameId: number
   gameData!: GameSchemaType
   momentsData!: NormalizedMomentsData
-  phaseIndex: number
+  _phaseIndex: number
   boardName: string
   currentPower!: PowerENUM
-
-  // state locks
-  messagesPlaying: boolean
-  phaseChatMessages: Message[]
   isPlaying: boolean
-  isSpeaking: boolean
-  isAnimating: boolean
-  isDisplayingMoment: boolean // Used when we're displaying a moment, should pause all other items
-  nextPhaseScheduled: boolean // Flag to prevent multiple phase transitions being scheduled
+
 
   //Scene for three.js
   scene: THREE.Scene
@@ -112,9 +106,6 @@ class GameState {
   // Animations needed for this turn
   unitAnimations: Tween[]
 
-  //
-  playbackTimer!: number
-
   // Camera Animation during playing
   cameraPanAnim!: TweenGroup
 
@@ -122,26 +113,29 @@ class GameState {
   globalTime: number
   deltaTime: number
 
-  constructor(boardName: AvailableMaps) {
-    this.phaseIndex = 0
-    this.boardName = boardName
-    this.gameId = 16
-    this.phaseChatMessages = []
+  // Event queue for deterministic animations
+  eventQueue: EventQueue
 
-    // State locks
-    this.isSpeaking = false
+  constructor(boardName: AvailableMaps) {
+    this._phaseIndex = 0
+    this.boardName = boardName
+    this.gameId = 0
     this.isPlaying = false
-    this.isAnimating = false
-    this.isDisplayingMoment = false
-    this.messagesPlaying = false
-    this.nextPhaseScheduled = false
 
     this.scene = new THREE.Scene()
     this.unitMeshes = []
     this.unitAnimations = []
     this.globalTime = 0
     this.deltaTime = 0
+    this.eventQueue = new EventQueue()
     this.loadBoardState()
+  }
+  set phaseIndex(val: number) {
+    this._phaseIndex = val
+    updatePhaseDisplay()
+  }
+  get phaseIndex() {
+    return this._phaseIndex
   }
 
   /**
@@ -194,6 +188,8 @@ class GameState {
             .then((data) => {
               const parsedData = JSON.parse(data);
 
+              // FIXME: Why do we have two different moments data types?!? There should only be a single one.
+              //
               // Check if this is the comprehensive format and normalize it
               if ('analysis_results' in parsedData && parsedData.analysis_results) {
                 // Transform comprehensive format to animation format
@@ -303,6 +299,13 @@ class GameState {
    * Loads the next game in the order, reseting the board and gameState
    */
   loadNextGame = (setPlayback: boolean = false) => {
+    // Ensure any open overlays are cleaned up before loading next game
+    if (this.isDisplayingMoment) {
+      // Import at runtime to avoid circular dependency
+      import('./components/twoPowerConversation').then(({ closeTwoPowerConversation }) => {
+        closeTwoPowerConversation(true);
+      });
+    }
 
     let gameId = this.gameId + 1
     let contPlaying = false
@@ -312,9 +315,9 @@ class GameState {
     this.loadGameFile(gameId).then(() => {
       gameState.gameId = gameId
       if (contPlaying) {
-        setTimeout(() => {
+        this.eventQueue.scheduleDelay(config.victoryModalDisplayMs, () => {
           togglePlayback(true)
-        }, config.victoryModalDisplayMs)
+        }, `load-next-game-playback-${Date.now()}`)
       }
     }).catch(() => {
       console.warn("caught error trying to advance game. Setting gameId to 0 and restarting...")
@@ -369,7 +372,7 @@ class GameState {
 
   checkPhaseHasMoment = (phaseName: string): Moment | null => {
     let momentMatch = this.momentsData.moments.filter((moment) => {
-      return moment.phase === phaseName
+      return moment.phase === phaseName && moment.raw_messages.length > 0
     })
 
     // If there is more than one moment per turn, only return the largest one.

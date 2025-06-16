@@ -63,18 +63,14 @@ async function testElevenLabsKey() {
  * Call ElevenLabs TTS to speak the summary out loud.
  * Returns a promise that resolves only after the audio finishes playing (or fails).
  * Truncates text to first 100 characters for brevity and API limitations.
- * @param summaryText The text to be spoken
  * @returns Promise that resolves when audio completes or rejects on error
  */
-export async function speakSummary(summaryText: string): Promise<void> {
-  if (!config.speechEnabled || config.isInstantMode) {
-    if (config.isInstantMode) {
-      console.log("Instant mode enabled, skipping TTS");
-    } else {
-      console.log("Speech disabled via config, skipping TTS");
-    }
+export async function speakSummary(): Promise<void> {
+  if (!config.speechEnabled) {
+    console.log("Speech disabled via config, skipping TTS");
     return;
   }
+  const summaryText = gameState.currentPhase.summary
 
   if (!summaryText || summaryText.trim() === '') {
     console.warn("No summary text provided to speakSummary function");
@@ -101,9 +97,6 @@ export async function speakSummary(summaryText: string): Promise<void> {
     console.warn("No ElevenLabs API key found. Skipping TTS.");
     return;
   }
-
-  // Set the speaking flag to block other animations/transitions
-  gameState.isSpeaking = true;
 
   try {
     // Truncate text to first 100 characters for ElevenLabs
@@ -142,14 +135,12 @@ export async function speakSummary(summaryText: string): Promise<void> {
       const audio = new Audio(audioUrl);
       audio.play().then(() => {
         audio.onended = () => {
-          // Clear the speaking flag when audio finishes
-          gameState.isSpeaking = false;
+          console.log("Speech completed successfully");
           resolve();
         };
       }).catch(err => {
         console.error("Audio playback error");
         // Make sure to clear the flag even if there's an error
-        gameState.isSpeaking = false;
         reject(err);
       });
     });
@@ -157,7 +148,8 @@ export async function speakSummary(summaryText: string): Promise<void> {
   } catch (err) {
     console.error("Failed to generate TTS from ElevenLabs");
     // Make sure to clear the flag if there's any exception
-    gameState.isSpeaking = false;
     throw err;
   }
 }
+
+

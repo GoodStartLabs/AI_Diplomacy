@@ -37,11 +37,11 @@ export function updatePhaseDisplay() {
   phaseDisplay.style.opacity = '0';
 
   // Update text after fade-out
-  setTimeout(() => {
+  gameState.eventQueue.scheduleDelay(300, () => {
     phaseDisplay.textContent = `Era: ${currentPhase.name || 'Unknown Era'}`;
     // Fade back in
     phaseDisplay.style.opacity = '1';
-  }, 300);
+  }, `phase-display-update-${Date.now()}`);
 }
 
 export function updateGameIdDisplay() {
@@ -50,11 +50,11 @@ export function updateGameIdDisplay() {
   gameIdDisplay.style.opacity = '0';
 
   // Update text after fade-out
-  setTimeout(() => {
+  gameState.eventQueue.scheduleDelay(300, () => {
     gameIdDisplay.textContent = `Game: ${gameState.gameId}`;
     // Fade back in
     gameIdDisplay.style.opacity = '1';
-  }, 300);
+  }, `game-id-display-update-${Date.now()}`);
 }
 
 export function loadGameBtnFunction(file: File) {
