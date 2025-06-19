@@ -14,6 +14,137 @@
         "--remote-debugging-port=9223"
       ],
       "sourceMaps": true
+    },
+    {
+      "name": "Multi Bot Launcher",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/bot_client/multi_bot_launcher.py",
+      "args": [
+        "--hostname",
+        "localhost",
+        "--port",
+        "8432",
+        "--username-base",
+        "bot",
+        "--password",
+        "password",
+        "--log-level",
+        "INFO"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Multi Bot Launcher (Existing Game)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/bot_client/multi_bot_launcher.py",
+      "args": [
+        "--hostname",
+        "localhost",
+        "--port",
+        "8432",
+        "--username-base",
+        "bot",
+        "--password",
+        "password",
+        "--game-id",
+        "${input:gameId}",
+        "--log-level",
+        "INFO"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Single Bot Player",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/bot_client/single_bot_player.py",
+      "args": [
+        "--hostname",
+        "localhost",
+        "--port",
+        "8432",
+        "--username",
+        "bot_${input:powerName}",
+        "--password",
+        "password",
+        "--power",
+        "${input:powerName}",
+        "--model",
+        "${input:modelName}",
+        "--log-level",
+        "INFO"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Single Bot Player (Existing Game)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/bot_client/single_bot_player.py",
+      "args": [
+        "--hostname",
+        "localhost",
+        "--port",
+        "8432",
+        "--username",
+        "bot_${input:powerName}",
+        "--password",
+        "password",
+        "--power",
+        "${input:powerName}",
+        "--model",
+        "${input:modelName}",
+        "--game-id",
+        "${input:gameId}",
+        "--log-level",
+        "INFO"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "gameId",
+      "type": "promptString",
+      "description": "Enter the game ID to join"
+    },
+    {
+      "id": "powerName",
+      "type": "pickString",
+      "description": "Select the power to control",
+      "options": [
+        "AUSTRIA",
+        "ENGLAND",
+        "FRANCE",
+        "GERMANY",
+        "ITALY",
+        "RUSSIA",
+        "TURKEY"
+      ],
+      "default": "FRANCE"
+    },
+    {
+      "id": "modelName",
+      "type": "pickString",
+      "description": "Select the AI model to use",
+      "options": [
+        "gpt-3.5-turbo",
+        "gpt-4",
+        "claude-3-haiku",
+        "claude-3-sonnet",
+        "gemini-pro"
+      ],
+      "default": "gpt-3.5-turbo"
     }
   ]
 }

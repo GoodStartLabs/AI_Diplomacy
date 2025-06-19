@@ -5,14 +5,26 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiohttp>=3.12.13",
     "anthropic>=0.54.0",
     "diplomacy",
     "dotenv>=0.9.9",
+    "google-generativeai>=0.8.5",
     "json-repair>=0.46.2",
     "json5>=0.12.0",
+    "loguru>=0.7.3",
     "openai>=1.87.0",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.9.1",
     "tornado>=6.5.1",
 ]
 
 [tool.uv.sources]
 diplomacy = { path = "../diplomacy", editable = true }
+
+[tool.pyright]
+extraPaths = [".."]
+include = [".", ".."]
+
+[tool.ruff]
+src = ["..", "."]
