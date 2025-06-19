@@ -1,20 +1,18 @@
 from dotenv import load_dotenv
-import logging
+from loguru import logger
 import asyncio
 from typing import Dict, TYPE_CHECKING
 
 from diplomacy.engine.message import Message, GLOBAL
 
 from .agent import DiplomacyAgent
-from .utils import gather_possible_orders, normalize_recipient_name
+from .clients import load_model_client
+from .utils import gather_possible_orders, load_prompt
 
 if TYPE_CHECKING:
     from .game_history import GameHistory
     from diplomacy import Game
 
-logger = logging.getLogger("negotiations")
-logger.setLevel(logging.INFO)
-logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
@@ -34,8 +32,12 @@ async def conduct_negotiations(
     """
     logger.info("Starting negotiation phase.")
 
-    active_powers = [p_name for p_name, p_obj in game.powers.items() if not p_obj.is_eliminated()]
-    eliminated_powers = [p_name for p_name, p_obj in game.powers.items() if p_obj.is_eliminated()]
+    active_powers = [
+        p_name for p_name, p_obj in game.powers.items() if not p_obj.is_eliminated()
+    ]
+    eliminated_powers = [
+        p_name for p_name, p_obj in game.powers.items() if p_obj.is_eliminated()
+    ]
 
     logger.info(f"Active powers for negotiations: {active_powers}")
     if eliminated_powers:
@@ -53,14 +55,18 @@ async def conduct_negotiations(
 
         for power_name in active_powers:
             if power_name not in agents:
-                logger.warning(f"Agent for {power_name} not found in negotiations. Skipping.")
+                logger.warning(
+                    f"Agent for {power_name} not found in negotiations. Skipping."
+                )
                 continue
             agent = agents[power_name]
             client = agent.client
 
             possible_orders = gather_possible_orders(game, power_name)
             if not possible_orders:
-                logger.info(f"No orderable locations for {power_name}; skipping message generation.")
+                logger.info(
+                    f"No orderable locations for {power_name}; skipping message generation."
+                )
                 continue
             board_state = game.get_state()
 
@@ -98,21 +104,30 @@ async def conduct_negotiations(
             model_name = agent.client.model_name  # Get model name for stats
 
             if isinstance(result, Exception):
-                logger.error(f"Error getting conversation reply for {power_name}: {result}", exc_info=result)
+                logger.error(
+                    f"Error getting conversation reply for {power_name}: {result}",
+                    exc_info=result,
+                )
                 # Use model_name for stats key if possible
                 if model_name in model_error_stats:
                     model_error_stats[model_name]["conversation_errors"] += 1
                 else:  # Fallback to power_name if model name not tracked (shouldn't happen)
-                    model_error_stats.setdefault(power_name, {}).setdefault("conversation_errors", 0)
+                    model_error_stats.setdefault(power_name, {}).setdefault(
+                        "conversation_errors", 0
+                    )
                     model_error_stats[power_name]["conversation_errors"] += 1
                 messages = []  # Treat as no messages on error
-            elif result is None:  # Handle case where client might return None on internal error
+            elif (
+                result is None
+            ):  # Handle case where client might return None on internal error
                 logger.warning(f"Received None instead of messages for {power_name}.")
                 messages = []
                 if model_name in model_error_stats:
                     model_error_stats[model_name]["conversation_errors"] += 1
                 else:
-                    model_error_stats.setdefault(power_name, {}).setdefault("conversation_errors", 0)
+                    model_error_stats.setdefault(power_name, {}).setdefault(
+                        "conversation_errors", 0
+                    )
                     model_error_stats[power_name]["conversation_errors"] += 1
             else:
                 messages = result  # result is the list of message dicts
@@ -123,15 +138,21 @@ async def conduct_negotiations(
                 for message in messages:
                     # Validate message structure
                     if not isinstance(message, dict) or "content" not in message:
-                        logger.warning(f"Invalid message format received from {power_name}: {message}. Skipping.")
+                        logger.warning(
+                            f"Invalid message format received from {power_name}: {message}. Skipping."
+                        )
                         continue
 
                     # Create an official message in the Diplomacy engine
                     # Determine recipient based on message type
                     if message.get("message_type") == "private":
-                        recipient = normalize_recipient_name(message.get("recipient", GLOBAL))  # Default to GLOBAL if recipient missing somehow
+                        recipient = message.get(
+                            "recipient", GLOBAL
+                        )  # Default to GLOBAL if recipient missing somehow
                         if recipient not in game.powers and recipient != GLOBAL:
-                            logger.warning(f"Invalid recipient '{recipient}' in message from {power_name}. Sending globally.")
+                            logger.warning(
+                                f"Invalid recipient '{recipient}' in message from {power_name}. Sending globally."
+                            )
                             recipient = GLOBAL  # Fallback to GLOBAL if recipient power is invalid
                     else:  # Assume global if not private or type is missing
                         recipient = GLOBAL
@@ -151,11 +172,19 @@ async def conduct_negotiations(
                         recipient,  # Use determined recipient here too
                         message.get("content", ""),  # Use .get for safety
                     )
-                    journal_recipient = f"to {recipient}" if recipient != GLOBAL else "globally"
-                    agent.add_journal_entry(f"Sent message {journal_recipient} in {game.current_short_phase}: {message.get('content', '')[:100]}...")
-                    logger.info(f"[{power_name} -> {recipient}] {message.get('content', '')[:100]}...")
+                    journal_recipient = (
+                        f"to {recipient}" if recipient != GLOBAL else "globally"
+                    )
+                    agent.add_journal_entry(
+                        f"Sent message {journal_recipient} in {game.current_short_phase}: {message.get('content', '')[:100]}..."
+                    )
+                    logger.info(
+                        f"[{power_name} -> {recipient}] {message.get('content', '')[:100]}..."
+                    )
             else:
-                logger.debug(f"No valid messages returned or error occurred for {power_name}.")
+                logger.debug(
+                    f"No valid messages returned or error occurred for {power_name}."
+                )
                 # Error stats handled above based on result type
 
     logger.info("Negotiation phase complete.")

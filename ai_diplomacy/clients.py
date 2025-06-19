@@ -1,38 +1,36 @@
 import os
 import json
 import re
-import logging
 import ast  # For literal_eval in JSON fallback parsing
 import aiohttp  # For direct HTTP requests to Responses API
 
-from typing import List, Dict, Optional, Tuple, NamedTuple
+from typing import List, Dict, Optional, Any, Tuple
 from dotenv import load_dotenv
+from loguru import logger
 
 # Use Async versions of clients
 from openai import AsyncOpenAI
 from openai import AsyncOpenAI as AsyncDeepSeekOpenAI  # Alias for clarity
 from anthropic import AsyncAnthropic
-import asyncio
-import requests
-from enum import StrEnum
 
 import google.generativeai as genai
-from together import AsyncTogether
-from together.error import APIError as TogetherAPIError  # For specific error handling
 
-from config import config
+from diplomacy.engine.message import GLOBAL
 from .game_history import GameHistory
-from .utils import load_prompt, run_llm_and_log, log_llm_response, generate_random_seed, get_prompt_path
+from .utils import (
+    load_prompt,
+    run_llm_and_log,
+    log_llm_response,
+)  # Ensure log_llm_response is imported
 
 # Import DiplomacyAgent for type hinting if needed, but avoid circular import if possible
-from .prompt_constructor import construct_order_generation_prompt, build_context_prompt
-# Moved formatter imports to avoid circular import - imported locally where needed
+# from .agent import DiplomacyAgent
+from .possible_order_context import generate_rich_order_context
+from .prompt_constructor import (
+    construct_order_generation_prompt,
+    build_context_prompt,
+)  # Ensure build_context_prompt is imported
 
-# set logger back to just info
-logger = logging.getLogger("client")
-logger.setLevel(logging.DEBUG)  # Keep debug for now during async changes
-# Note: BasicConfig might conflict if already configured in lm_game. Keep client-specific for now.
-# logging.basicConfig(level=logging.DEBUG) # Might be redundant if lm_game configures root
 
 load_dotenv()
 
@@ -49,19 +47,17 @@ class BaseModelClient:
       - get_conversation_reply(power_name, conversation_so_far, game_phase) -> str
     """
 
-    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
+    def __init__(self, model_name: str):
         self.model_name = model_name
-        self.prompts_dir = prompts_dir
         # Load a default initially, can be overwritten by set_system_prompt
-        self.system_prompt = load_prompt("system_prompt.txt", prompts_dir=self.prompts_dir)
-        self.max_tokens = 16000  # default unless overridden
+        self.system_prompt = load_prompt("system_prompt.txt")
 
     def set_system_prompt(self, content: str):
         """Allows updating the system prompt after initialization."""
         self.system_prompt = content
         logger.info(f"[{self.model_name}] System prompt updated.")
 
-    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+    async def generate_response(self, prompt: str) -> str:
         """
         Returns a raw string from the LLM.
         Subclasses override this.
@@ -103,53 +99,54 @@ class BaseModelClient:
             agent_goals=agent_goals,
             agent_relationships=agent_relationships,
             agent_private_diary_str=agent_private_diary_str,
-            prompts_dir=self.prompts_dir,
         )
 
         raw_response = ""
         # Initialize success status. Will be updated based on outcome.
         success_status = "Failure: Initialized"
-        parsed_orders_for_return = self.fallback_orders(possible_orders)  # Default to fallback
+        parsed_orders_for_return = self.fallback_orders(
+            possible_orders
+        )  # Default to fallback
 
         try:
             # Call LLM using the logging wrapper
             raw_response = await run_llm_and_log(
                 client=self,
                 prompt=prompt,
+                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=phase,
                 response_type="order",  # Context for run_llm_and_log's own error logging
-                temperature=0,
             )
-            logger.debug(f"[{self.model_name}] Raw LLM response for {power_name} orders:\n{raw_response}")
+            logger.debug(
+                f"[{self.model_name}] Raw LLM response for {power_name} orders:\n{raw_response}"
+            )
 
-            # Conditionally format the response based on USE_UNFORMATTED_PROMPTS
-            if config.USE_UNFORMATTED_PROMPTS:
-                # Local import to avoid circular dependency
-                from .formatter import format_with_gemini_flash, FORMAT_ORDERS
-
-                # Format the natural language response into structured format
-                formatted_response = await format_with_gemini_flash(
-                    raw_response, FORMAT_ORDERS, power_name=power_name, phase=phase, log_file_path=log_file_path
-                )
-            else:
-                # Use the raw response directly (already formatted)
-                formatted_response = raw_response
-
-            # Attempt to parse the final "orders" from the formatted response
-            move_list = self._extract_moves(formatted_response, power_name)
+            # Attempt to parse the final "orders" from the LLM
+            move_list = self._extract_moves(raw_response, power_name)
 
             if not move_list:
-                logger.warning(f"[{self.model_name}] Could not extract moves for {power_name}. Using fallback.")
-                if model_error_stats is not None and self.model_name in model_error_stats:
-                    model_error_stats[self.model_name].setdefault("order_decoding_errors", 0)
+                logger.warning(
+                    f"[{self.model_name}] Could not extract moves for {power_name}. Using fallback."
+                )
+                if (
+                    model_error_stats is not None
+                    and self.model_name in model_error_stats
+                ):
+                    model_error_stats[self.model_name].setdefault(
+                        "order_decoding_errors", 0
+                    )
                     model_error_stats[self.model_name]["order_decoding_errors"] += 1
                 success_status = "Failure: No moves extracted"
                 # Fallback is already set to parsed_orders_for_return
             else:
                 # Validate or fallback
-                validated_moves, invalid_moves_list = self._validate_orders(move_list, possible_orders)
-                logger.debug(f"[{self.model_name}] Validated moves for {power_name}: {validated_moves}")
+                validated_moves, invalid_moves_list = self._validate_orders(
+                    move_list, possible_orders
+                )
+                logger.debug(
+                    f"[{self.model_name}] Validated moves for {power_name}: {validated_moves}"
+                )
                 parsed_orders_for_return = validated_moves
                 if invalid_moves_list:
                     # Truncate if too many invalid moves to keep log readable
@@ -167,14 +164,21 @@ class BaseModelClient:
                     # The fallback_orders logic within _validate_orders might fill in missing pieces,
                     # but the key is that the LLM *proposed* invalid moves.
                     if not validated_moves:  # All LLM moves were invalid
-                        logger.warning(f"[{power_name}] All LLM-proposed moves were invalid. Using fallbacks. Invalid: {invalid_moves_list}")
+                        logger.warning(
+                            f"[{power_name}] All LLM-proposed moves were invalid. Using fallbacks. Invalid: {invalid_moves_list}"
+                        )
                     else:
-                        logger.info(f"[{power_name}] Some LLM-proposed moves were invalid. Using fallbacks/validated. Invalid: {invalid_moves_list}")
+                        logger.info(
+                            f"[{power_name}] Some LLM-proposed moves were invalid. Using fallbacks/validated. Invalid: {invalid_moves_list}"
+                        )
                 else:
                     success_status = "Success"
 
         except Exception as e:
-            logger.error(f"[{self.model_name}] LLM error for {power_name} in get_orders: {e}", exc_info=True)
+            logger.error(
+                f"[{self.model_name}] LLM error for {power_name} in get_orders: {e}",
+                exc_info=True,
+            )
             success_status = f"Failure: Exception ({type(e).__name__})"
             # Fallback is already set to parsed_orders_for_return
         finally:
@@ -209,7 +213,9 @@ class BaseModelClient:
 
         if not matches:
             # Some LLMs might not put the colon or might have triple backtick fences.
-            logger.debug(f"[{self.model_name}] Regex parse #1 failed for {power_name}. Trying alternative patterns.")
+            logger.debug(
+                f"[{self.model_name}] Regex parse #1 failed for {power_name}. Trying alternative patterns."
+            )
 
             # 1b) Check for inline JSON after "PARSABLE OUTPUT"
             pattern_alt = r"PARSABLE OUTPUT\s*\{(.*?)\}\s*$"
@@ -217,35 +223,47 @@ class BaseModelClient:
 
         if not matches:
             # 1c) Check for **PARSABLE OUTPUT:** pattern (with asterisks)
-            logger.debug(f"[{self.model_name}] Regex parse #2 failed for {power_name}. Trying asterisk-wrapped pattern.")
+            logger.debug(
+                f"[{self.model_name}] Regex parse #2 failed for {power_name}. Trying asterisk-wrapped pattern."
+            )
             pattern_asterisk = r"\*\*PARSABLE OUTPUT:\*\*\s*(\{[\s\S]*?\})"
             matches = re.search(pattern_asterisk, raw_response, re.DOTALL)
 
         if not matches:
-            logger.debug(f"[{self.model_name}] Regex parse #3 failed for {power_name}. Trying triple-backtick code fences.")
+            logger.debug(
+                f"[{self.model_name}] Regex parse #3 failed for {power_name}. Trying triple-backtick code fences."
+            )
 
         # 2) If still no match, check for triple-backtick code fences containing JSON
         if not matches:
             code_fence_pattern = r"```json\n(.*?)\n```"
             matches = re.search(code_fence_pattern, raw_response, re.DOTALL)
             if matches:
-                logger.debug(f"[{self.model_name}] Found triple-backtick JSON block for {power_name}.")
+                logger.debug(
+                    f"[{self.model_name}] Found triple-backtick JSON block for {power_name}."
+                )
 
         # 2b) Also try plain ``` code fences without json marker
         if not matches:
             code_fence_plain = r"```\n(.*?)\n```"
             matches = re.search(code_fence_plain, raw_response, re.DOTALL)
             if matches:
-                logger.debug(f"[{self.model_name}] Found plain triple-backtick block for {power_name}.")
+                logger.debug(
+                    f"[{self.model_name}] Found plain triple-backtick block for {power_name}."
+                )
 
         # 2c) Try to find bare JSON object anywhere in the response
         if not matches:
-            logger.debug(f"[{self.model_name}] No explicit markers found for {power_name}. Looking for bare JSON.")
+            logger.debug(
+                f"[{self.model_name}] No explicit markers found for {power_name}. Looking for bare JSON."
+            )
             # Look for a JSON object that contains "orders" key
             bare_json_pattern = r'(\{[^{}]*"orders"\s*:\s*\[[^\]]*\][^{}]*\})'
             matches = re.search(bare_json_pattern, raw_response, re.DOTALL)
             if matches:
-                logger.debug(f"[{self.model_name}] Found bare JSON object with 'orders' key for {power_name}.")
+                logger.debug(
+                    f"[{self.model_name}] Found bare JSON object with 'orders' key for {power_name}."
+                )
 
         # 3) Attempt to parse JSON if we found anything
         json_text = None
@@ -262,7 +280,9 @@ class BaseModelClient:
             json_text = json_text.strip()
 
         if not json_text:
-            logger.debug(f"[{self.model_name}] No JSON text found in LLM response for {power_name}.")
+            logger.debug(
+                f"[{self.model_name}] No JSON text found in LLM response for {power_name}."
+            )
             return None
 
         # 3a) Try JSON loading
@@ -270,7 +290,9 @@ class BaseModelClient:
             data = json.loads(json_text)
             return data.get("orders", None)
         except json.JSONDecodeError as e:
-            logger.warning(f"[{self.model_name}] JSON decode failed for {power_name}: {e}. Trying to fix common issues.")
+            logger.warning(
+                f"[{self.model_name}] JSON decode failed for {power_name}: {e}. Trying to fix common issues."
+            )
 
             # Try to fix common JSON issues
             try:
@@ -280,10 +302,14 @@ class BaseModelClient:
                 fixed_json = fixed_json.replace("'", '"')
                 # Try parsing again
                 data = json.loads(fixed_json)
-                logger.info(f"[{self.model_name}] Successfully parsed JSON after fixes for {power_name}")
+                logger.info(
+                    f"[{self.model_name}] Successfully parsed JSON after fixes for {power_name}"
+                )
                 return data.get("orders", None)
             except json.JSONDecodeError:
-                logger.warning(f"[{self.model_name}] JSON decode still failed after fixes for {power_name}. Trying to remove inline comments.")
+                logger.warning(
+                    f"[{self.model_name}] JSON decode still failed after fixes for {power_name}. Trying to remove inline comments."
+                )
 
                 # Try to remove inline comments (// style)
                 try:
@@ -317,13 +343,19 @@ class BaseModelClient:
 
                     comment_free_json = "\n".join(cleaned_lines)
                     # Also remove trailing commas after comment removal
-                    comment_free_json = re.sub(r",\s*([\}\]])", r"\1", comment_free_json)
+                    comment_free_json = re.sub(
+                        r",\s*([\}\]])", r"\1", comment_free_json
+                    )
 
                     data = json.loads(comment_free_json)
-                    logger.info(f"[{self.model_name}] Successfully parsed JSON after removing inline comments for {power_name}")
+                    logger.info(
+                        f"[{self.model_name}] Successfully parsed JSON after removing inline comments for {power_name}"
+                    )
                     return data.get("orders", None)
                 except json.JSONDecodeError:
-                    logger.warning(f"[{self.model_name}] JSON decode still failed after removing comments for {power_name}. Trying bracket fallback.")
+                    logger.warning(
+                        f"[{self.model_name}] JSON decode still failed after removing comments for {power_name}. Trying bracket fallback."
+                    )
 
         # 3b) Attempt bracket fallback: we look for the substring after "orders"
         #     E.g. "orders: ['A BUD H']" and parse it. This is risky but can help with minor JSON format errors.
@@ -337,12 +369,16 @@ class BaseModelClient:
                 if isinstance(moves, list):
                     return moves
             except Exception as e2:
-                logger.warning(f"[{self.model_name}] Bracket fallback parse also failed for {power_name}: {e2}")
+                logger.warning(
+                    f"[{self.model_name}] Bracket fallback parse also failed for {power_name}: {e2}"
+                )
 
         # If all attempts failed
         return None
 
-    def _validate_orders(self, moves: List[str], possible_orders: Dict[str, List[str]]) -> Tuple[List[str], List[str]]:  # MODIFIED RETURN TYPE
+    def _validate_orders(
+        self, moves: List[str], possible_orders: Dict[str, List[str]]
+    ) -> Tuple[List[str], List[str]]:  # MODIFIED RETURN TYPE
         """
         Filter out invalid moves, fill missing with HOLD, else fallback.
         Returns a tuple: (validated_moves, invalid_moves_found)
@@ -372,10 +408,16 @@ class BaseModelClient:
         for loc, orders_list in possible_orders.items():
             if loc not in used_locs and orders_list:
                 hold_candidates = [o for o in orders_list if o.endswith("H")]
-                validated.append(hold_candidates[0] if hold_candidates else orders_list[0])
+                validated.append(
+                    hold_candidates[0] if hold_candidates else orders_list[0]
+                )
 
-        if not validated and not invalid_moves_found:  # Only if LLM provided no valid moves and no invalid moves (e.g. empty list from LLM)
-            logger.warning(f"[{self.model_name}] No valid LLM moves provided and no invalid ones to report. Using fallback.")
+        if (
+            not validated and not invalid_moves_found
+        ):  # Only if LLM provided no valid moves and no invalid moves (e.g. empty list from LLM)
+            logger.warning(
+                f"[{self.model_name}] No valid LLM moves provided and no invalid ones to report. Using fallback."
+            )
             return self.fallback_orders(possible_orders), []
         elif not validated and invalid_moves_found:  # All LLM moves were invalid
             logger.warning(
@@ -411,7 +453,7 @@ class BaseModelClient:
         agent_relationships: Optional[Dict[str, str]] = None,
         agent_private_diary_str: Optional[str] = None,  # Added
     ) -> str:
-        instructions = load_prompt("planning_instructions.txt", prompts_dir=self.prompts_dir)
+        instructions = load_prompt("planning_instructions.txt")
 
         context = self.build_context_prompt(
             game,
@@ -422,7 +464,6 @@ class BaseModelClient:
             agent_goals=agent_goals,
             agent_relationships=agent_relationships,
             agent_private_diary=agent_private_diary_str,  # Pass diary string
-            prompts_dir=self.prompts_dir,
         )
 
         return context + "\n\n" + instructions
@@ -440,10 +481,8 @@ class BaseModelClient:
         agent_relationships: Optional[Dict[str, str]] = None,
         agent_private_diary_str: Optional[str] = None,  # Added
     ) -> str:
-        # MINIMAL CHANGE: Just change to load unformatted version conditionally
-        instructions = load_prompt(get_prompt_path("conversation_instructions.txt"), prompts_dir=self.prompts_dir)
+        instructions = load_prompt("conversation_instructions.txt")
 
-        # KEEP ORIGINAL: Use build_context_prompt as before
         context = build_context_prompt(
             game,
             board_state,
@@ -453,36 +492,35 @@ class BaseModelClient:
             agent_goals=agent_goals,
             agent_relationships=agent_relationships,
             agent_private_diary=agent_private_diary_str,  # Pass diary string
-            prompts_dir=self.prompts_dir,
         )
 
-        # KEEP ORIGINAL: Get recent messages targeting this power to prioritize responses
-        recent_messages_to_power = game_history.get_recent_messages_to_power(power_name, limit=3)
+        # Get recent messages targeting this power to prioritize responses
+        recent_messages_to_power = game_history.get_recent_messages_to_power(
+            power_name, limit=3
+        )
 
-        # KEEP ORIGINAL: Debug logging to verify messages
-        logger.info(f"[{power_name}] Found {len(recent_messages_to_power)} high priority messages to respond to")
+        # Debug logging to verify messages
+        logger.info(
+            f"[{power_name}] Found {len(recent_messages_to_power)} high priority messages to respond to"
+        )
         if recent_messages_to_power:
             for i, msg in enumerate(recent_messages_to_power):
-                logger.info(f"[{power_name}] Priority message {i + 1}: From {msg['sender']} in {msg['phase']}: {msg['content'][:50]}...")
+                logger.info(
+                    f"[{power_name}] Priority message {i + 1}: From {msg['sender']} in {msg['phase']}: {msg['content'][:50]}..."
+                )
 
-        # KEEP ORIGINAL: Add a section for unanswered messages
+        # Add a section for unanswered messages
         unanswered_messages = "\n\nRECENT MESSAGES REQUIRING YOUR ATTENTION:\n"
         if recent_messages_to_power:
             for msg in recent_messages_to_power:
-                unanswered_messages += f"\nFrom {msg['sender']} in {msg['phase']}: {msg['content']}\n"
+                unanswered_messages += (
+                    f"\nFrom {msg['sender']} in {msg['phase']}: {msg['content']}\n"
+                )
         else:
             unanswered_messages += "\nNo urgent messages requiring direct responses.\n"
-
+            
         final_prompt = context + unanswered_messages + "\n\n" + instructions
-        final_prompt = (
-            final_prompt.replace("AUSTRIA", "Austria")
-            .replace("ENGLAND", "England")
-            .replace("FRANCE", "France")
-            .replace("GERMANY", "Germany")
-            .replace("ITALY", "Italy")
-            .replace("RUSSIA", "Russia")
-            .replace("TURKEY", "Turkey")
-        )
+        final_prompt = final_prompt.replace('AUSTRIA', 'Austria').replace('ENGLAND', "England").replace('FRANCE', 'France').replace('GERMANY', 'Germany').replace('ITALY', "Italy").replace('RUSSIA', 'Russia').replace('TURKEY', 'Turkey')
         return final_prompt
 
     async def get_planning_reply(  # Renamed from get_plan to avoid conflict with get_plan in agent.py
@@ -515,11 +553,14 @@ class BaseModelClient:
         raw_response = await run_llm_and_log(
             client=self,
             prompt=prompt,
+            log_file_path=log_file_path,
             power_name=power_name,
             phase=game_phase,  # Use game_phase for logging
             response_type="plan_reply",  # Changed from 'plan' to avoid confusion
         )
-        logger.debug(f"[{self.model_name}] Raw LLM response for {power_name} planning reply:\n{raw_response}")
+        logger.debug(
+            f"[{self.model_name}] Raw LLM response for {power_name} planning reply:\n{raw_response}"
+        )
         return raw_response
 
     async def get_conversation_reply(
@@ -556,116 +597,166 @@ class BaseModelClient:
                 agent_private_diary_str=agent_private_diary_str,
             )
 
-            logger.debug(f"[{self.model_name}] Conversation prompt for {power_name}:\n{raw_input_prompt}")
+            logger.debug(
+                f"[{self.model_name}] Conversation prompt for {power_name}:\n{raw_input_prompt}"
+            )
 
             raw_response = await run_llm_and_log(
                 client=self,
                 prompt=raw_input_prompt,
+                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=game_phase,
                 response_type="negotiation",  # For run_llm_and_log's internal context
             )
-            logger.debug(f"[{self.model_name}] Raw LLM response for {power_name}:\n{raw_response}")
-
-            # Conditionally format the response based on USE_UNFORMATTED_PROMPTS
-            if config.USE_UNFORMATTED_PROMPTS:
-                # Local import to avoid circular dependency
-                from .formatter import format_with_gemini_flash, FORMAT_CONVERSATION
-
-                # Format the natural language response into structured JSON
-                formatted_response = await format_with_gemini_flash(
-                    raw_response, FORMAT_CONVERSATION, power_name=power_name, phase=game_phase, log_file_path=log_file_path
-                )
-            else:
-                # Use the raw response directly (already formatted)
-                formatted_response = raw_response
+            logger.debug(
+                f"[{self.model_name}] Raw LLM response for {power_name}:\n{raw_response}"
+            )
 
             parsed_messages = []
             json_blocks = []
             json_decode_error_occurred = False
 
-            # For formatted response, we expect a clean JSON array
-            try:
-                data = json.loads(formatted_response)
-                if isinstance(data, list):
-                    parsed_messages = data
-                    json_blocks = [json.dumps(item) for item in data if isinstance(item, dict)]
+            # Attempt to find blocks enclosed in {{...}}
+            double_brace_blocks = re.findall(r"\{\{(.*?)\}\}", raw_response, re.DOTALL)
+            if double_brace_blocks:
+                # If {{...}} blocks are found, assume each is a self-contained JSON object
+                json_blocks.extend(
+                    ["{" + block.strip() + "}" for block in double_brace_blocks]
+                )
+            else:
+                # If no {{...}} blocks, look for ```json ... ``` markdown blocks
+                code_block_match = re.search(
+                    r"```json\n(.*?)\n```", raw_response, re.DOTALL
+                )
+                if code_block_match:
+                    potential_json_array_or_objects = code_block_match.group(1).strip()
+                    # Try to parse as a list of objects or a single object
+                    try:
+                        data = json.loads(potential_json_array_or_objects)
+                        if isinstance(data, list):
+                            json_blocks = [
+                                json.dumps(item)
+                                for item in data
+                                if isinstance(item, dict)
+                            ]
+                        elif isinstance(data, dict):
+                            json_blocks = [json.dumps(data)]
+                    except json.JSONDecodeError:
+                        # If parsing the whole block fails, fall back to regex for individual objects
+                        json_blocks = re.findall(
+                            r"\{.*?\}", potential_json_array_or_objects, re.DOTALL
+                        )
                 else:
-                    logger.warning(f"[{self.model_name}] Formatted response is not a list")
-            except json.JSONDecodeError:
-                logger.warning(f"[{self.model_name}] Failed to parse formatted response as JSON, falling back to regex")
-                # Fall back to original parsing logic using formatted_response
-                raw_response = formatted_response
+                    # If no markdown block, fall back to regex for any JSON object in the response
+                    json_blocks = re.findall(r"\{.*?\}", raw_response, re.DOTALL)
 
-            # Original parsing logic as fallback
-            if not parsed_messages:
-                # Attempt to find blocks enclosed in {{...}}
-                double_brace_blocks = re.findall(r"\{\{(.*?)\}\}", raw_response, re.DOTALL)
-                if double_brace_blocks:
-                    # If {{...}} blocks are found, assume each is a self-contained JSON object
-                    json_blocks.extend(["{" + block.strip() + "}" for block in double_brace_blocks])
-                else:
-                    # If no {{...}} blocks, look for ```json ... ``` markdown blocks
-                    code_block_match = re.search(r"```json\n(.*?)\n```", raw_response, re.DOTALL)
-                    if code_block_match:
-                        potential_json_array_or_objects = code_block_match.group(1).strip()
-                        # Try to parse as a list of objects or a single object
-                        try:
-                            data = json.loads(potential_json_array_or_objects)
-                            if isinstance(data, list):
-                                json_blocks = [json.dumps(item) for item in data if isinstance(item, dict)]
-                            elif isinstance(data, dict):
-                                json_blocks = [json.dumps(data)]
-                        except json.JSONDecodeError:
-                            # If parsing the whole block fails, fall back to regex for individual objects
-                            json_blocks = re.findall(r"\{.*?\}", potential_json_array_or_objects, re.DOTALL)
-                    else:
-                        # If no markdown block, fall back to regex for any JSON object in the response
-                        json_blocks = re.findall(r"\{.*?\}", raw_response, re.DOTALL)
-
-            # Process json_blocks if we have them from fallback parsing
-            if not parsed_messages and json_blocks:
+            if not json_blocks:
+                logger.warning(
+                    f"[{self.model_name}] No JSON message blocks found in response for {power_name}. Raw response:\n{raw_response}"
+                )
+                success_status = "Success: No JSON blocks found"
+                # messages_to_return remains empty
+            else:
                 for block_index, block in enumerate(json_blocks):
                     try:
                         cleaned_block = block.strip()
                         # Attempt to fix common JSON issues like trailing commas before parsing
                         cleaned_block = re.sub(r",\s*([\}\]])", r"\1", cleaned_block)
                         parsed_message = json.loads(cleaned_block)
-                        parsed_messages.append(parsed_message)
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"[{self.model_name}] Failed to parse JSON block {block_index} for {power_name}: {e}")
-                        json_decode_error_occurred = True
 
-            if not parsed_messages:
-                logger.warning(f"[{self.model_name}] No valid messages found in response for {power_name}")
-                success_status = "Success: No messages found"
-                # messages_to_return remains empty
-            else:
-                # Validate parsed messages
-                validated_messages = []
-                for msg in parsed_messages:
-                    if isinstance(msg, dict) and "message_type" in msg and "content" in msg:
-                        if msg["message_type"] == "private" and "recipient" not in msg:
-                            logger.warning(f"[{self.model_name}] Private message missing recipient for {power_name}")
-                            continue
-                        validated_messages.append(msg)
-                    else:
-                        logger.warning(f"[{self.model_name}] Invalid message structure for {power_name}")
-                parsed_messages = validated_messages
+                        if (
+                            isinstance(parsed_message, dict)
+                            and "message_type" in parsed_message
+                            and "content" in parsed_message
+                        ):
+                            # Further validation, e.g., recipient for private messages
+                            if (
+                                parsed_message["message_type"] == "private"
+                                and "recipient" not in parsed_message
+                            ):
+                                logger.warning(
+                                    f"[{self.model_name}] Private message missing recipient for {power_name} in block {block_index}. Skipping: {cleaned_block}"
+                                )
+                                continue  # Skip this message
+                            parsed_messages.append(parsed_message)
+                        else:
+                            logger.warning(
+                                f"[{self.model_name}] Invalid message structure or missing keys in block {block_index} for {power_name}: {cleaned_block}"
+                            )
 
-            # Set final status and return value
-            if parsed_messages:
-                success_status = "Success: Messages extracted"
-                messages_to_return = parsed_messages
-            else:
-                success_status = "Success: No valid messages"
-                messages_to_return = []
+                    except json.JSONDecodeError as jde:
+                        # Try to fix unescaped newlines and retry parsing
+                        try:
+                            # Fix unescaped newlines and other control characters in JSON strings
+                            def escape_json_string(match):
+                                # Get the string content (without quotes)
+                                string_content = match.group(1)
+                                # Escape newlines, tabs, and carriage returns
+                                string_content = string_content.replace("\n", "\\n")
+                                string_content = string_content.replace("\r", "\\r")
+                                string_content = string_content.replace("\t", "\\t")
+                                # Return with quotes
+                                return '"' + string_content + '"'
 
-            logger.debug(f"[{self.model_name}] Validated conversation replies for {power_name}: {messages_to_return}")
+                            # Apply escaping to all string values in the JSON
+                            fixed_block = re.sub(
+                                r'"([^"]*)"', escape_json_string, cleaned_block
+                            )
+
+                            # Try parsing again with fixed block
+                            parsed_message = json.loads(fixed_block)
+
+                            if (
+                                isinstance(parsed_message, dict)
+                                and "message_type" in parsed_message
+                                and "content" in parsed_message
+                            ):
+                                # Further validation, e.g., recipient for private messages
+                                if (
+                                    parsed_message["message_type"] == "private"
+                                    and "recipient" not in parsed_message
+                                ):
+                                    logger.warning(
+                                        f"[{self.model_name}] Private message missing recipient for {power_name} in block {block_index}. Skipping: {fixed_block}"
+                                    )
+                                    continue  # Skip this message
+                                parsed_messages.append(parsed_message)
+                                logger.info(
+                                    f"[{self.model_name}] Successfully parsed JSON block {block_index} for {power_name} after fixing escape sequences"
+                                )
+                            else:
+                                logger.warning(
+                                    f"[{self.model_name}] Invalid message structure or missing keys in block {block_index} for {power_name} after escape fix: {fixed_block}"
+                                )
+                        except json.JSONDecodeError as jde2:
+                            json_decode_error_occurred = True
+                            logger.warning(
+                                f"[{self.model_name}] Failed to decode JSON block {block_index} for {power_name} even after escape fixes. Error: {jde}. Block content:\n{block}"
+                            )
+
+                if parsed_messages:
+                    success_status = "Success: Messages extracted"
+                    messages_to_return = parsed_messages
+                elif json_decode_error_occurred:
+                    success_status = "Failure: JSONDecodeError during block parsing"
+                    messages_to_return = []
+                else:  # JSON blocks found, but none were valid messages
+                    success_status = (
+                        "Success: No valid messages extracted from JSON blocks"
+                    )
+                    messages_to_return = []
+
+            logger.debug(
+                f"[{self.model_name}] Validated conversation replies for {power_name}: {messages_to_return}"
+            )
             # return messages_to_return # Return will happen in finally block or after
 
         except Exception as e:
-            logger.error(f"[{self.model_name}] Error in get_conversation_reply for {power_name}: {e}", exc_info=True)
+            logger.error(
+                f"[{self.model_name}] Error in get_conversation_reply for {power_name}: {e}",
+                exc_info=True,
+            )
             success_status = f"Failure: Exception ({type(e).__name__})"
             messages_to_return = []  # Ensure empty list on general exception
         finally:
@@ -700,9 +791,11 @@ class BaseModelClient:
         """
         logger.info(f"Client generating strategic plan for {power_name}...")
 
-        planning_instructions = load_prompt("planning_instructions.txt", prompts_dir=self.prompts_dir)
+        planning_instructions = load_prompt("planning_instructions.txt")
         if not planning_instructions:
-            logger.error("Could not load planning_instructions.txt! Cannot generate plan.")
+            logger.error(
+                "Could not load planning_instructions.txt! Cannot generate plan."
+            )
             return "Error: Planning instructions not found."
 
         # For planning, possible_orders might be less critical for the context,
@@ -719,7 +812,6 @@ class BaseModelClient:
             agent_goals=agent_goals,
             agent_relationships=agent_relationships,
             agent_private_diary=agent_private_diary_str,  # Pass diary string
-            prompts_dir=self.prompts_dir,
         )
 
         full_prompt = f"{context_prompt}\n\n{planning_instructions}"
@@ -728,25 +820,34 @@ class BaseModelClient:
 
         raw_plan_response = ""
         success_status = "Failure: Initialized"
-        plan_to_return = f"Error: Plan generation failed for {power_name} (initial state)"
+        plan_to_return = (
+            f"Error: Plan generation failed for {power_name} (initial state)"
+        )
 
         try:
             # Use run_llm_and_log for the actual LLM call
             raw_plan_response = await run_llm_and_log(
                 client=self,  # Pass self (the client instance)
                 prompt=full_prompt,
+                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=game.current_short_phase,
                 response_type="plan_generation",  # More specific type for run_llm_and_log context
             )
-            logger.debug(f"[{self.model_name}] Raw LLM response for {power_name} plan generation:\n{raw_plan_response}")
+            logger.debug(
+                f"[{self.model_name}] Raw LLM response for {power_name} plan generation:\n{raw_plan_response}"
+            )
             # No parsing needed for the plan, return the raw string
             plan_to_return = raw_plan_response.strip()
             success_status = "Success"
         except Exception as e:
-            logger.error(f"Failed to generate plan for {power_name}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to generate plan for {power_name}: {e}", exc_info=True
+            )
             success_status = f"Failure: Exception ({type(e).__name__})"
-            plan_to_return = f"Error: Failed to generate plan for {power_name} due to exception: {e}"
+            plan_to_return = (
+                f"Error: Failed to generate plan for {power_name} due to exception: {e}"
+            )
         finally:
             if log_file_path:  # Only log if a path is provided
                 log_llm_response(
@@ -767,57 +868,45 @@ class BaseModelClient:
 # 2) Concrete Implementations
 ##############################################################################
 
+
 class OpenAIClient(BaseModelClient):
-    """Async client for OpenAI-compatible chat-completion endpoints."""
+    """
+    For 'o3-mini', 'gpt-4o', or other OpenAI model calls.
+    """
 
-    def __init__(
-        self,
-        model_name: str,
-        prompts_dir: Optional[str] = None,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-    ):
-        super().__init__(model_name, prompts_dir=prompts_dir)
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
+        self.client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-        self.base_url = base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
-
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OPENAI_API_KEY missing and no inline key provided")
-
-        self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
-
-    async def generate_response(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        inject_random_seed: bool = True,
-    ) -> str:
+    async def generate_response(self, prompt: str) -> str:
+        # Updated to new API format
         try:
-            system_prompt_content = f"{generate_random_seed()}\n\n{self.system_prompt}" if inject_random_seed else self.system_prompt
-            prompt_with_cta = f"{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"
+            # Append the call to action to the user's prompt
+            prompt_with_cta = prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
 
             response = await self.client.chat.completions.create(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": system_prompt_content},
+                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt_with_cta},
                 ],
-                temperature=temperature,
-                max_tokens=self.max_tokens,
             )
-
-            if not response or not response.choices or not response.choices[0].message.content:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
-
+            if not response or not hasattr(response, "choices") or not response.choices:
+                logger.warning(
+                    f"[{self.model_name}] Empty or invalid result in generate_response. Returning empty."
+                )
+                return ""
             return response.choices[0].message.content.strip()
-
         except json.JSONDecodeError as json_err:
-            logger.error(f"[{self.model_name}] JSON decode error: {json_err}")
-            raise
+            logger.error(
+                f"[{self.model_name}] JSON decoding failed in generate_response: {json_err}"
+            )
+            return ""
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error: {e}", exc_info=True)
-            raise
+            logger.error(
+                f"[{self.model_name}] Unexpected error in generate_response: {e}"
+            )
+            return ""
 
 
 class ClaudeClient(BaseModelClient):
@@ -825,34 +914,40 @@ class ClaudeClient(BaseModelClient):
     For 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', etc.
     """
 
-    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
-        super().__init__(model_name, prompts_dir=prompts_dir)
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
         self.client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+    async def generate_response(self, prompt: str) -> str:
         # Updated Claude messages format
         try:
-            system_prompt_content = self.system_prompt
-            if inject_random_seed:
-                random_seed = generate_random_seed()
-                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
-
             response = await self.client.messages.create(
                 model=self.model_name,
-                max_tokens=self.max_tokens,
-                system=system_prompt_content,  # system is now a top-level parameter
-                messages=[{"role": "user", "content": prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"}],
-                temperature=temperature,
+                max_tokens=4000,
+                system=self.system_prompt,  # system is now a top-level parameter
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:",
+                    }
+                ],
             )
-            if not response.content or not response.content[0].text:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
-            return response.content[0].text.strip()
+            if not response.content:
+                logger.warning(
+                    f"[{self.model_name}] Empty content in Claude generate_response. Returning empty."
+                )
+                return ""
+            return response.content[0].text.strip() if response.content else ""
         except json.JSONDecodeError as json_err:
-            logger.error(f"[{self.model_name}] JSON decoding failed in generate_response: {json_err}")
-            raise
+            logger.error(
+                f"[{self.model_name}] JSON decoding failed in generate_response: {json_err}"
+            )
+            return ""
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error in generate_response: {e}")
-            raise
+            logger.error(
+                f"[{self.model_name}] Unexpected error in generate_response: {e}"
+            )
+            return ""
 
 
 class GeminiClient(BaseModelClient):
@@ -860,37 +955,35 @@ class GeminiClient(BaseModelClient):
     For 'gemini-1.5-flash' or other Google Generative AI models.
     """
 
-    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
-        super().__init__(model_name, prompts_dir=prompts_dir)
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
         # Configure and get the model (corrected initialization)
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
         genai.configure(api_key=api_key)
         self.client = genai.GenerativeModel(model_name)
-        logger.debug(f"[{self.model_name}] Initialized Gemini client (genai.GenerativeModel)")
+        logger.debug(
+            f"[{self.model_name}] Initialized Gemini client (genai.GenerativeModel)"
+        )
 
-    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
-        system_prompt_content = self.system_prompt
-        if inject_random_seed:
-            random_seed = generate_random_seed()
-            system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
-
-        full_prompt = system_prompt_content + prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
+    async def generate_response(self, prompt: str) -> str:
+        full_prompt = self.system_prompt + prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
 
         try:
-            generation_config = genai.types.GenerationConfig(temperature=temperature, max_output_tokens=self.max_tokens)
             response = await self.client.generate_content_async(
                 contents=full_prompt,
-                generation_config=generation_config,
             )
 
             if not response or not response.text:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+                logger.warning(
+                    f"[{self.model_name}] Empty Gemini generate_response. Returning empty."
+                )
+                return ""
             return response.text.strip()
         except Exception as e:
             logger.error(f"[{self.model_name}] Error in Gemini generate_response: {e}")
-            raise
+            return ""
 
 
 class DeepSeekClient(BaseModelClient):
@@ -898,43 +991,46 @@ class DeepSeekClient(BaseModelClient):
     For DeepSeek R1 'deepseek-reasoner'
     """
 
-    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
-        super().__init__(model_name, prompts_dir=prompts_dir)
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
         self.api_key = os.environ.get("DEEPSEEK_API_KEY")
-        self.client = AsyncDeepSeekOpenAI(api_key=self.api_key, base_url="https://api.deepseek.com/")
+        self.client = AsyncDeepSeekOpenAI(
+            api_key=self.api_key, base_url="https://api.deepseek.com/"
+        )
 
-    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+    async def generate_response(self, prompt: str) -> str:
         try:
             # Append the call to action to the user's prompt
             prompt_with_cta = prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
 
-            system_prompt_content = self.system_prompt
-            if inject_random_seed:
-                random_seed = generate_random_seed()
-                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
-
             response = await self.client.chat.completions.create(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": system_prompt_content},
+                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt_with_cta},
                 ],
                 stream=False,
-                temperature=temperature,
-                max_tokens=self.max_tokens,
             )
 
             logger.debug(f"[{self.model_name}] Raw DeepSeek response:\n{response}")
 
-            if not response or not response.choices or not response.choices[0].message.content:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+            if not response or not response.choices:
+                logger.warning(
+                    f"[{self.model_name}] No valid response in generate_response."
+                )
+                return ""
 
             content = response.choices[0].message.content.strip()
+            if not content:
+                logger.warning(f"[{self.model_name}] DeepSeek returned empty content.")
+                return ""
             return content
 
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error in generate_response: {e}")
-            raise
+            logger.error(
+                f"[{self.model_name}] Unexpected error in generate_response: {e}"
+            )
+            return ""
 
 
 class OpenAIResponsesClient(BaseModelClient):
@@ -943,58 +1039,70 @@ class OpenAIResponsesClient(BaseModelClient):
     This client makes direct HTTP requests to the v1/responses endpoint.
     """
 
-    def __init__(self, model_name: str, prompts_dir: Optional[str] = None, api_key: Optional[str] = None):
-        super().__init__(model_name, prompts_dir=prompts_dir)
-        if api_key:
-            self.api_key = api_key
-        else:
-            self.api_key = os.environ.get("OPENAI_API_KEY")
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
+        self.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
         self.base_url = "https://api.openai.com/v1/responses"
         logger.info(f"[{self.model_name}] Initialized OpenAI Responses API client")
 
-    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+    async def generate_response(self, prompt: str) -> str:
         try:
             # The Responses API uses a different format than chat completions
             # Combine system prompt and user prompt into a single input
-            system_prompt_content = self.system_prompt
-            if inject_random_seed:
-                random_seed = generate_random_seed()
-                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
-
-            full_prompt = f"{system_prompt_content}\n\n{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"
+            full_prompt = (
+                f"{self.system_prompt}\n\n{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"
+            )
 
             # Prepare the request payload
-            payload = {
-                "model": self.model_name,
-                "input": full_prompt,
-                "temperature": temperature,
-                "max_tokens": self.max_tokens,
-            }
+            payload = {"model": self.model_name, "input": full_prompt}
 
-            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
 
             # Make the API call using aiohttp
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.base_url, json=payload, headers=headers) as response:
-                    response.raise_for_status()  # Will raise for non-2xx responses
+                async with session.post(
+                    self.base_url, json=payload, headers=headers
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(
+                            f"[{self.model_name}] API error (status {response.status}): {error_text}"
+                        )
+                        return ""
+
                     response_data = await response.json()
 
                     # Extract the text from the nested response structure
+                    # The text is in output[1].content[0].text based on the response
                     try:
                         outputs = response_data.get("output", [])
                         if len(outputs) < 2:
-                            raise ValueError(f"[{self.model_name}] Unexpected output structure: 'output' list has < 2 items.")
+                            logger.warning(
+                                f"[{self.model_name}] Unexpected output structure. Full response: {response_data}"
+                            )
+                            return ""
 
+                        # The message is typically in the second output item
                         message_output = outputs[1]
                         if message_output.get("type") != "message":
-                            raise ValueError(f"[{self.model_name}] Expected 'message' type in output[1], got '{message_output.get('type')}'.")
+                            logger.warning(
+                                f"[{self.model_name}] Expected message type in output[1]. Got: {message_output.get('type')}"
+                            )
+                            return ""
 
                         content_list = message_output.get("content", [])
                         if not content_list:
-                            raise ValueError(f"[{self.model_name}] Empty 'content' list in message output.")
+                            logger.warning(
+                                f"[{self.model_name}] Empty content list in message output"
+                            )
+                            return ""
 
+                        # Look for the content item with type 'output_text'
                         text_content = ""
                         for content_item in content_list:
                             if content_item.get("type") == "output_text":
@@ -1002,20 +1110,29 @@ class OpenAIResponsesClient(BaseModelClient):
                                 break
 
                         if not text_content:
-                            raise ValueError(f"[{self.model_name}] No 'output_text' found in content or it was empty.")
+                            logger.warning(
+                                f"[{self.model_name}] No output_text found in content. Full content: {content_list}"
+                            )
+                            return ""
 
                         return text_content.strip()
 
                     except (KeyError, IndexError, TypeError) as e:
-                        # Wrap parsing error in a more informative exception
-                        raise ValueError(f"[{self.model_name}] Error parsing response structure: {e}") from e
+                        logger.error(
+                            f"[{self.model_name}] Error parsing response structure: {e}. Full response: {response_data}"
+                        )
+                        return ""
 
         except aiohttp.ClientError as e:
-            logger.error(f"[{self.model_name}] HTTP client error in generate_response: {e}")
-            raise
+            logger.error(
+                f"[{self.model_name}] HTTP client error in generate_response: {e}"
+            )
+            return ""
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error in generate_response: {e}")
-            raise
+            logger.error(
+                f"[{self.model_name}] Unexpected error in generate_response: {e}"
+            )
+            return ""
 
 
 class OpenRouterClient(BaseModelClient):
@@ -1023,45 +1140,50 @@ class OpenRouterClient(BaseModelClient):
     For OpenRouter models, with default being 'openrouter/quasar-alpha'
     """
 
-    def __init__(self, model_name: str = "openrouter/quasar-alpha", prompts_dir: Optional[str] = None):
+    def __init__(self, model_name: str = "openrouter/quasar-alpha"):
         # Allow specifying just the model identifier or the full path
         if not model_name.startswith("openrouter/") and "/" not in model_name:
             model_name = f"openrouter/{model_name}"
         if model_name.startswith("openrouter-"):
             model_name = model_name.replace("openrouter-", "")
 
-        super().__init__(model_name, prompts_dir=prompts_dir)
+        super().__init__(model_name)
         self.api_key = os.environ.get("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable is required")
 
-        self.client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key)
+        self.client = AsyncOpenAI(
+            base_url="https://openrouter.ai/api/v1", api_key=self.api_key
+        )
 
         logger.debug(f"[{self.model_name}] Initialized OpenRouter client")
 
-    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+    async def generate_response(self, prompt: str) -> str:
         """Generate a response using OpenRouter with robust error handling."""
         try:
             # Append the call to action to the user's prompt
             prompt_with_cta = prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
 
-            system_prompt_content = self.system_prompt
-            if inject_random_seed:
-                random_seed = generate_random_seed()
-                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
-
             # Prepare standard OpenAI-compatible request
             response = await self.client.chat.completions.create(
                 model=self.model_name,
-                messages=[{"role": "system", "content": system_prompt_content}, {"role": "user", "content": prompt_with_cta}],
-                max_tokens=self.max_tokens,
-                temperature=temperature,
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt_with_cta},
+                ],
+                max_tokens=4000,
             )
 
-            if not response.choices or not response.choices[0].message.content:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+            if not response.choices:
+                logger.warning(f"[{self.model_name}] OpenRouter returned no choices")
+                return ""
 
             content = response.choices[0].message.content.strip()
+            if not content:
+                logger.warning(f"[{self.model_name}] OpenRouter returned empty content")
+                return ""
+
+            # Parse or return the raw content
             return content
 
         except Exception as e:
@@ -1069,270 +1191,123 @@ class OpenRouterClient(BaseModelClient):
             # Check if it's a specific OpenRouter error
             if "429" in error_msg or "rate" in error_msg.lower():
                 logger.warning(f"[{self.model_name}] OpenRouter rate limit error: {e}")
+                # The retry logic in run_llm_and_log will handle this
                 raise e  # Re-raise to trigger retry
             elif "provider" in error_msg.lower() and "error" in error_msg.lower():
                 logger.error(f"[{self.model_name}] OpenRouter provider error: {e}")
+                # This might be a temporary issue with the upstream provider
                 raise e  # Re-raise to trigger retry or fallback
             else:
-                logger.error(f"[{self.model_name}] Error in OpenRouter generate_response: {e}")
-                raise
-
-
-##############################################################################
-# TogetherAI Client
-##############################################################################
-class TogetherAIClient(BaseModelClient):
-    """
-    Client for Together AI models.
-    Model names should be passed without the 'together-' prefix.
-    """
-
-    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
-        super().__init__(model_name, prompts_dir=prompts_dir)  # model_name here is the actual Together AI model identifier
-        self.api_key = os.environ.get("TOGETHER_API_KEY")
-        if not self.api_key:
-            raise ValueError("TOGETHER_API_KEY environment variable is required for TogetherAIClient")
-
-        # The model_name passed to super() is used for logging and identification.
-        # The actual model name for the API call is self.model_name (from super class).
-        self.client = AsyncTogether(api_key=self.api_key)
-        logger.info(f"[{self.model_name}] Initialized TogetherAI client for model: {self.model_name}")
-
-    async def generate_response(self, prompt: str) -> str:
-        """
-        Generates a response from the Together AI model.
-        """
-        logger.debug(f"[{self.model_name}] Generating response with prompt (first 100 chars): {prompt[:100]}...")
-
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": prompt},
-        ]
-
-        try:
-            # Ensure the model name used here is the one intended for the API,
-            # which is self.model_name as set by BaseModelClient.__init__
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                # Consider adding max_tokens, temperature, etc. as needed
-                # max_tokens=2048, # Example
-            )
-
-            if not response.choices or not response.choices[0].message or response.choices[0].message.content is None:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
-
-            content = response.choices[0].message.content
-            return content.strip()
-        except TogetherAPIError as e:
-            logger.error(f"[{self.model_name}] Together AI API error: {e}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error in TogetherAIClient: {e}", exc_info=True)
-            raise
-
-
-##############################################################################
-# RequestsOpenAIClient – sync requests, wrapped async (original + api_key)
-##############################################################################
-
-
-class RequestsOpenAIClient(BaseModelClient):
-    """
-    Synchronous `requests`-based client for any OpenAI-compatible API.
-    Wrapped in `asyncio.to_thread` so call-sites remain async.
-    """
-
-    def __init__(
-        self,
-        model_name: str,
-        prompts_dir: Optional[str] = None,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-    ):
-        super().__init__(model_name, prompts_dir=prompts_dir)
-
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OPENAI_API_KEY missing and no inline key provided")
-
-        self.base_url = (base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-
-        self.endpoint = f"{self.base_url}/chat/completions"
-
-    # ---------------- internal blocking helper ---------------- #
-    def _post_sync(self, payload: dict) -> dict:
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
-        }
-        r = requests.post(self.endpoint, headers=headers, json=payload, timeout=60)
-        r.raise_for_status()
-        return r.json()
-
-    # ---------------- public async API ---------------- #
-    async def generate_response(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        inject_random_seed: bool = True,
-    ) -> str:
-        system_prompt_content = f"{generate_random_seed()}\n\n{self.system_prompt}" if inject_random_seed else self.system_prompt
-
-        payload = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": system_prompt_content},
-                {"role": "user", "content": f"{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"},
-            ],
-            "temperature": temperature,
-            "max_tokens": self.max_tokens,
-        }
-
-        loop = asyncio.get_running_loop()
-        try:
-            data = await loop.run_in_executor(None, self._post_sync, payload)
-            if not data.get("choices") or not data["choices"][0].get("message") or not data["choices"][0]["message"].get("content"):
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
-            return data["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, TypeError) as e:
-            logger.error(f"[{self.model_name}] Bad response format: {e}", exc_info=True)
-            raise
-        except requests.RequestException as e:
-            logger.error(f"[{self.model_name}] HTTP error: {e}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error: {e}", exc_info=True)
-            raise
+                logger.error(
+                    f"[{self.model_name}] Error in OpenRouter generate_response: {e}"
+                )
+                return ""
 
 
 ##############################################################################
 # 3) Factory to Load Model Client
 ##############################################################################
-class ModelSpec(NamedTuple):
-    prefix: Optional[str]  # 'openai', 'requests', …
-    model: str  # 'gpt-4o'
-    base: Optional[str]  # 'https://proxy.foo'
-    key: Optional[str]  # 'sk-…' (may be None)
 
 
-def _parse_model_spec(raw: str) -> ModelSpec:
+def load_model_client(model_id: str) -> BaseModelClient:
     """
-    Splits once on '#' (API key) and once on '@' (base URL).  A leading
-    '<prefix>:' is optional.  Nothing else is interpreted.
+    Returns the appropriate LLM client for a given model_id string.
+
+    Args:
+        model_id: The model identifier
+
+    Example usage:
+       client = load_model_client("claude-3-5-sonnet-20241022")
     """
-    raw = raw.strip()
+    # Basic pattern matching or direct mapping
+    lower_id = model_id.lower()
 
-    pre_hash, _, key_part = raw.partition("#")
-    pre_at, _, base_part = pre_hash.partition("@")
-
-    maybe_pref, sep, model_part = pre_at.partition(":")
-    if sep:  # explicit prefix was present
-        prefix, model = maybe_pref.lower(), model_part
-    else:
-        prefix, model = None, maybe_pref
-
-    return ModelSpec(prefix, model, base_part or None, key_part or None)
-
-class Prefix(StrEnum):
-    OPENAI            = "openai"
-    OPENAI_REQUESTS   = "openai-requests"
-    OPENAI_RESPONSES  = "openai-responses"
-    ANTHROPIC         = "anthropic"
-    GEMINI            = "gemini"
-    DEEPSEEK          = "deepseek"
-    OPENROUTER        = "openrouter"
-    TOGETHER          = "together"
-
-def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseModelClient:
-    """
-    Recognises strings like
-        gpt-4o
-        anthropic:claude-3.7-sonnet
-        openai:llama-3-2-3b@https://localhost:8000#myapikey
-    and returns the appropriate client.
-
-    • If a prefix is omitted the function falls back to the original
-      heuristic mapping exactly as before.
-    • If an inline API-key (‘#…’) is present it overrides environment vars.
-    """
-    spec = _parse_model_spec(model_id)
-
-    # Inline key overrides env; otherwise fall back as usual *per client*
-    inline_key = spec.key
-
-    # ------------------------------------------------------------------ #
-    # 1. Explicit prefix path                                           #
-    # ------------------------------------------------------------------ #
-    if spec.prefix:
-        try:
-            pref = Prefix(spec.prefix.lower())
-        except ValueError as exc:
-            raise ValueError(
-                f"[load_model_client] unknown prefix '{spec.prefix}'. "
-                "Allowed prefixes: openai, openai-requests, openai-responses, "
-                "anthropic, gemini, deepseek, openrouter, together."
-            ) from exc
-
-        match pref:
-            case Prefix.OPENAI:
-                return OpenAIClient(
-                    model_name=spec.model,
-                    prompts_dir=prompts_dir,
-                    base_url=spec.base,
-                    api_key=inline_key,
-                )
-            case Prefix.OPENAI_REQUESTS:
-                return RequestsOpenAIClient(
-                    model_name=spec.model,
-                    prompts_dir=prompts_dir,
-                    base_url=spec.base,
-                    api_key=inline_key,
-                )
-            case Prefix.OPENAI_RESPONSES:
-                return OpenAIResponsesClient(spec.model, prompts_dir, api_key=inline_key)
-            case Prefix.ANTHROPIC:
-                return ClaudeClient(spec.model, prompts_dir)
-            case Prefix.GEMINI:
-                return GeminiClient(spec.model, prompts_dir)
-            case Prefix.DEEPSEEK:
-                return DeepSeekClient(spec.model, prompts_dir)
-            case Prefix.OPENROUTER:
-                return OpenRouterClient(spec.model, prompts_dir)
-            case Prefix.TOGETHER:
-                return TogetherAIClient(spec.model, prompts_dir)
-
-    # ------------------------------------------------------------------ #
-    # 2. Heuristic fallback path (identical to the original behaviour)   #
-    # ------------------------------------------------------------------ #
-    lower_id = spec.model.lower()
-
+    # Check for o3-pro model specifically - it needs the Responses API
     if lower_id == "o3-pro":
-        return OpenAIResponsesClient(spec.model, prompts_dir, api_key=inline_key)
+        return OpenAIResponsesClient(model_id)
+    # Check for OpenRouter first to handle prefixed models like openrouter-deepseek
+    elif "openrouter" in lower_id or "quasar" in lower_id:
+        return OpenRouterClient(model_id)
+    elif "claude" in lower_id:
+        return ClaudeClient(model_id)
+    elif "gemini" in lower_id:
+        return GeminiClient(model_id)
+    elif "deepseek" in lower_id:
+        return DeepSeekClient(model_id)
+    else:
+        # Default to OpenAI (for models like o3-mini, gpt-4o, etc.)
+        return OpenAIClient(model_id)
 
-    if spec.model.startswith("together-"):
-        # e.g. "together-mixtral-8x7b"
-        return TogetherAIClient(spec.model.split("together-", 1)[1], prompts_dir)
 
-    if "openrouter" in lower_id:
-        return OpenRouterClient(spec.model, prompts_dir)
+##############################################################################
+# 4) Example Usage in a Diplomacy "main" or Similar
+##############################################################################
 
-    if "claude" in lower_id:
-        return ClaudeClient(spec.model, prompts_dir)
 
-    if "gemini" in lower_id:
-        return GeminiClient(spec.model, prompts_dir)
+async def example_game_loop(game):
+    """
+    Pseudocode: Integrate with the Diplomacy loop.
+    """
+    # Suppose we gather all active powers
+    active_powers = [
+        (p_name, p_obj)
+        for p_name, p_obj in game.powers.items()
+        if not p_obj.is_eliminated()
+    ]
+    power_model_mapping = assign_models_to_powers()
 
-    if "deepseek" in lower_id:
-        return DeepSeekClient(spec.model, prompts_dir)
+    for power_name, power_obj in active_powers:
+        model_id = power_model_mapping.get(power_name, "o3-mini")
+        client = load_model_client(model_id)
 
-    # Default: OpenAI-compatible async client
-    return OpenAIClient(
-        model_name=spec.model,
-        prompts_dir=prompts_dir,
-        base_url=spec.base,
-        api_key=inline_key,
-    )
+        # Get possible orders from the game
+        possible_orders = game.get_all_possible_orders()
+        board_state = game.get_state()
+
+        # Example: Fetch agent instance (assuming agents are stored in a dict)
+        # agent = agents_dict[power_name]
+        # formatted_diary = agent.format_private_diary_for_prompt()
+
+        # Get orders from the client
+        # orders = await client.get_orders(
+        #     board_state,
+        #     power_name,
+        #     possible_orders,
+        #     agent_private_diary_str=formatted_diary # Pass the diary
+        # )
+        # game.set_orders(power_name, orders)
+
+    # Then process, etc.
+    game.process()
+
+
+class LMServiceVersus:
+    """
+    Optional wrapper class if you want extra control.
+    For example, you could store or reuse clients, etc.
+    """
+
+    def __init__(self):
+        self.power_model_map = assign_models_to_powers()
+
+    async def get_orders_for_power(self, game, power_name, agent):  # Added agent
+        model_id = self.power_model_map.get(power_name, "o3-mini")
+        client = load_model_client(model_id)
+        possible_orders = gather_possible_orders(game, power_name)
+        board_state = game.get_state()
+
+        formatted_diary = (
+            agent.format_private_diary_for_prompt()
+        )  # Get diary from agent
+
+        # This method signature in LMServiceVersus might need to align with client.get_orders
+        # or client.get_orders needs to be called with all its required params.
+        # For now, assuming client.get_orders is called elsewhere with full context.
+        # This example shows how to get the diary string.
+        # return await client.get_orders(
+        #    board_state, power_name, possible_orders, agent_private_diary_str=formatted_diary
+        # )
+        pass  # Placeholder for actual call
 
 
 ##############################################################################
@@ -1345,6 +1320,12 @@ def get_visible_messages_for_power(conversation_messages, power_name):
     visible = []
     for msg in conversation_messages:
         # GLOBAL might be 'ALL' or 'GLOBAL' depending on your usage
-        if msg["recipient"] == "ALL" or msg["recipient"] == "GLOBAL" or msg["sender"] == power_name or msg["recipient"] == power_name:
+        if (
+            msg["recipient"] == "ALL"
+            or msg["recipient"] == "GLOBAL"
+            or msg["sender"] == power_name
+            or msg["recipient"] == power_name
+        ):
             visible.append(msg)
     return visible  # already in chronological order if appended that way
+

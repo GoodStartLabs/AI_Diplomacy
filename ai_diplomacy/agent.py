@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import List, Dict, Optional
 import json
@@ -13,6 +12,7 @@ from .clients import BaseModelClient, load_model_client
 from .utils import load_prompt, run_llm_and_log, log_llm_response
 from .prompt_constructor import build_context_prompt  # Added import
 from loguru import logger
+from pathlib import Path
 
 
 # == Best Practice: Define constants at module level ==
@@ -21,15 +21,17 @@ ALL_POWERS = frozenset(
 )
 ALLOWED_RELATIONSHIPS = ["Enemy", "Unfriendly", "Neutral", "Friendly", "Ally"]
 
+DEFAULT_LOG_FILE_PATH = Path("./data/logs/agent.log")
+
 
 # == New: Helper function to load prompt files reliably ==
 def _load_prompt_file(filename: str) -> Optional[str]:
     """Loads a prompt template from the prompts directory."""
+    # Construct path relative to this file's location
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    prompts_dir = os.path.join(current_dir, "prompts")
+    filepath = os.path.join(prompts_dir, filename)
     try:
-        # Construct path relative to this file's location
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        prompts_dir = os.path.join(current_dir, "prompts")
-        filepath = os.path.join(prompts_dir, filename)
         with open(filepath, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
@@ -1481,7 +1483,11 @@ class DiplomacyAgent:
         logger.info(f"Agent {self.power_name} generating strategic plan...")
         try:
             plan = self.client.get_plan(
-                game, board_state, self.power_name, game_history
+                game,
+                board_state,
+                self.power_name,
+                game_history,
+                log_file_path=DEFAULT_LOG_FILE_PATH,
             )
             self.add_journal_entry(
                 f"Generated plan for phase {game.current_phase}:\n{plan}"
@@ -1494,4 +1500,3 @@ class DiplomacyAgent:
                 f"Failed to generate plan for phase {game.current_phase} due to error: {e}"
             )
             return "Error: Failed to generate plan."
-

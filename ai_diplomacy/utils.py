@@ -1,20 +1,11 @@
+from pathlib import Path
 from dotenv import load_dotenv
-import logging
 import os
 from typing import Dict, List, Tuple, Set, Optional
 from diplomacy import Game
 import csv
 from typing import TYPE_CHECKING
-import random
-import string
-import json
-import asyncio
-from openai import RateLimitError, APIConnectionError, APITimeoutError
-import aiohttp
-import requests
-from pathlib import Path
-from config import config
-from models import POWERS_ORDER
+from loguru import logger
 
 # Avoid circular import for type hinting
 if TYPE_CHECKING:
@@ -22,36 +13,8 @@ if TYPE_CHECKING:
     # If DiplomacyAgent is used for type hinting for an 'agent' parameter:
     # from .agent import DiplomacyAgent
 
-logger = logging.getLogger("utils")
-logger.setLevel(logging.INFO)
-logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
-
-
-def atomic_write_json(data: dict, filepath: str):
-    """Writes a dictionary to a JSON file atomically."""
-    try:
-        # Ensure the directory exists
-        dir_name = os.path.dirname(filepath)
-        if dir_name:
-            os.makedirs(dir_name, exist_ok=True)
-
-        # Write to a temporary file in the same directory
-        temp_filepath = f"{filepath}.tmp.{os.getpid()}"
-        with open(temp_filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-
-        # Atomically rename the temporary file to the final destination
-        os.rename(temp_filepath, filepath)
-    except Exception as e:
-        logger.error(f"Failed to perform atomic write to {filepath}: {e}", exc_info=True)
-        # Clean up temp file if it exists
-        if os.path.exists(temp_filepath):
-            try:
-                os.remove(temp_filepath)
-            except Exception as e_clean:
-                logger.error(f"Failed to clean up temp file {temp_filepath}: {e_clean}")
 
 
 def assign_models_to_powers() -> Dict[str, str]:
@@ -69,52 +32,29 @@ def assign_models_to_powers() -> Dict[str, str]:
     """
 
     # POWER MODELS
-    """
+
     return {
-        "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview-05-20",
-        "ENGLAND": "openrouter-moonshotai/kimi-dev-72b:free",
-        "FRANCE": "together-arcee-ai/AFM-4.5B-Preview",
-        "GERMANY": "openrouter-google/gemini-2.5-flash-lite-preview-06-17",
-        "ITALY": "together-lgai/exaone-deep-32b",
-        "RUSSIA": "deepseek-reasoner",
-        "TURKEY": "openrouter-cohere/command-a",
+        "AUSTRIA": "o3",
+        "ENGLAND": "gpt-4.1-2025-04-14",
+        "FRANCE": "o3-pro",
+        "GERMANY": "gpt-4o",
+        "ITALY": "o3",
+        "RUSSIA": "gpt-4o",
+        "TURKEY": "o4-mini",
     }
-    """
+
     # TEST MODELS
-
+    """
     return {
-        "AUSTRIA": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
-        "ENGLAND": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
-        "FRANCE": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
-        "GERMANY": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
-        "ITALY": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
-        "RUSSIA": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
-        "TURKEY": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
+        "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview",
+        "ENGLAND": "openrouter-google/gemini-2.5-flash-preview",
+        "FRANCE": "openrouter-google/gemini-2.5-flash-preview",
+        "GERMANY": "openrouter-google/gemini-2.5-flash-preview",
+        "ITALY": "openrouter-google/gemini-2.5-flash-preview",  
+        "RUSSIA": "openrouter-google/gemini-2.5-flash-preview",
+        "TURKEY": "openrouter-google/gemini-2.5-flash-preview",
     }
-
-
-def get_special_models() -> Dict[str, str]:
     """
-    Define models for special purposes like phase summaries and formatting.
-
-    These can be overridden via environment variables:
-    - AI_DIPLOMACY_NARRATIVE_MODEL: Model for phase summaries (default: "o3")
-    - AI_DIPLOMACY_FORMATTER_MODEL: Model for JSON formatting (default: "google/gemini-2.5-flash-lite-preview-06-17")
-
-    Returns:
-        dict: {
-            "phase_summary": model for generating narrative phase summaries,
-            "formatter": model for formatting natural language to JSON
-        }
-
-    Examples:
-        # Use Claude for phase summaries
-        export AI_DIPLOMACY_NARRATIVE_MODEL="claude-3-5-sonnet-20241022"
-
-        # Use a different Gemini model for formatting
-        export AI_DIPLOMACY_FORMATTER_MODEL="gemini-2.0-flash"
-    """
-    return {"phase_summary": config.AI_DIPLOMACY_NARRATIVE_MODEL, "formatter": config.AI_DIPLOMACY_FORMATTER_MODEL}
 
 
 def gather_possible_orders(game: Game, power_name: str) -> Dict[str, List[str]]:
@@ -132,102 +72,116 @@ def gather_possible_orders(game: Game, power_name: str) -> Dict[str, List[str]]:
 
 async def get_valid_orders(
     game: Game,
-    client,  # BaseModelClient instance
+    client,  # This is the BaseModelClient instance
     board_state,
     power_name: str,
     possible_orders: Dict[str, List[str]],
-    game_history,
-    model_error_stats,
-    agent_goals=None,
-    agent_relationships=None,
-    agent_private_diary_str=None,
+    game_history,  # This is GameHistory instance
+    model_error_stats: Dict[str, Dict[str, int]],
+    agent_goals: Optional[List[str]] = None,
+    agent_relationships: Optional[Dict[str, str]] = None,
+    agent_private_diary_str: Optional[str] = None,  # Added new parameter
     log_file_path: str = None,
     phase: str = None,
-) -> Dict[str, List[str]]:
+) -> List[str]:
     """
-    Generates orders with the LLM, validates them by round-tripping through the
-    engine, and returns **both** the accepted and rejected orders so the caller
-    can record invalid attempts.
-
-    Returns
-    -------
-    dict : { "valid": [...], "invalid": [...] }
+    Tries up to 'max_retries' to generate and validate orders.
+    If invalid, we append the error feedback to the conversation
+    context for the next retry. If still invalid, return fallback.
     """
 
-    # ── 1. Ask the model ───────────────────────────────────────
-    raw_orders = await client.get_orders(
+    # Ask the LLM for orders
+    orders = await client.get_orders(
         game=game,
         board_state=board_state,
         power_name=power_name,
         possible_orders=possible_orders,
-        conversation_text=game_history,
+        conversation_text=game_history,  # Pass GameHistory instance
         model_error_stats=model_error_stats,
         agent_goals=agent_goals,
         agent_relationships=agent_relationships,
-        agent_private_diary_str=agent_private_diary_str,
+        agent_private_diary_str=agent_private_diary_str,  # Pass the diary string
         log_file_path=log_file_path,
         phase=phase,
     )
 
-    invalid_info: list[str] = []
-    valid: list[str] = []
-    invalid: list[str] = []
+    # Initialize list to track invalid order information
+    invalid_info = []
 
-    # ── 2. Type check ──────────────────────────────────────────
-    if not isinstance(raw_orders, list):
-        logger.warning("[%s] Orders received from LLM are not a list: %s. Using fallback.", power_name, raw_orders)
-        model_error_stats[client.model_name]["order_decoding_errors"] += 1
-        return {"valid": client.fallback_orders(possible_orders), "invalid": []}
+    # Validate each order
+    all_valid = True
+    valid_orders = []
 
-    # ── 3. Round-trip validation with engine ───────────────────
-    CODE_TO_ENGINE = {
-        "AUT": "AUSTRIA",
-        "ENG": "ENGLAND",
-        "FRA": "FRANCE",
-        "GER": "GERMANY",
-        "ITA": "ITALY",
-        "RUS": "RUSSIA",
-        "TUR": "TURKEY",
-    }
-    engine_power = power_name if power_name in game.powers else CODE_TO_ENGINE[power_name]
+    if not isinstance(orders, list):  # Ensure orders is a list before iterating
+        logger.warning(
+            f"[{power_name}] Orders received from LLM is not a list: {orders}. Using fallback."
+        )
+        model_error_stats[client.model_name]["order_decoding_errors"] += (
+            1  # Use client.model_name
+        )
+        return client.fallback_orders(possible_orders)
 
-    for move in raw_orders:
-        if not move or not move.strip():
+    for move in orders:
+        # Skip empty orders
+        if not move or move.strip() == "":
             continue
 
-        upper = move.upper()
-
-        # WAIVE is always valid
-        if upper == "WAIVE":
-            valid.append("WAIVE")
+        # Handle special case for WAIVE
+        if move.upper() == "WAIVE":
+            valid_orders.append(move)
             continue
 
-        game.clear_orders(engine_power)
-        game.set_orders(engine_power, [upper])
-        normed = game.get_orders(engine_power)
+        # Example move: "A PAR H" -> unit="A PAR", order_part="H"
+        tokens = move.split(" ", 2)
+        if len(tokens) < 3:
+            invalid_info.append(
+                f"Order '{move}' is malformed; expected 'A PAR H' style."
+            )
+            all_valid = False
+            continue
 
-        if normed:  # accepted
-            valid.append(normed[0])
-        else:  # rejected
-            invalid.append(upper)
+        unit = " ".join(tokens[:2])  # e.g. "A PAR"
+        order_part = tokens[2]  # e.g. "H" or "S A MAR"
+
+        # Use the internal game validation method
+        if order_part == "B":  # Build orders
+            validity = 1  # hack because game._valid_order doesn't support 'B'
+        elif order_part == "D":  # Disband orders
+            # Check if the unit is actually one of the power's units
+            if unit in game.powers[power_name].units:
+                validity = 1  # Simple check, engine handles full validation
+            else:
+                validity = 0
+        else:  # Movement, Support, Hold, Convoy, Retreat
+            try:
+                validity = game._valid_order(
+                    game.powers[power_name], unit, order_part, report=1
+                )
+            except Exception as e:
+                logger.warning(f"Error validating order '{move}': {e}")
+                invalid_info.append(f"Order '{move}' caused an error: {e}")
+                validity = 0
+                all_valid = False
+
+        if validity == 1:
+            valid_orders.append(move)
+        else:
             invalid_info.append(f"Order '{move}' is invalid for {power_name}")
+            all_valid = False
 
-    game.clear_orders(engine_power)  # clean slate for main engine flow
+    # Log validation results
+    if invalid_info:
+        logger.debug(f"[{power_name}] Invalid orders: {', '.join(invalid_info)}")
 
-    # ── 4. Legacy logging & stats updates ──────────────────────
-    if invalid_info:  # at least one bad move
-        logger.debug("[%s] Invalid orders: %s", power_name, ", ".join(invalid_info))
-        model_error_stats[client.model_name]["order_decoding_errors"] += 1
-        logger.debug("[%s] Some orders invalid, using fallback.", power_name)
+    if all_valid and valid_orders:
+        logger.debug(f"[{power_name}] All orders valid: {valid_orders}")
+        return valid_orders
     else:
-        logger.debug("[%s] All orders valid: %s", power_name, valid)
-
-    # ── 5. Fallback when nothing survives ─────────────────────
-    if not valid:
+        logger.debug(f"[{power_name}] Some orders invalid, using fallback.")
+        # Use client.model_name for stats key, as power_name might not be unique if multiple agents use same model
+        model_error_stats[client.model_name]["order_decoding_errors"] += 1
         fallback = client.fallback_orders(possible_orders)
-        return {"valid": fallback, "invalid": invalid}
-
-    return {"valid": valid, "invalid": invalid}
+        return fallback
 
 
 def normalize_and_compare_orders(
@@ -290,7 +244,9 @@ def normalize_and_compare_orders(
         issued_set = set()
         if pwr in issued_orders:
             try:
-                issued_set = {normalize_order(o) for o in issued_orders.get(pwr, []) if o}
+                issued_set = {
+                    normalize_order(o) for o in issued_orders.get(pwr, []) if o
+                }
             except Exception as e:
                 logger.error(f"Error normalizing issued orders for {pwr}: {e}")
 
@@ -298,7 +254,9 @@ def normalize_and_compare_orders(
         accepted_set = set()
         if pwr in accepted_orders_dict:
             try:
-                accepted_set = {normalize_order(o) for o in accepted_orders_dict.get(pwr, []) if o}
+                accepted_set = {
+                    normalize_order(o) for o in accepted_orders_dict.get(pwr, []) if o
+                }
             except Exception as e:
                 logger.error(f"Error normalizing accepted orders for {pwr}: {e}")
 
@@ -314,39 +272,24 @@ def normalize_and_compare_orders(
     return orders_not_accepted, orders_not_issued
 
 
-def load_prompt(fname: str | Path, prompts_dir: str | Path | None = None) -> str:
-    """
-    Resolve *fname* to an absolute path and return its contents.
-    Resolution rules (first match wins):
-
-    1. If *fname* is absolute -> use as-is.
-    2. If *prompts_dir* is given -> prompts_dir / fname
-    3. Otherwise -> <package_root>/prompts / fname
-    """
-
-    fname = Path(fname)
-
-    if fname.is_absolute():
-        prompt_path = fname
-
-    else:
-        if prompts_dir is not None:
-            prompt_path = Path(prompts_dir) / fname
-        else:
-            package_root = Path(__file__).resolve().parent
-            prompt_path = package_root / "prompts" / fname
-
+# Helper to load prompt text from file relative to the expected 'prompts' dir
+def load_prompt(filename: str) -> str:
+    """Helper to load prompt text from file"""
+    # Assuming execution from the root or that the path resolves correctly
+    # Consider using absolute paths or pkg_resources if needed for robustness
+    prompt_path = os.path.join(os.path.dirname(__file__), "prompts", filename)
     try:
-        return prompt_path.read_text(encoding="utf-8").strip()
+        with open(prompt_path, "r", encoding="utf-8") as f:  # Added encoding
+            return f.read().strip()
     except FileNotFoundError:
-        logger.error("Prompt file not found: %s", prompt_path)
-        raise Exception("Prompt file not found: " + prompt_path)
-
+        logger.error(f"Prompt file not found: {prompt_path}")
+        # Return an empty string or raise an error, depending on desired handling
+        return ""
 
 
 # == New LLM Response Logging Function ==
 def log_llm_response(
-    log_file_path: str,
+    log_file_path: Path,
     model_name: str,
     power_name: Optional[str],  # Optional for non-power-specific calls like summary
     phase: str,
@@ -356,24 +299,28 @@ def log_llm_response(
     success: str,  # Changed from bool to str
 ):
     """Appends a raw LLM response to a CSV log file."""
+    assert log_file_path is not None
     try:
         # Ensure the directory exists
         log_dir = os.path.dirname(log_file_path)
         if log_dir:  # Ensure log_dir is not empty (e.g., if path is just a filename)
             os.makedirs(log_dir, exist_ok=True)
 
-        # Check if file exists and has content to determine if we need headers
-        file_exists = os.path.isfile(log_file_path) and os.path.getsize(log_file_path) > 0
+        # Check if file exists to write header
+        file_exists = os.path.isfile(log_file_path)
 
         with open(log_file_path, "a", newline="", encoding="utf-8") as csvfile:
             # Added "raw_input" to fieldnames
-            fieldnames = ["model", "power", "phase", "response_type", "raw_input", "raw_response", "success"]
-            writer = csv.DictWriter(
-                csvfile,
-                fieldnames=fieldnames,
-                quoting=csv.QUOTE_ALL,  # Quote all fields to handle commas and newlines
-                escapechar="\\",
-            )  # Use backslash for escaping
+            fieldnames = [
+                "model",
+                "power",
+                "phase",
+                "response_type",
+                "raw_input",
+                "raw_response",
+                "success",
+            ]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             if not file_exists:
                 writer.writeheader()  # Write header only if file is new
@@ -381,7 +328,9 @@ def log_llm_response(
             writer.writerow(
                 {
                     "model": model_name,
-                    "power": power_name if power_name else "game",  # Use 'game' if no specific power
+                    "power": power_name
+                    if power_name
+                    else "game",  # Use 'game' if no specific power
                     "phase": phase,
                     "response_type": response_type,
                     "raw_input": raw_input_prompt,  # Added raw_input to the row
@@ -390,192 +339,30 @@ def log_llm_response(
                 }
             )
     except Exception as e:
-        logger.error(f"Failed to log LLM response to {log_file_path}: {e}", exc_info=True)
+        logger.error(
+            f"Failed to log LLM response to {log_file_path}: {e}", exc_info=True
+        )
 
-# A tuple of exception types that we consider safe to retry.
-# This includes network issues, timeouts, rate limits, and the ValueError
-# we now raise for empty/invalid responses.
-RETRYABLE_EXCEPTIONS = (
-    RateLimitError,
-    APIConnectionError,
-    APITimeoutError,
-    aiohttp.ClientError,
-    requests.RequestException,
-    asyncio.TimeoutError,
-    ValueError,  # We explicitly raise this for empty responses, which might be a temporary glitch.
-)
 
+# == New Async LLM Wrapper with Logging ==
 async def run_llm_and_log(
     client: "BaseModelClient",
     prompt: str,
-    power_name: Optional[str],
-    phase: str,
-    response_type: str,
-    temperature: float = 0.0,
-    *,
-    attempts: int = 5,
-    backoff_base: float = 1.0,
-    backoff_factor: float = 2.0,
-    jitter: float = 0.3,
+    log_file_path: str,  # Kept for context, but not used for logging here
+    power_name: Optional[str],  # Kept for context, but not used for logging here
+    phase: str,  # Kept for context, but not used for logging here
+    response_type: str,  # Kept for context, but not used for logging here
 ) -> str:
-    """
-    Calls `client.generate_response` with robust retry logic and returns the raw output.
-
-    This function handles exceptions gracefully:
-    - It retries on a specific set of `RETRYABLE_EXCEPTIONS` (e.g., network errors, rate limits).
-    - It immediately stops and re-raises critical exceptions like `KeyboardInterrupt`.
-    - It logs a warning for each failed retry attempt.
-    - On final failure after all retries, it logs a detailed error and re-raises the last
-      exception, ensuring the calling code is aware of the failure.
-    """
-    last_exception: Optional[Exception] = None
-
-    for attempt in range(attempts):
-        try:
-            raw_response = await client.generate_response(prompt, temperature=temperature)
-
-            # The clients now raise ValueError, but this is a final safeguard.
-            if not raw_response or not raw_response.strip():
-                raise ValueError("LLM client returned an empty or whitespace-only string.")
-
-            # Success!
-            return raw_response
-
-        except RETRYABLE_EXCEPTIONS as e:
-            last_exception = e
-            if attempt == attempts - 1:
-                # This was the last attempt, so we'll fall through to the final error handling.
-                break
-
-            # Calculate exponential backoff with jitter
-            delay = backoff_base * (backoff_factor**attempt) + random.uniform(0, jitter)
-            logger.warning(
-                f"LLM call failed for {client.model_name}/{power_name} (Attempt {attempt + 1}/{attempts}). "
-                f"Error: {type(e).__name__}('{e}'). Retrying in {delay:.2f} seconds."
-            )
-            await asyncio.sleep(delay)
-
-        except (KeyboardInterrupt, asyncio.CancelledError):
-            # If the user hits Ctrl-C or the task is cancelled, stop immediately.
-            logger.warning(f"LLM call for {client.model_name}/{power_name} was cancelled or interrupted by user.")
-            raise  # Re-raise to allow the application to exit cleanly.
-
-        except Exception as e:
-            last_exception = e
-            if attempt == attempts - 1:
-                # This was the last attempt, so we'll fall through to the final error handling.
-                break
-
-            # Calculate exponential backoff with jitter
-            delay = backoff_base * (backoff_factor**attempt) + random.uniform(0, jitter)
-            logger.error(
-                f"An unexpected error occurred during LLM call for {client.model_name}/{power_name}: {e}"
-                f"LLM call failed for {client.model_name}/{power_name} (Attempt {attempt + 1}/{attempts}). "
-                f"Error: {type(e).__name__}('{e}'). Retrying in {delay:.2f} seconds.",
-                exc_info=True,
-            )
-            await asyncio.sleep(delay)
-
-    # This part of the code is only reached if all retry attempts have failed.
-    final_error_message = (
-        f"API Error after {attempts} attempts for {client.model_name}/{power_name}/{response_type} "
-        f"in phase {phase}. Final error: {type(last_exception).__name__}('{last_exception}')"
-    )
-    logger.error(final_error_message, exc_info=last_exception)
-
-    # Re-raise the last captured exception so the caller knows the operation failed.
-    # 'from None' prevents chaining the exception with the try/except block itself.
-    raise last_exception from None
-
-
-# This generates a few lines of random alphanum chars to inject into the
-# system prompt. This lets us use temp=0 while still getting variation
-# between trials.
-# Temp=0 is important for better performance on deciding moves, and to
-# ensure valid json outputs.
-def generate_random_seed(n_lines: int = 5, n_chars_per_line: int = 80):
-    # Generate x lines of y random alphanumeric characters
-    seed_lines = ["".join(random.choices(string.ascii_letters + string.digits, k=n_chars_per_line)) for _ in range(n_lines)]
-    random_seed_block = "<RANDOM SEED PLEASE IGNORE>\n" + "\n".join(seed_lines) + "\n</RANDOM SEED>"
-    return random_seed_block
-
-
-def get_prompt_path(prompt_name: str) -> str:
-    """Get the appropriate prompt path based on USE_UNFORMATTED_PROMPTS setting.
-
-    Args:
-        prompt_name: Base name of the prompt file (e.g., "conversation_instructions.txt")
-
-    Returns:
-        str: Either "unformatted/{prompt_name}" or just "{prompt_name}"
-    """
-    if config.USE_UNFORMATTED_PROMPTS:
-        return f"unformatted/{prompt_name}"
-    else:
-        return prompt_name
-
-
-def normalize_recipient_name(recipient: str) -> str:
-    """Normalize recipient names to handle LLM typos and abbreviations."""
-    if not recipient:
-        return recipient
-
-    recipient = recipient.upper().strip()
-
-    # Handle common LLM typos and abbreviations found in data
-    name_mapping = {
-        "EGMANY": "GERMANY",
-        "GERMAN": "GERMANY",
-        "UK": "ENGLAND",
-        "BRIT": "ENGLAND",
-        "ENGLAND": "ENGLAND",  # Keep as-is
-        "FRANCE": "FRANCE",  # Keep as-is
-        "GERMANY": "GERMANY",  # Keep as-is
-        "ITALY": "ITALY",  # Keep as-is
-        "AUSTRIA": "AUSTRIA",  # Keep as-is
-        "RUSSIA": "RUSSIA",  # Keep as-is
-        "TURKEY": "TURKEY",  # Keep as-is
-        "Germany": "GERMANY",
-        "England": "ENGLAND",
-        "France": "FRANCE",
-        "Italy": "ITALY",
-        "Russia": "RUSSIA",
-        "Austria": "AUSTRIA",
-        "Turkey": "TURKEY",
-    }
-
-    normalized = name_mapping.get(recipient, recipient)
-
-    return normalized
-
-def parse_prompts_dir_arg(raw: str | None) -> Dict[str, Path]:
-    """
-    Resolve --prompts_dir into a mapping {power: Path}.
-    Accepts either a single path or 7 comma-separated paths.
-
-    Every path is normalised to an **absolute** Path object
-    (using Path(...).expanduser().resolve()) and checked for existence.
-    """
-    if not raw:
-        return {}
-
-    parts = [s.strip() for s in raw.split(",") if s.strip()]
-    if len(parts) not in {1, 7}:
-        raise ValueError(
-            f"--prompts_dir expects 1 or 7 paths, got {len(parts)} "
-            f"({raw})"
+    """Calls the client's generate_response and returns the raw output. Logging is handled by the caller."""
+    raw_response = ""  # Initialize in case of error
+    try:
+        raw_response = await client.generate_response(prompt)
+    except Exception as e:
+        # Log the API call error. The caller will decide how to log this in llm_responses.csv
+        logger.error(
+            f"API Error during LLM call for {client.model_name}/{power_name}/{response_type} in phase {phase}: {e}",
+            exc_info=True,
         )
+        # raw_response remains "" indicating failure to the caller
+    return raw_response
 
-    # Expand/resolve & verify
-    def _norm(p: str) -> Path:
-        path = Path(p).expanduser().resolve()
-        if not path.is_dir():
-            raise FileNotFoundError(f"Prompt directory not found: {path}")
-        return path
-
-    if len(parts) == 1:
-        path = _norm(parts[0])
-        return {pwr: path for pwr in POWERS_ORDER}
-
-    paths = [_norm(p) for p in parts]
-    return dict(zip(POWERS_ORDER, paths))

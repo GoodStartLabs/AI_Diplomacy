@@ -1,6 +1,6 @@
 # ai_diplomacy/initialization.py
-import logging
 import json
+from loguru import logger
 
 # Forward declaration for type hinting, actual imports in function if complex
 from diplomacy import Game
@@ -10,8 +10,6 @@ from .agent import DiplomacyAgent
 from .agent import ALL_POWERS, ALLOWED_RELATIONSHIPS
 from .utils import run_llm_and_log, log_llm_response
 from .prompt_constructor import build_context_prompt
-
-logger = logging.getLogger(__name__)
 
 
 async def initialize_agent_state_ext(

@@ -322,7 +322,7 @@ export class ContentGame extends React.Component {
     }
 
     reloadDeadlineTimer(networkGame) {
-        networkGame.querySchedule()
+        return networkGame.querySchedule()
             .then(dataSchedule => {
                 const schedule = dataSchedule.schedule;
                 const server_current = schedule.current_time;
