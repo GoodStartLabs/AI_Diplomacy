@@ -13,6 +13,7 @@ import dotenv
 import os
 import json
 import asyncio
+import uuid
 from collections import defaultdict
 
 # Suppress Gemini/PaLM gRPC warnings
@@ -25,6 +26,16 @@ os.environ["GRPC_POLL_STRATEGY"] = "poll"
 from websocket_diplomacy_client import (
     WebSocketDiplomacyClient,
     connect_to_diplomacy_server,
+)
+from models import (
+    SignInRequest,
+    CreateGameRequest,
+    JoinGameRequest,
+    SetOrdersRequest,
+    ListGamesRequest,
+    ProcessGameRequest,
+    serialize_message,
+    parse_message,
 )
 
 import sys
@@ -200,6 +211,58 @@ async def create_or_join_game(
     return game
 
 
+async def demonstrate_typed_messages(client: WebSocketDiplomacyClient, args):
+    """
+    Demonstrate how to use typed WebSocket messages.
+    This shows the proper way to construct messages according to the protocol.
+    
+    NOTE: This is for demonstration only - the current client implementation
+    uses the diplomacy library's built-in networking which abstracts the raw protocol.
+    """
+    
+    logger.info("=== Typed Message Examples ===")
+    
+    # Example 1: Authentication Request
+    sign_in_request = SignInRequest(
+        request_id=str(uuid.uuid4()),
+        username=args.username,
+        password=args.password
+    )
+    logger.info(f"SignIn request: {serialize_message(sign_in_request)}")
+    
+    # Example 2: Create Game Request
+    create_game_request = CreateGameRequest(
+        request_id=str(uuid.uuid4()),
+        token="example_auth_token_here",
+        map_name="standard",
+        rules=["NO_PRESS", "IGNORE_ERRORS", "POWER_CHOICE"],
+        n_controls=1,
+        power_name="FRANCE"
+    )
+    logger.info(f"CreateGame request: {serialize_message(create_game_request)}")
+    
+    # Example 3: List Games Request
+    list_games_request = ListGamesRequest(
+        request_id=str(uuid.uuid4()),
+        token="example_auth_token_here",
+        include_protected=False
+    )
+    logger.info(f"ListGames request: {serialize_message(list_games_request)}")
+    
+    # Example 4: Set Orders Request (would be used in game loop)
+    if hasattr(client, 'game_id') and hasattr(client, 'token'):
+        set_orders_request = SetOrdersRequest(
+            request_id=str(uuid.uuid4()),
+            token=client.token or "example_token",
+            game_id=client.game_id or "example_game_id",
+            game_role="FRANCE",
+            orders=["A PAR H", "F BRE H", "A MAR H"]
+        )
+        logger.info(f"SetOrders request: {serialize_message(set_orders_request)}")
+    
+    logger.info("=== End Typed Message Examples ===")
+
+
 async def simulate_game_processing(client: WebSocketDiplomacyClient):
     """
     Simulate game processing for testing purposes.
@@ -279,6 +342,9 @@ async def main():
             username=args.username,
             password=args.password,
         )
+
+        # Demonstrate typed message creation (for future implementation)
+        await demonstrate_typed_messages(client, args)
 
         # Create or join game
         game = await create_or_join_game(client, args, power_model_map)
@@ -522,6 +588,17 @@ async def main():
                     orders = result
                     logger.debug(f"Validated orders for {p_name}: {orders}")
                     if orders:
+                        # TODO: Replace with typed message construction:
+                        # set_orders_msg = SetOrdersRequest(
+                        #     request_id=str(uuid.uuid4()),
+                        #     token=client.token,
+                        #     game_id=client.game_id,
+                        #     game_role=p_name,
+                        #     phase=current_phase,
+                        #     orders=orders
+                        # )
+                        # await client.send_typed_message(set_orders_msg)
+                        
                         await client.set_orders(p_name, orders)
                         logger.debug(
                             f"Set orders for {p_name} in {current_short_phase}: {orders}"
@@ -541,6 +618,16 @@ async def main():
                         await client.set_orders(p_name, [])
 
             # Process the game phase (if we have admin rights)
+            # TODO: Replace with typed message:
+            # process_msg = ProcessGameRequest(
+            #     request_id=str(uuid.uuid4()),
+            #     token=client.token,
+            #     game_id=client.game_id,
+            #     game_role=client.game_role,
+            #     phase=current_phase
+            # )
+            # await client.send_typed_message(process_msg)
+            
             logger.info(f"Processing orders for {current_phase}...")
             await simulate_game_processing(client)
 

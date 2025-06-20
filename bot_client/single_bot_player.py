@@ -14,6 +14,11 @@ from typing import Optional
 import dotenv
 from loguru import logger
 
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from diplomacy.utils.exceptions import DiplomacyException, GameIdException
+
 # Suppress warnings
 os.environ["GRPC_PYTHON_LOG_LEVEL"] = "40"
 os.environ["GRPC_VERBOSITY"] = "ERROR"
@@ -60,14 +65,19 @@ class SingleBotPlayer:
 
     def __init__(
         self,
+        username: str,
+        password: str,
+        power_name: str,
+        model_name: str,
         hostname: str = "localhost",
         port: int = 8432,
-        username: str = "bot_player",
-        password: str = "password",
-        power_name: str = "FRANCE",
-        model_name: str = "gpt-3.5-turbo",
         game_id: Optional[str] = None,
     ):
+        assert username is not None
+        assert password is not None
+        assert power_name is not None
+        assert model_name is not None
+
         self.hostname = hostname
         self.port = port
         self.username = username
@@ -133,11 +143,11 @@ class SingleBotPlayer:
 
         # Initialize agent state
         await initialize_agent_state_ext(
-            self.agent, self.client.game, self.game_history, None
+            self.agent, self.client.game, self.game_history, "./llm_log.txt"
         )
 
         # Setup game event callbacks
-        self._setup_event_callbacks()
+        await self._setup_event_callbacks()
 
         # Get initial game state
         await self.client.synchronize()
@@ -163,7 +173,7 @@ class SingleBotPlayer:
         self.client.game.add_on_game_message_received(self._on_message_received)
 
         # Game status changes
-        self.client.game.add_on_game_status_update(await self._on_status_update)
+        self.client.game.add_on_game_status_update(self._on_status_update)
 
         # Power updates (other players joining/leaving)
         self.client.game.add_on_powers_controllers(self._on_powers_update)
@@ -303,7 +313,7 @@ class SingleBotPlayer:
                 await self.agent.generate_order_diary_entry(
                     self.client.game,
                     orders,
-                    None,  # No log file path
+                    config.log_file_path,
                 )
             else:
                 logger.info("No valid orders generated, submitting empty order set")
@@ -313,7 +323,7 @@ class SingleBotPlayer:
             self.waiting_for_orders = False
             logger.info("Orders submitted successfully")
 
-        except Exception as e:
+        except DiplomacyException as e:
             logger.error(f"Error submitting orders: {e}", exc_info=True)
             # Submit empty orders as fallback
             try:
@@ -390,9 +400,13 @@ class SingleBotPlayer:
                 logger.info("Game has finished")
             else:
                 logger.info("Bot shutting down")
+        except GameIdException:
+            logger.error(
+                f"Game with id {self.game_id} does not exist on the server. Exiting..."
+            )
+        except KeyboardInterrupt:
+            logger.info("Received KeyboardInterrupt, shutting down...")
 
-        except Exception as e:
-            logger.error(f"Fatal error in bot: {e}", exc_info=True)
         finally:
             await self.cleanup()
 

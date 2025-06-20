@@ -413,12 +413,6 @@ class WebSocketDiplomacyClient:
 
     async def close(self) -> None:
         """Close the connection to the server."""
-        if self.game:
-            try:
-                await self.game.leave()
-            except Exception as e:
-                logger.warning(f"Error leaving game: {e}")
-
         if self.connection:
             try:
                 # The connection doesn't have a direct close method in the API,
@@ -432,10 +426,10 @@ class WebSocketDiplomacyClient:
 
 # Convenience function for quick setup
 async def connect_to_diplomacy_server(
+    username: str,
+    password: str,
     hostname: str = "localhost",
     port: int = 8432,
-    username: str = "player",
-    password: str = "password",
     use_ssl: bool = False,
 ) -> WebSocketDiplomacyClient:
     """
@@ -454,4 +448,3 @@ async def connect_to_diplomacy_server(
     client = WebSocketDiplomacyClient(hostname, port, use_ssl)
     await client.connect_and_authenticate(username, password)
     return client
-
