@@ -16,6 +16,11 @@ from loguru import logger
 
 import sys
 
+from typed_websocket_client import (
+    TypedWebSocketDiplomacyClient,
+    connect_to_diplomacy_server,
+)
+
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from diplomacy.utils.exceptions import DiplomacyException, GameIdException
 
@@ -30,10 +35,6 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from websocket_diplomacy_client import (
-    connect_to_diplomacy_server,
-    WebSocketDiplomacyClient,
-)
 from diplomacy.engine.message import Message
 
 from ai_diplomacy.clients import load_model_client
@@ -87,7 +88,7 @@ class SingleBotPlayer:
         self.game_id = game_id
 
         # Bot state
-        self.client: WebSocketDiplomacyClient
+        self.client: TypedWebSocketDiplomacyClient
         self.agent: DiplomacyAgent
         self.game_history = GameHistory()
         self.running = True
@@ -404,9 +405,6 @@ class SingleBotPlayer:
             logger.error(
                 f"Game with id {self.game_id} does not exist on the server. Exiting..."
             )
-        except KeyboardInterrupt:
-            logger.info("Received KeyboardInterrupt, shutting down...")
-
         finally:
             await self.cleanup()
 

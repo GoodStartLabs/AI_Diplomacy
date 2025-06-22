@@ -3,7 +3,9 @@ from typing import List, Dict, Optional
 import json
 import re
 import json_repair
-import json5  # More forgiving JSON parser
+import json5
+
+from diplomacy.engine.game import Game  # More forgiving JSON parser
 
 # Assuming BaseModelClient is importable from clients.py in the same directory
 from .clients import BaseModelClient, load_model_client
@@ -831,7 +833,7 @@ class DiplomacyAgent:
                 )
 
     async def generate_order_diary_entry(
-        self, game: "Game", orders: List[str], log_file_path: str
+        self, game: Game, orders: List[str], log_file_path: Path
     ):
         """
         Generates a diary entry reflecting on the decided orders.

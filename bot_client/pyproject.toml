@@ -5,18 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "aiohttp>=3.12.13",
-    "anthropic>=0.54.0",
-    "diplomacy",
-    "dotenv>=0.9.9",
-    "google-generativeai>=0.8.5",
-    "json-repair>=0.46.2",
-    "json5>=0.12.0",
-    "loguru>=0.7.3",
-    "openai>=1.87.0",
-    "pydantic>=2.11.7",
-    "pydantic-settings>=2.9.1",
-    "tornado>=6.5.1",
+  "aiohttp>=3.12.13",
+  "anthropic>=0.54.0",
+  "diplomacy",
+  "dotenv>=0.9.9",
+  "google-generativeai>=0.8.5",
+  "json-repair>=0.46.2",
+  "json5>=0.12.0",
+  "loguru>=0.7.3",
+  "openai>=1.87.0",
+  "pydantic>=2.11.7",
+  "pydantic-settings>=2.9.1",
+  "tornado>=6.5.1",
+  "websockets>=15.0.1",
 ]
 
 [tool.uv.sources]
@@ -28,3 +29,23 @@ include = [".", ".."]
 
 [tool.ruff]
 src = ["..", "."]
+
+[tool.pytest.ini_options]
+testpaths = ["bot_client/tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = ["-v", "--tb=short", "--strict-markers", "--disable-warnings"]
+asyncio_mode = "auto"
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "integration: marks tests as integration tests",
+  "websocket: marks tests that use WebSocket connections",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+ "pytest-asyncio>=0.21.0",
+ "websockets>=15.0.1",
+]

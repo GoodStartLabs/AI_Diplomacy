@@ -13,6 +13,7 @@ from diplomacy.client.connection import connect
 from diplomacy.client.network_game import NetworkGame
 from diplomacy.engine.message import Message
 from diplomacy.utils.exceptions import DiplomacyException
+from typed_websocket_client import TypedWebSocketDiplomacyClient
 
 
 class WebSocketDiplomacyClient:
@@ -431,7 +432,7 @@ async def connect_to_diplomacy_server(
     hostname: str = "localhost",
     port: int = 8432,
     use_ssl: bool = False,
-) -> WebSocketDiplomacyClient:
+) -> TypedWebSocketDiplomacyClient:
     """
     Convenience function to quickly connect to a Diplomacy server.
 
@@ -445,6 +446,6 @@ async def connect_to_diplomacy_server(
     Returns:
         Connected and authenticated WebSocketDiplomacyClient
     """
-    client = WebSocketDiplomacyClient(hostname, port, use_ssl)
+    client = TypedWebSocketDiplomacyClient(hostname, port, use_ssl)
     await client.connect_and_authenticate(username, password)
     return client

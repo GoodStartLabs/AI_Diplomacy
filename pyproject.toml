@@ -17,16 +17,16 @@ dependencies = [
   "openai>=1.90.0",
   "pydantic-settings>=2.10.1",
   "pylint>=2.3.0",
+  "scipy>=1.16.0",
+  "statsmodels==0.14.4",
   "pytest>=4.4.0",
   "pytest-xdist>=3.7.0",
   "python-dateutil>=2.9.0.post0",
   "pytz>=2025.2",
-  "scipy>=1.16.0",
   "seaborn>=0.13.2",
   "sphinx>=8.2.3",
   "sphinx-copybutton>=0.5.2",
   "sphinx-rtd-theme>=3.0.2",
-  "statsmodels==0.14.4",
   "together>=1.5.17",
   "tornado>=5.0",
   "tqdm>=4.67.1",
@@ -35,3 +35,4 @@ dependencies = [
 
 [tool.ruff]
 line-length = 150
+exclude = ["diplomacy", "docs"]
