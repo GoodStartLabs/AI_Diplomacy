@@ -6,34 +6,31 @@ and waits for its turn to make moves. This script is designed to be run
 as a separate process for each bot in a multi-player game.
 """
 
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import argparse
 import asyncio
-import os
 import signal
-from typing import Optional
+from typing import Optional, Dict
 import dotenv
 from loguru import logger
 
-import sys
 
-from typed_websocket_client import (
-    TypedWebSocketDiplomacyClient,
+from websocket_diplomacy_client import (
+    WebSocketDiplomacyClient,
     connect_to_diplomacy_server,
 )
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from diplomacy.utils.exceptions import DiplomacyException, GameIdException
 
 # Suppress warnings
-os.environ["GRPC_PYTHON_LOG_LEVEL"] = "40"
-os.environ["GRPC_VERBOSITY"] = "ERROR"
-os.environ["ABSL_MIN_LOG_LEVEL"] = "2"
-os.environ["GRPC_POLL_STRATEGY"] = "poll"
+# os.environ["GRPC_PYTHON_LOG_LEVEL"] = "40"
+# os.environ["GRPC_VERBOSITY"] = "ERROR"
+# os.environ["ABSL_MIN_LOG_LEVEL"] = "2"
+# os.environ["GRPC_POLL_STRATEGY"] = "poll"
 
-# Add parent directory to path for ai_diplomacy imports (runtime only)
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from diplomacy.engine.message import Message
 
@@ -88,7 +85,7 @@ class SingleBotPlayer:
         self.game_id = game_id
 
         # Bot state
-        self.client: TypedWebSocketDiplomacyClient
+        self.client: WebSocketDiplomacyClient
         self.agent: DiplomacyAgent
         self.game_history = GameHistory()
         self.running = True
@@ -97,7 +94,9 @@ class SingleBotPlayer:
         self.orders_submitted = False
 
         # Track error stats
-        self.error_stats = {"conversation_errors": 0, "order_decoding_errors": 0}
+        self.error_stats: Dict[str, Dict[str, int]] = {
+            self.model_name: {"conversation_errors": 0, "order_decoding_errors": 0}
+        }
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -128,7 +127,7 @@ class SingleBotPlayer:
             )
         else:
             logger.info(f"Creating new game as {self.power_name}")
-            game = await self.client.create_game(
+            await self.client.create_game(
                 map_name="standard",
                 rules=["IGNORE_ERRORS", "POWER_CHOICE"],  # Allow messages
                 power_name=self.power_name,
@@ -144,15 +143,15 @@ class SingleBotPlayer:
 
         # Initialize agent state
         await initialize_agent_state_ext(
-            self.agent, self.client.game, self.game_history, "./llm_log.txt"
+            self.agent, self.client.game, self.game_history, config.log_file_path
         )
 
         # Setup game event callbacks
         await self._setup_event_callbacks()
 
         # Get initial game state
-        await self.client.synchronize()
-        self.current_phase = self.client.get_current_phase()
+        await self.client.game.synchronize()
+        self.current_phase = self.client.game.get_current_phase()
         self.game_history.add_phase(self.current_phase)
 
         logger.info(f"Bot initialized. Current phase: {self.current_phase}")
@@ -181,14 +180,19 @@ class SingleBotPlayer:
 
         logger.debug("Event callbacks setup complete")
 
-    async def _on_phase_update(self, game, notification):
+    def _on_phase_update(self, game, notification):
         """Handle game phase updates."""
         logger.info(f"Phase update received: {notification.phase_data}")
 
-        # Update our game state
-        await self.client.synchronize()
+        # Schedule the async processing in the event loop
+        asyncio.create_task(self._handle_phase_update_async(notification))
 
-        new_phase = self.client.get_current_phase()
+    async def _handle_phase_update_async(self, notification):
+        """Async handler for phase updates."""
+        # Update our game state
+        await self.client.game.synchronize()
+
+        new_phase = self.client.game.get_current_phase()
         if new_phase != self.current_phase:
             logger.info(f"New phase: {new_phase} (was: {self.current_phase})")
             self.current_phase = new_phase
@@ -198,12 +202,17 @@ class SingleBotPlayer:
             # Check if we need to submit orders for this new phase
             await self._check_if_orders_needed()
 
-    async def _on_game_processed(self, game, notification):
+    def _on_game_processed(self, game, notification):
         """Handle game processing (when orders are executed)."""
         logger.info("Game processed - orders have been executed")
 
+        # Schedule the async processing in the event loop
+        asyncio.create_task(self._handle_game_processed_async())
+
+    async def _handle_game_processed_async(self):
+        """Async handler for game processing."""
         # Synchronize to get the results
-        await self.client.synchronize()
+        await self.client.game.synchronize()
 
         # Analyze the results
         await self._analyze_phase_results()
@@ -220,17 +229,17 @@ class SingleBotPlayer:
 
         # Add message to game history
         self.game_history.add_message(
-            phase=message.phase,
+            phase_name=message.phase,
             sender=message.sender,
             recipient=message.recipient,
-            content=message.message,
+            message_content=message.message,
         )
 
         # If it's a private message to us, consider responding
         if message.recipient == self.power_name and message.sender != self.power_name:
             await self._consider_message_response(message)
 
-    async def _on_status_update(self, game, notification):
+    def _on_status_update(self, game, notification):
         """Handle game status changes."""
         logger.info(f"Game status updated: {notification.status}")
 
@@ -238,7 +247,7 @@ class SingleBotPlayer:
             logger.info("Game has ended")
             self.running = False
 
-    async def _on_powers_update(self, game, notification):
+    def _on_powers_update(self, game, notification):
         """Handle power controller updates (players joining/leaving)."""
         logger.info("Powers controllers updated")
         # Could implement logic to react to new players joining
@@ -249,25 +258,22 @@ class SingleBotPlayer:
             return
 
         # Check if it's a phase where we can submit orders
-        current_short_phase = self.client.get_current_short_phase()
+        current_short_phase = self.client.game.current_short_phase
 
         # We submit orders in Movement and Retreat phases
         if current_short_phase.endswith("M") or current_short_phase.endswith("R"):
             # Check if we have units that can receive orders
-            try:
-                orderable_locations = self.client.get_orderable_locations(
-                    self.power_name
+            orderable_locations = self.client.game.get_orderable_locations(
+                self.power_name
+            )
+            if orderable_locations:
+                logger.info(f"Orders needed for phase {current_short_phase}")
+                self.waiting_for_orders = True
+                await self._submit_orders()
+            else:
+                logger.info(
+                    f"No orderable locations for {self.power_name} in {current_short_phase}"
                 )
-                if orderable_locations:
-                    logger.info(f"Orders needed for phase {current_short_phase}")
-                    self.waiting_for_orders = True
-                    await self._submit_orders()
-                else:
-                    logger.info(
-                        f"No orderable locations for {self.power_name} in {current_short_phase}"
-                    )
-            except Exception as e:
-                logger.error(f"Error checking orderable locations: {e}")
 
     async def _submit_orders(self):
         """Generate and submit orders for the current phase."""
@@ -279,7 +285,7 @@ class SingleBotPlayer:
             logger.info("Generating orders...")
 
             # Get current board state
-            board_state = self.client.get_state()
+            board_state = self.client.game.get_state()
 
             # Get possible orders
             possible_orders = gather_possible_orders(self.client.game, self.power_name)
@@ -302,7 +308,7 @@ class SingleBotPlayer:
                 agent_goals=self.agent.goals,
                 agent_relationships=self.agent.relationships,
                 agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
-                phase=self.current_phase,
+                phase=self.client.game.get_current_phase(),
             )
 
             # Submit orders
@@ -323,9 +329,13 @@ class SingleBotPlayer:
             self.orders_submitted = True
             self.waiting_for_orders = False
             logger.info("Orders submitted successfully")
+            # Call the no wait so we don't sit around for the turns to end.
+            self.client.game.no_wait()
 
         except DiplomacyException as e:
             logger.error(f"Error submitting orders: {e}", exc_info=True)
+            # FIXME: I don't think we want to do this. Likely want to retry again multiple times.
+            #
             # Submit empty orders as fallback
             try:
                 await self.client.set_orders(self.power_name, [])
@@ -339,7 +349,7 @@ class SingleBotPlayer:
             logger.info("Analyzing phase results...")
 
             # Get current board state after processing
-            board_state = self.client.get_state()
+            board_state = self.client.game.get_state()
 
             # Generate a simple phase summary
             phase_summary = f"Phase {self.current_phase} completed."
@@ -350,7 +360,7 @@ class SingleBotPlayer:
                 board_state=board_state,
                 phase_summary=phase_summary,
                 game_history=self.game_history,
-                log_file_path=None,
+                log_file_path=config.log_file_path,
             )
 
             logger.info("Phase analysis complete")
@@ -366,7 +376,7 @@ class SingleBotPlayer:
                 word in message.message.lower() for word in ["hello", "hi", "greetings"]
             ):
                 response = f"Hello {message.sender}! Good to hear from you."
-                await self.client.send_message(
+                await self.client.game.send_game_message(
                     sender=self.power_name, recipient=message.sender, message=response
                 )
                 logger.info(f"Sent response to {message.sender}: {response}")
@@ -382,22 +392,17 @@ class SingleBotPlayer:
             logger.info(f"Bot {self.username} ({self.power_name}) is now running...")
 
             # Main event loop
-            while self.running and not self.client.is_game_done:
-                try:
-                    # Synchronize with server periodically
-                    await self.client.synchronize()
+            while self.running and not self.client.game.is_game_done:
+                # Synchronize with server periodically
+                await self.client.game.synchronize()
 
-                    # Check if we need to submit orders
-                    await self._check_if_orders_needed()
+                # Check if we need to submit orders
+                await self._check_if_orders_needed()
 
-                    # Sleep for a bit before next iteration
-                    await asyncio.sleep(5)
+                # Sleep for a bit before next iteration
+                await asyncio.sleep(5)
 
-                except Exception as e:
-                    logger.error(f"Error in main loop: {e}", exc_info=True)
-                    await asyncio.sleep(10)  # Wait longer on error
-
-            if self.client.is_game_done:
+            if self.client.game.is_game_done:
                 logger.info("Game has finished")
             else:
                 logger.info("Bot shutting down")
@@ -411,8 +416,6 @@ class SingleBotPlayer:
     async def cleanup(self):
         """Clean up resources."""
         try:
-            if self.client and self.client.game:
-                await self.client.game.leave()
             if self.client:
                 await self.client.close()
             logger.info("Cleanup complete")
@@ -426,7 +429,7 @@ def parse_arguments():
 
     parser.add_argument("--hostname", default="localhost", help="Server hostname")
     parser.add_argument("--port", type=int, default=8432, help="Server port")
-    parser.add_argument("--username", default="bot_player", help="Bot username")
+    parser.add_argument("--username", help="Bot username")
     parser.add_argument("--password", default="password", help="Bot password")
     parser.add_argument("--power", default="FRANCE", help="Power to control")
     parser.add_argument("--model", default="gpt-3.5-turbo", help="AI model to use")
@@ -441,6 +444,8 @@ def parse_arguments():
 async def main():
     """Main entry point."""
     args = parse_arguments()
+    if not args.username:
+        args.username = f"bot_{args.power}"
 
     bot = SingleBotPlayer(
         hostname=args.hostname,

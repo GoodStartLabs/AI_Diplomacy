@@ -301,13 +301,8 @@ def log_llm_response(
     """Appends a raw LLM response to a CSV log file."""
     assert log_file_path is not None
     try:
-        # Ensure the directory exists
-        log_dir = os.path.dirname(log_file_path)
-        if log_dir:  # Ensure log_dir is not empty (e.g., if path is just a filename)
-            os.makedirs(log_dir, exist_ok=True)
-
         # Check if file exists to write header
-        file_exists = os.path.isfile(log_file_path)
+        file_exists = log_file_path.exists()
 
         with open(log_file_path, "a", newline="", encoding="utf-8") as csvfile:
             # Added "raw_input" to fieldnames
@@ -348,7 +343,6 @@ def log_llm_response(
 async def run_llm_and_log(
     client: "BaseModelClient",
     prompt: str,
-    log_file_path: str,  # Kept for context, but not used for logging here
     power_name: Optional[str],  # Kept for context, but not used for logging here
     phase: str,  # Kept for context, but not used for logging here
     response_type: str,  # Kept for context, but not used for logging here
@@ -365,4 +359,3 @@ async def run_llm_and_log(
         )
         # raw_response remains "" indicating failure to the caller
     return raw_response
-

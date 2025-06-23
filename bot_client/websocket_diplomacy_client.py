@@ -5,15 +5,18 @@ A simplified client wrapper for connecting to a Diplomacy server via WebSocket
 and playing games remotely, designed as a drop-in replacement for direct Game() usage.
 """
 
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from typing import Dict, List, Optional, Any
-from diplomacy.engine.game import Game
 from loguru import logger
 
 from diplomacy.client.connection import connect
 from diplomacy.client.network_game import NetworkGame
 from diplomacy.engine.message import Message
 from diplomacy.utils.exceptions import DiplomacyException
-from typed_websocket_client import TypedWebSocketDiplomacyClient
 
 
 class WebSocketDiplomacyClient:
@@ -432,7 +435,7 @@ async def connect_to_diplomacy_server(
     hostname: str = "localhost",
     port: int = 8432,
     use_ssl: bool = False,
-) -> TypedWebSocketDiplomacyClient:
+) -> WebSocketDiplomacyClient:
     """
     Convenience function to quickly connect to a Diplomacy server.
 
@@ -446,6 +449,6 @@ async def connect_to_diplomacy_server(
     Returns:
         Connected and authenticated WebSocketDiplomacyClient
     """
-    client = TypedWebSocketDiplomacyClient(hostname, port, use_ssl)
+    client = WebSocketDiplomacyClient(hostname, port, use_ssl)
     await client.connect_and_authenticate(username, password)
     return client

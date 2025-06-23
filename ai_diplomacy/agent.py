@@ -463,13 +463,9 @@ class DiplomacyAgent:
                     f"[{self.power_name}] Using agent's own model for consolidation instead of Gemini Flash"
                 )
 
-            # Use the enhanced wrapper with retry logic
-            from .utils import run_llm_and_log
-
             raw_response = await run_llm_and_log(
                 client=consolidation_client,
                 prompt=prompt,
-                log_file_path=log_file_path,
                 power_name=self.power_name,
                 phase=game.current_short_phase,
                 response_type="diary_consolidation",
@@ -681,7 +677,6 @@ class DiplomacyAgent:
             raw_response = await run_llm_and_log(
                 client=self.client,
                 prompt=full_prompt,
-                log_file_path=log_file_path,  # Pass the main log file path
                 power_name=self.power_name,
                 phase=game.current_short_phase,
                 response_type="negotiation_diary_raw",  # For run_llm_and_log context
@@ -922,7 +917,6 @@ class DiplomacyAgent:
             raw_response = await run_llm_and_log(
                 client=self.client,
                 prompt=prompt,
-                log_file_path=log_file_path,
                 power_name=self.power_name,
                 phase=game.current_short_phase,
                 response_type="order_diary",
@@ -1019,6 +1013,7 @@ class DiplomacyAgent:
             logger.warning(
                 f"[{self.power_name}] Added fallback order diary entry due to critical error."
             )
+            raise e
         # Rest of the code remains the same
 
     async def generate_phase_result_diary_entry(
@@ -1100,7 +1095,6 @@ class DiplomacyAgent:
             raw_response = await run_llm_and_log(
                 client=self.client,
                 prompt=prompt,
-                log_file_path=log_file_path,
                 power_name=self.power_name,
                 phase=game.current_short_phase,
                 response_type="phase_result_diary",
@@ -1154,7 +1148,7 @@ class DiplomacyAgent:
         board_state: dict,
         phase_summary: str,
         game_history: "GameHistory",
-        log_file_path: str,
+        log_file_path: str | Path,
     ):
         """Analyzes the outcome of the last phase and updates goals/relationships using the LLM."""
         # Use self.power_name internally
@@ -1248,7 +1242,6 @@ class DiplomacyAgent:
             response = await run_llm_and_log(
                 client=self.client,
                 prompt=prompt,
-                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=current_phase,
                 response_type="state_update",

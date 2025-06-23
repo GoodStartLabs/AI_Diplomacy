@@ -1,5 +1,6 @@
 # ai_diplomacy/initialization.py
 import json
+from pathlib import Path
 from loguru import logger
 
 # Forward declaration for type hinting, actual imports in function if complex
@@ -13,7 +14,10 @@ from .prompt_constructor import build_context_prompt
 
 
 async def initialize_agent_state_ext(
-    agent: DiplomacyAgent, game: Game, game_history: GameHistory, log_file_path: str
+    agent: DiplomacyAgent,
+    game: Game,
+    game_history: GameHistory,
+    log_file_path: str | Path,
 ):
     """Uses the LLM to set initial goals and relationships for the agent."""
     power_name = agent.power_name
@@ -66,7 +70,6 @@ async def initialize_agent_state_ext(
         response = await run_llm_and_log(
             client=agent.client,
             prompt=full_prompt,
-            log_file_path=log_file_path,
             power_name=power_name,
             phase=current_phase,
             response_type="initialization",  # Context for run_llm_and_log internal error logging

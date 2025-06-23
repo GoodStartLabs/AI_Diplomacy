@@ -214,14 +214,11 @@ class MultiBotLauncher:
                         active_processes.append(process)
 
                         # Read and log any output (non-blocking)
-                        try:
-                            while True:
-                                line = process.stdout.readline()
-                                if not line:
-                                    break
-                                print(f"Bot-{process.pid}: {line.strip()}")
-                        except:
-                            pass  # No output available
+                        while True:
+                            line = process.stdout.readline()
+                            if not line:
+                                break
+                            logger.info(f"Bot_{process.pid}: {line.strip()}")
                     else:
                         # Process has ended
                         return_code = process.returncode
@@ -230,14 +227,9 @@ class MultiBotLauncher:
                         )
 
                         # Read any remaining output
-                        try:
-                            remaining_output = process.stdout.read()
-                            if remaining_output:
-                                print(
-                                    f"Bot-{process.pid} final output: {remaining_output}"
-                                )
-                        except:
-                            pass
+                        remaining_output = process.stdout.read()
+                        if remaining_output:
+                            print(f"Bot-{process.pid} final output: {remaining_output}")
 
                 self.bot_processes = active_processes
 
