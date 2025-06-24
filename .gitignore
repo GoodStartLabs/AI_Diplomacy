@@ -165,4 +165,4 @@ model_power_statistics.csv
 
 # Bot client logs
 ./bot_client/*.txt
-./bot_client/logs/
+bot_client/logs/

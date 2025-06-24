@@ -220,7 +220,7 @@ class SingleBotPlayer:
         self.orders_submitted = False
         self.waiting_for_orders = False
 
-    async def _on_message_received(self, game, notification):
+    def _on_message_received(self, game, notification):
         """Handle incoming diplomatic messages."""
         message = notification.message
         logger.info(
@@ -237,7 +237,8 @@ class SingleBotPlayer:
 
         # If it's a private message to us, consider responding
         if message.recipient == self.power_name and message.sender != self.power_name:
-            await self._consider_message_response(message)
+            # Schedule the async processing in the event loop
+            asyncio.create_task(self._consider_message_response(message))
 
     def _on_status_update(self, game, notification):
         """Handle game status changes."""
@@ -416,6 +417,9 @@ class SingleBotPlayer:
     async def cleanup(self):
         """Clean up resources."""
         try:
+            if self.client.game:
+                # We need to leave a game here, otherwise the connection stays for some reason and we can never rejoin
+                self.client.game.leave()
             if self.client:
                 await self.client.close()
             logger.info("Cleanup complete")

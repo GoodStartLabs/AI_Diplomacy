@@ -12,12 +12,11 @@ from loguru import logger
 import subprocess
 import sys
 import time
+import select
+import os
 from typing import List, Dict, Optional
 
 # Add parent directory to path for ai_diplomacy imports (runtime only)
-import sys
-import os
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from websocket_diplomacy_client import connect_to_diplomacy_server
@@ -46,6 +45,7 @@ class MultiBotLauncher:
         self.base_username = base_username
         self.password = password
         self.bot_processes: List[subprocess.Popen] = []
+        self.process_to_power: Dict[subprocess.Popen, str] = {}
         self.game_id: Optional[str] = None
 
         # Default power to model mapping
@@ -182,6 +182,7 @@ class MultiBotLauncher:
             try:
                 process = self.launch_bot(power, model, game_id, log_level)
                 self.bot_processes.append(process)
+                self.process_to_power[process] = power
 
                 logger.info(
                     f"Launched bot {i + 1}/{len(powers)}: {power} (PID: {process.pid})"
@@ -196,7 +197,7 @@ class MultiBotLauncher:
 
         logger.info(f"All {len(self.bot_processes)} bots launched successfully")
 
-    def monitor_bots(self, check_interval: float = 10.0):
+    def monitor_bots(self, check_interval: float = 1.0):
         """
         Monitor bot processes and log their output.
 
@@ -208,41 +209,94 @@ class MultiBotLauncher:
         try:
             while self.bot_processes:
                 active_processes = []
-
-                for _, process in enumerate(self.bot_processes):
+                
+                # Collect all stdout file descriptors from active processes
+                stdout_fds = []
+                fd_to_process = {}
+                
+                for process in self.bot_processes:
                     if process.poll() is None:  # Still running
                         active_processes.append(process)
-
-                        # Read and log any output (non-blocking)
-                        while True:
-                            line = process.stdout.readline()
-                            if not line:
-                                break
-                            logger.info(f"Bot_{process.pid}: {line.strip()}")
+                        stdout_fd = process.stdout.fileno()
+                        stdout_fds.append(stdout_fd)
+                        fd_to_process[stdout_fd] = process
                     else:
                         # Process has ended
                         return_code = process.returncode
+                        power = self.process_to_power.get(process, "UNKNOWN")
                         logger.info(
-                            f"Bot process {process.pid} ended with code {return_code}"
+                            f"{power} bot process {process.pid} ended with code {return_code}"
                         )
 
                         # Read any remaining output
                         remaining_output = process.stdout.read()
                         if remaining_output:
-                            print(f"Bot-{process.pid} final output: {remaining_output}")
+                            print(f"{power}_{process.pid} final output: {remaining_output}")
+                        
+                        # Clean up the power mapping
+                        self.process_to_power.pop(process, None)
 
                 self.bot_processes = active_processes
 
-                if self.bot_processes:
-                    logger.debug(f"{len(self.bot_processes)} bots still running")
-                    time.sleep(check_interval)
-                else:
+                if not self.bot_processes:
                     logger.info("All bots have finished")
                     break
+                
+                # Use select to check which processes have output ready (Unix only)
+                if stdout_fds and hasattr(select, 'select'):
+                    try:
+                        ready_fds, _, _ = select.select(stdout_fds, [], [], 0.1)  # 100ms timeout
+                        
+                        for fd in ready_fds:
+                            process = fd_to_process[fd]
+                            power = self.process_to_power.get(process, "UNKNOWN")
+                            
+                            # Read available lines (but limit to prevent monopolizing)
+                            lines_read = 0
+                            max_lines_per_process = 10
+                            
+                            while lines_read < max_lines_per_process:
+                                try:
+                                    line = process.stdout.readline()
+                                    if not line:
+                                        break
+                                    print(f"{power}_{process.pid}: {line.strip()}")
+                                    lines_read += 1
+                                except:
+                                    break
+                                    
+                    except (OSError, ValueError):
+                        # Fallback if select fails
+                        self._fallback_read_output(active_processes)
+                else:
+                    # Windows fallback or if select is not available
+                    self._fallback_read_output(active_processes)
+
+                logger.debug(f"{len(self.bot_processes)} bots still running")
+                time.sleep(check_interval)
 
         except KeyboardInterrupt:
             logger.info("Received interrupt signal, stopping bots...")
             self.stop_all_bots()
+
+    def _fallback_read_output(self, active_processes):
+        """Fallback method for reading output when select is not available."""
+        for process in active_processes:
+            power = self.process_to_power.get(process, "UNKNOWN")
+            
+            # Read limited lines per process to prevent monopolizing
+            lines_read = 0
+            max_lines_per_process = 3  # More conservative for fallback
+            
+            while lines_read < max_lines_per_process:
+                try:
+                    line = process.stdout.readline()
+                    if not line:
+                        break
+                    print(f"{power}_{process.pid}: {line.strip()}")
+                    lines_read += 1
+                except:
+                    break
 
     def stop_all_bots(self):
         """Stop all bot processes."""
@@ -250,17 +304,19 @@ class MultiBotLauncher:
 
         for process in self.bot_processes:
             if process.poll() is None:  # Still running
-                logger.info(f"Terminating bot process {process.pid}")
+                power = self.process_to_power.get(process, "UNKNOWN")
+                logger.info(f"Terminating {power} bot process {process.pid}")
                 process.terminate()
 
                 # Wait a bit for graceful shutdown
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    logger.warning(f"Force killing bot process {process.pid}")
+                    logger.warning(f"Force killing {power} bot process {process.pid}")
                     process.kill()
 
         self.bot_processes.clear()
+        self.process_to_power.clear()
         logger.info("All bots stopped")
 
     async def run_full_game(
