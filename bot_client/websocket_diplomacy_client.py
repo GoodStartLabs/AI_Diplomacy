@@ -27,9 +27,7 @@ class WebSocketDiplomacyClient:
     but communicates with a remote server via WebSocket connections.
     """
 
-    def __init__(
-        self, hostname: str = "localhost", port: int = 8432, use_ssl: bool = False
-    ):
+    def __init__(self, hostname: str = "localhost", port: int = 8432, use_ssl: bool = False):
         """
         Initialize the WebSocket client.
 
@@ -199,9 +197,7 @@ class WebSocketDiplomacyClient:
 
         return await self.channel.get_available_maps()
 
-    async def set_orders(
-        self, power_name: str, orders: List[str], wait: Optional[bool] = None
-    ) -> None:
+    async def set_orders(self, power_name: str, orders: List[str], wait: Optional[bool] = None) -> None:
         """
         Set orders for a power.
 
@@ -246,9 +242,7 @@ class WebSocketDiplomacyClient:
         else:
             await self.game.no_wait()
 
-    async def send_message(
-        self, sender: str, recipient: str, message: str, phase: Optional[str] = None
-    ) -> None:
+    async def send_message(self, sender: str, recipient: str, message: str, phase: Optional[str] = None) -> None:
         """
         Send a diplomatic message.
 
@@ -268,6 +262,57 @@ class WebSocketDiplomacyClient:
 
         logger.debug(f"Sending message from {sender} to {recipient}: {message}")
         await self.game.send_game_message(message=msg)
+
+    async def send_broadcast_message(self, sender: str, message: str, phase: Optional[str] = None) -> None:
+        """
+        Send a broadcast message to all active powers.
+
+        Args:
+            sender: Sending power name
+            message: Message content
+            phase: Game phase (uses current phase if None)
+        """
+        if not self.game:
+            raise DiplomacyException("Must join a game first")
+
+        if phase is None:
+            phase = self.game.current_short_phase
+
+        # Send to all active powers
+        active_powers = [power_name for power_name, power in self.powers.items() if not power.is_eliminated() and power_name != sender]
+
+        for recipient in active_powers:
+            await self.send_message(sender, recipient, message, phase)
+
+        logger.debug(f"Broadcast message from {sender} to {len(active_powers)} powers: {message}")
+
+    async def get_recent_messages(self, phase: Optional[str] = None, limit: int = 50) -> List[Message]:
+        """
+        Get recent messages from the game.
+
+        Args:
+            phase: Filter by specific phase (None for current phase)
+            limit: Maximum number of messages to return
+
+        Returns:
+            List of recent messages
+        """
+        if not self.game:
+            raise DiplomacyException("Must join a game first")
+
+        if phase is None:
+            phase = self.game.current_short_phase
+
+        # Get messages from the game and filter by phase
+        all_messages = list(self.messages.values())
+
+        # Filter by phase if specified
+        filtered_messages = [msg for msg in all_messages if msg.phase == phase]
+
+        # Sort by time (most recent first) and limit
+        filtered_messages.sort(key=lambda m: m.time_sent or 0, reverse=True)
+
+        return filtered_messages[:limit]
 
     async def process_game(self) -> None:
         """
@@ -289,9 +334,7 @@ class WebSocketDiplomacyClient:
         logger.debug("Synchronizing game state")
         await self.game.synchronize()
 
-    async def get_phase_history(
-        self, from_phase: Optional[str] = None, to_phase: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    async def get_phase_history(self, from_phase: Optional[str] = None, to_phase: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get phase history for the game.
 
@@ -305,9 +348,7 @@ class WebSocketDiplomacyClient:
         if not self.game:
             raise DiplomacyException("Must join a game first")
 
-        return await self.game.get_phase_history(
-            from_phase=from_phase, to_phase=to_phase
-        )
+        return await self.game.get_phase_history(from_phase=from_phase, to_phase=to_phase)
 
     async def vote(self, power_name: str, vote: str) -> None:
         """

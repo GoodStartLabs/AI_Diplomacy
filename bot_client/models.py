@@ -8,34 +8,39 @@ and notifications (server -> client).
 
 from typing import Optional, List, Dict, Any, Union, Literal
 from pydantic import BaseModel, Field
-from abc import ABC, abstractmethod
+from abc import ABC
 
 
 # =============================================================================
 # Base Message Classes
 # =============================================================================
 
+
 class BaseMessage(BaseModel, ABC):
     """Base class for all WebSocket messages."""
+
     name: str
-    
+
     class Config:
         extra = "forbid"
 
 
 class BaseRequest(BaseMessage):
     """Base class for all client -> server requests."""
+
     request_id: str
     re_sent: bool = False
 
 
 class BaseResponse(BaseMessage):
     """Base class for all server -> client responses."""
+
     request_id: str
 
 
 class BaseNotification(BaseMessage):
     """Base class for all server -> client notifications (no request_id)."""
+
     pass
 
 
@@ -43,8 +48,10 @@ class BaseNotification(BaseMessage):
 # Authentication & Connection Level Messages
 # =============================================================================
 
+
 class SignInRequest(BaseRequest):
     """Client authentication request."""
+
     name: Literal["sign_in"] = "sign_in"
     username: str
     password: str
@@ -52,6 +59,7 @@ class SignInRequest(BaseRequest):
 
 class GetDaidePortRequest(BaseRequest):
     """Request DAIDE TCP port for a game."""
+
     name: Literal["get_daide_port"] = "get_daide_port"
     game_id: str
 
@@ -60,13 +68,16 @@ class GetDaidePortRequest(BaseRequest):
 # Channel Level Messages (require authentication token)
 # =============================================================================
 
+
 class ChannelRequest(BaseRequest):
     """Base class for channel-level requests that require authentication."""
+
     token: str
 
 
 class CreateGameRequest(ChannelRequest):
     """Create a new game."""
+
     name: Literal["create_game"] = "create_game"
     map_name: str = "standard"
     rules: List[str] = Field(default_factory=lambda: ["NO_PRESS", "IGNORE_ERRORS"])
@@ -78,6 +89,7 @@ class CreateGameRequest(ChannelRequest):
 
 class JoinGameRequest(ChannelRequest):
     """Join an existing game."""
+
     name: Literal["join_game"] = "join_game"
     game_id: str
     power_name: Optional[str] = None
@@ -86,6 +98,7 @@ class JoinGameRequest(ChannelRequest):
 
 class JoinPowersRequest(ChannelRequest):
     """Join multiple powers in a game."""
+
     name: Literal["join_powers"] = "join_powers"
     game_id: str
     power_names: List[str]
@@ -94,32 +107,37 @@ class JoinPowersRequest(ChannelRequest):
 
 class ListGamesRequest(ChannelRequest):
     """List available games."""
+
     name: Literal["list_games"] = "list_games"
     game_id_filter: Optional[str] = None
     map_name: Optional[str] = None
-    status: Optional[str] = None 
+    status: Optional[str] = None
     include_protected: bool = False
 
 
 class GetPlayablePowersRequest(ChannelRequest):
     """Get uncontrolled powers in a game."""
+
     name: Literal["get_playable_powers"] = "get_playable_powers"
     game_id: str
 
 
 class GetAvailableMapsRequest(ChannelRequest):
     """Get list of available maps."""
+
     name: Literal["get_available_maps"] = "get_available_maps"
 
 
 class GetDummyWaitingPowersRequest(ChannelRequest):
     """Get AI-controllable powers (bot use)."""
+
     name: Literal["get_dummy_waiting_powers"] = "get_dummy_waiting_powers"
     game_id: str
 
 
 class SetGradeRequest(ChannelRequest):
     """Modify user permissions."""
+
     name: Literal["set_grade"] = "set_grade"
     username: str
     grade: str
@@ -127,11 +145,13 @@ class SetGradeRequest(ChannelRequest):
 
 class DeleteAccountRequest(ChannelRequest):
     """Delete user account."""
+
     name: Literal["delete_account"] = "delete_account"
 
 
 class LogoutRequest(ChannelRequest):
     """Disconnect from server."""
+
     name: Literal["logout"] = "logout"
 
 
@@ -139,8 +159,10 @@ class LogoutRequest(ChannelRequest):
 # Game Level Messages (require authentication + game context)
 # =============================================================================
 
+
 class GameRequest(ChannelRequest):
     """Base class for game-level requests."""
+
     game_id: str
     game_role: str  # Power name like "ENGLAND"
     phase: Optional[str] = None
@@ -148,18 +170,21 @@ class GameRequest(ChannelRequest):
 
 class SetOrdersRequest(GameRequest):
     """Submit orders for a power."""
+
     name: Literal["set_orders"] = "set_orders"
     orders: List[str]
 
 
 class SetWaitFlagRequest(GameRequest):
     """Set wait flag for turn processing."""
+
     name: Literal["set_wait_flag"] = "set_wait_flag"
     wait: bool
 
 
 class SendGameMessageRequest(GameRequest):
     """Send diplomatic message."""
+
     name: Literal["send_game_message"] = "send_game_message"
     recipient: str  # Power name or "GLOBAL"
     message: str
@@ -168,11 +193,13 @@ class SendGameMessageRequest(GameRequest):
 
 class GetAllPossibleOrdersRequest(GameRequest):
     """Get legal orders for current phase."""
+
     name: Literal["get_all_possible_orders"] = "get_all_possible_orders"
 
 
 class GetPhaseHistoryRequest(GameRequest):
     """Get historical game phases."""
+
     name: Literal["get_phase_history"] = "get_phase_history"
     from_phase: Optional[str] = None
     to_phase: Optional[str] = None
@@ -180,45 +207,53 @@ class GetPhaseHistoryRequest(GameRequest):
 
 class ProcessGameRequest(GameRequest):
     """Force game processing (master only)."""
+
     name: Literal["process_game"] = "process_game"
 
 
 class VoteRequest(GameRequest):
     """Vote for/against draw."""
+
     name: Literal["vote"] = "vote"
     vote: Literal["yes", "no"]
 
 
 class SaveGameRequest(GameRequest):
     """Export game as JSON."""
+
     name: Literal["save_game"] = "save_game"
 
 
 class SetGameStateRequest(GameRequest):
     """Modify game state (master only)."""
+
     name: Literal["set_game_state"] = "set_game_state"
     state: Dict[str, Any]
 
 
 class SetGameStatusRequest(GameRequest):
     """Change game status (master only)."""
+
     name: Literal["set_game_status"] = "set_game_status"
     status: str
 
 
 class SetDummyPowersRequest(GameRequest):
     """Make powers AI-controlled (master only)."""
+
     name: Literal["set_dummy_powers"] = "set_dummy_powers"
     power_names: List[str]
 
 
 class DeleteGameRequest(GameRequest):
     """Delete game (master only)."""
+
     name: Literal["delete_game"] = "delete_game"
 
 
 class LeaveGameRequest(GameRequest):
     """Leave game."""
+
     name: Literal["leave_game"] = "leave_game"
 
 
@@ -226,13 +261,16 @@ class LeaveGameRequest(GameRequest):
 # Response Messages (Server -> Client)
 # =============================================================================
 
+
 class OkResponse(BaseResponse):
     """Generic success response."""
+
     name: Literal["ok"] = "ok"
 
 
 class ErrorResponse(BaseResponse):
     """Error response with error type and message."""
+
     name: Literal["error"] = "error"
     error_type: str
     message: str
@@ -240,60 +278,70 @@ class ErrorResponse(BaseResponse):
 
 class DataTokenResponse(BaseResponse):
     """Contains authentication token."""
+
     name: Literal["data_token"] = "data_token"
     data: str  # The authentication token
 
 
 class DataGameResponse(BaseResponse):
     """Contains full game object."""
+
     name: Literal["data_game"] = "data_game"
     data: Dict[str, Any]  # The complete game state
 
 
 class DataGameInfoResponse(BaseResponse):
     """Contains game metadata."""
+
     name: Literal["data_game_info"] = "data_game_info"
     data: Dict[str, Any]
 
 
 class DataGamesResponse(BaseResponse):
     """List of game information."""
+
     name: Literal["data_games"] = "data_games"
     data: List[Dict[str, Any]]
 
 
 class DataMapsResponse(BaseResponse):
     """Available maps information."""
+
     name: Literal["data_maps"] = "data_maps"
     data: List[str]
 
 
 class DataPowerNamesResponse(BaseResponse):
     """List of power names."""
+
     name: Literal["data_power_names"] = "data_power_names"
     data: List[str]
 
 
 class DataPossibleOrdersResponse(BaseResponse):
     """Legal orders and locations."""
+
     name: Literal["data_possible_orders"] = "data_possible_orders"
     data: Dict[str, List[str]]  # Location -> list of possible orders
 
 
 class DataGamePhasesResponse(BaseResponse):
     """Historical game phases."""
+
     name: Literal["data_game_phases"] = "data_game_phases"
     data: List[Dict[str, Any]]
 
 
 class DataSavedGameResponse(BaseResponse):
     """Exported game JSON."""
+
     name: Literal["data_saved_game"] = "data_saved_game"
     data: Dict[str, Any]
 
 
 class DataPortResponse(BaseResponse):
     """DAIDE port number."""
+
     name: Literal["data_port"] = "data_port"
     data: int
 
@@ -302,8 +350,10 @@ class DataPortResponse(BaseResponse):
 # Notification Messages (Server -> Client)
 # =============================================================================
 
+
 class GameProcessedNotification(BaseNotification):
     """Phase completed, new orders phase."""
+
     name: Literal["game_processed"] = "game_processed"
     game_id: str
     phase: str
@@ -312,6 +362,7 @@ class GameProcessedNotification(BaseNotification):
 
 class GamePhaseUpdateNotification(BaseNotification):
     """Game state changed."""
+
     name: Literal["game_phase_update"] = "game_phase_update"
     game_id: str
     phase: str
@@ -320,6 +371,7 @@ class GamePhaseUpdateNotification(BaseNotification):
 
 class GameStatusUpdateNotification(BaseNotification):
     """Game status changed (forming/active/paused/completed)."""
+
     name: Literal["game_status_update"] = "game_status_update"
     game_id: str
     status: str
@@ -327,6 +379,7 @@ class GameStatusUpdateNotification(BaseNotification):
 
 class PowersControllersNotification(BaseNotification):
     """Power control assignments changed."""
+
     name: Literal["powers_controllers"] = "powers_controllers"
     game_id: str
     controllers: Dict[str, str]  # Power -> Controller mapping
@@ -334,6 +387,7 @@ class PowersControllersNotification(BaseNotification):
 
 class PowerOrdersUpdateNotification(BaseNotification):
     """Player submitted new orders."""
+
     name: Literal["power_orders_update"] = "power_orders_update"
     game_id: str
     power_name: str
@@ -343,15 +397,17 @@ class PowerOrdersUpdateNotification(BaseNotification):
 
 class PowerOrdersFlagNotification(BaseNotification):
     """Player order submission status."""
+
     name: Literal["power_orders_flag"] = "power_orders_flag"
     game_id: str
-    power_name: str 
+    power_name: str
     order_is_set: bool
     phase: str
 
 
 class PowerWaitFlagNotification(BaseNotification):
     """Player wait flag changed."""
+
     name: Literal["power_wait_flag"] = "power_wait_flag"
     game_id: str
     power_name: str
@@ -360,6 +416,7 @@ class PowerWaitFlagNotification(BaseNotification):
 
 class GameMessageReceivedNotification(BaseNotification):
     """Diplomatic message received."""
+
     name: Literal["game_message_received"] = "game_message_received"
     game_id: str
     sender: str
@@ -371,6 +428,7 @@ class GameMessageReceivedNotification(BaseNotification):
 
 class VoteUpdatedNotification(BaseNotification):
     """Draw votes changed (omniscient view)."""
+
     name: Literal["vote_updated"] = "vote_updated"
     game_id: str
     votes: Dict[str, str]  # Power -> vote mapping
@@ -378,6 +436,7 @@ class VoteUpdatedNotification(BaseNotification):
 
 class VoteCountUpdatedNotification(BaseNotification):
     """Vote count changed (observer view)."""
+
     name: Literal["vote_count_updated"] = "vote_count_updated"
     game_id: str
     count_yes: int
@@ -386,6 +445,7 @@ class VoteCountUpdatedNotification(BaseNotification):
 
 class PowerVoteUpdatedNotification(BaseNotification):
     """Own power's vote changed."""
+
     name: Literal["power_vote_updated"] = "power_vote_updated"
     game_id: str
     power_name: str
@@ -394,12 +454,14 @@ class PowerVoteUpdatedNotification(BaseNotification):
 
 class GameDeletedNotification(BaseNotification):
     """Game removed from server."""
+
     name: Literal["game_deleted"] = "game_deleted"
     game_id: str
 
 
 class OmniscientUpdatedNotification(BaseNotification):
     """Observer permissions changed."""
+
     name: Literal["omniscient_updated"] = "omniscient_updated"
     game_id: str
     omniscient_type: str
@@ -407,12 +469,14 @@ class OmniscientUpdatedNotification(BaseNotification):
 
 class AccountDeletedNotification(BaseNotification):
     """User account deleted."""
+
     name: Literal["account_deleted"] = "account_deleted"
     username: str
 
 
 class ClearedCentersNotification(BaseNotification):
     """Supply centers cleared."""
+
     name: Literal["cleared_centers"] = "cleared_centers"
     game_id: str
     power_name: str
@@ -420,6 +484,7 @@ class ClearedCentersNotification(BaseNotification):
 
 class ClearedOrdersNotification(BaseNotification):
     """Orders cleared."""
+
     name: Literal["cleared_orders"] = "cleared_orders"
     game_id: str
     power_name: str
@@ -428,6 +493,7 @@ class ClearedOrdersNotification(BaseNotification):
 
 class ClearedUnitsNotification(BaseNotification):
     """Units cleared."""
+
     name: Literal["cleared_units"] = "cleared_units"
     game_id: str
     power_name: str
@@ -514,24 +580,25 @@ WebSocketMessage = Union[RequestMessage, ResponseMessage, NotificationMessage]
 # Utility Functions
 # =============================================================================
 
+
 def parse_message(data: Dict[str, Any]) -> WebSocketMessage:
     """
     Parse a raw WebSocket message dictionary into the appropriate pydantic model.
-    
+
     Args:
         data: Raw message dictionary from WebSocket
-        
+
     Returns:
         Parsed message object
-        
+
     Raises:
         ValueError: If message cannot be parsed or is of unknown type
     """
     if not isinstance(data, dict) or "name" not in data:
         raise ValueError("Invalid message format: missing 'name' field")
-    
+
     message_name = data["name"]
-    
+
     # Map message names to their corresponding classes
     message_classes = {
         # Requests
@@ -592,21 +659,21 @@ def parse_message(data: Dict[str, Any]) -> WebSocketMessage:
         "cleared_orders": ClearedOrdersNotification,
         "cleared_units": ClearedUnitsNotification,
     }
-    
+
     message_class = message_classes.get(message_name)
     if message_class is None:
         raise ValueError(f"Unknown message type: {message_name}")
-    
+
     return message_class(**data)
 
 
 def serialize_message(message: WebSocketMessage) -> Dict[str, Any]:
     """
     Serialize a pydantic message object to a dictionary for WebSocket transmission.
-    
+
     Args:
         message: Pydantic message object
-        
+
     Returns:
         Dictionary representation of the message
     """

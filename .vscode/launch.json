@@ -105,7 +105,7 @@
         "--game-id",
         "${input:gameId}",
         "--log-level",
-        "INFO"
+        "DEBUG"
       ],
       "console": "integratedTerminal",
       "justMyCode": true,
@@ -138,6 +138,7 @@
       "type": "pickString",
       "description": "Select the AI model to use",
       "options": [
+        "gemini-2.5-flash-lite-preview-06-17",
         "gpt-3.5-turbo",
         "gpt-4",
         "claude-3-haiku",

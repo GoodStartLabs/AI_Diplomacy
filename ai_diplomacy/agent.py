@@ -5,6 +5,7 @@ import re
 import json_repair
 import json5
 
+from ai_diplomacy.game_history import GameHistory
 from diplomacy.engine.game import Game  # More forgiving JSON parser
 
 # Assuming BaseModelClient is importable from clients.py in the same directory
@@ -1150,6 +1151,9 @@ class DiplomacyAgent:
         game_history: "GameHistory",
         log_file_path: str | Path,
     ):
+        assert GameHistory is not None, (
+            "GameHistory object must be initialized before calling analyze_phase_and_update_state"
+        )
         """Analyzes the outcome of the last phase and updates goals/relationships using the LLM."""
         # Use self.power_name internally
         power_name = self.power_name
@@ -1169,7 +1173,7 @@ class DiplomacyAgent:
                 return
 
             # Get previous phase safely from history
-            if not game_history or not game_history.phases:
+            if not game_history.phases:
                 logger.warning(
                     f"[{power_name}] No game history available to analyze for {game.current_short_phase}. Skipping state update."
                 )
@@ -1254,9 +1258,8 @@ class DiplomacyAgent:
             log_entry_success = "FALSE"  # Default
             update_data = None  # Initialize
 
-            if (
-                response is not None and response.strip()
-            ):  # Check if response is not None and not just whitespace
+            # Check if response is not None and not just whitespace
+            if response is not None and response.strip():
                 try:
                     update_data = self._extract_json_from_text(response)
                     logger.debug(

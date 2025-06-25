@@ -148,7 +148,6 @@ class GameHistory:
             return {}
         return self.phases[-1].plans
 
-    # NEW METHOD
     def get_messages_this_round(self, power_name: str, current_phase_name: str) -> str:
         current_phase: Optional[Phase] = None
         for phase_obj in self.phases:

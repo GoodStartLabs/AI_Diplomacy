@@ -1,4 +1,4 @@
-from os.path import exists
+import datetime
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import warnings
@@ -6,16 +6,16 @@ import warnings
 
 class Configuration(BaseSettings):
     DEBUG: bool = False
-    log_file_path: Path = Path("./logs/logs.txt")
+    log_file_path: Path
     DEEPSEEK_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
     ANTHROPIC_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, power_name, **kwargs):
         super().__init__(**kwargs)
-
+        self.log_file_path = Path(f"./logs/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}/{power_name}.txt")
         # Make the path absolute, gets rid of weirdness of calling this in different places
         self.log_file_path = self.log_file_path.resolve()
         self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -42,11 +42,7 @@ class Configuration(BaseSettings):
         """Override to check for empty API keys at access time"""
         value = super().__getattribute__(name)
 
-        if name.endswith("_KEY") and (
-            not value or (isinstance(value, str) and len(value) == 0)
-        ):
-            raise ValueError(
-                f"API key '{name}' is not set or is empty. Please configure it before use."
-            )
+        if name.endswith("_KEY") and (not value or (isinstance(value, str) and len(value) == 0)):
+            raise ValueError(f"API key '{name}' is not set or is empty. Please configure it before use.")
 
         return value

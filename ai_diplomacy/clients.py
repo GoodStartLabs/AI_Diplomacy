@@ -15,7 +15,6 @@ from anthropic import AsyncAnthropic
 
 import google.generativeai as genai
 
-from diplomacy.engine.message import GLOBAL
 from .game_history import GameHistory
 from .utils import (
     load_prompt,
@@ -25,7 +24,6 @@ from .utils import (
 
 # Import DiplomacyAgent for type hinting if needed, but avoid circular import if possible
 # from .agent import DiplomacyAgent
-from .possible_order_context import generate_rich_order_context
 from .prompt_constructor import (
     construct_order_generation_prompt,
     build_context_prompt,
@@ -113,7 +111,6 @@ class BaseModelClient:
             raw_response = await run_llm_and_log(
                 client=self,
                 prompt=prompt,
-                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=phase,
                 response_type="order",  # Context for run_llm_and_log's own error logging
@@ -553,7 +550,6 @@ class BaseModelClient:
         raw_response = await run_llm_and_log(
             client=self,
             prompt=prompt,
-            log_file_path=log_file_path,
             power_name=power_name,
             phase=game_phase,  # Use game_phase for logging
             response_type="plan_reply",  # Changed from 'plan' to avoid confusion
@@ -604,7 +600,6 @@ class BaseModelClient:
             raw_response = await run_llm_and_log(
                 client=self,
                 prompt=raw_input_prompt,
-                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=game_phase,
                 response_type="negotiation",  # For run_llm_and_log's internal context
@@ -829,7 +824,6 @@ class BaseModelClient:
             raw_plan_response = await run_llm_and_log(
                 client=self,  # Pass self (the client instance)
                 prompt=full_prompt,
-                log_file_path=log_file_path,
                 power_name=power_name,
                 phase=game.current_short_phase,
                 response_type="plan_generation",  # More specific type for run_llm_and_log context
@@ -1328,4 +1322,3 @@ def get_visible_messages_for_power(conversation_messages, power_name):
         ):
             visible.append(msg)
     return visible  # already in chronological order if appended that way
-

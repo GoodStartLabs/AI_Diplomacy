@@ -29,6 +29,7 @@ include = [".", ".."]
 
 [tool.ruff]
 src = ["..", "."]
+line-length = 150
 
 [tool.pytest.ini_options]
 testpaths = ["bot_client/tests"]
@@ -44,8 +45,4 @@ markers = [
 ]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.4.1",
- "pytest-asyncio>=0.21.0",
- "websockets>=15.0.1",
-]
+dev = ["pytest>=8.4.1", "pytest-asyncio>=0.21.0", "websockets>=15.0.1"]
