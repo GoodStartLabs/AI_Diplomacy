@@ -103,7 +103,7 @@ async def conduct_negotiations(
             model_name = agent.client.model_name # Get model name for stats
 
             if isinstance(result, Exception):
-                logger.error(f"Error getting conversation reply for {power_name}: {result}", exc_info=result)
+                logger.error(f"Error getting conversation reply for {power_name}: {result}", exc_info=True)
                 # Use model_name for stats key if possible
                 if model_name in model_error_stats:
                      model_error_stats[model_name]["conversation_errors"] += 1
