@@ -286,7 +286,7 @@ async def main():
         for i, result in enumerate(order_results):
             p_name = order_power_names[i]
             if isinstance(result, Exception):
-                logger.error(f"Error getting orders for {p_name}: {result}", exc_info=result)
+                logger.error(f"Error getting orders for {p_name}: {result}", exc_info=True)
                 game.set_orders(p_name, [])
             else:
                 orders = result
