@@ -374,7 +374,8 @@ async def run_llm_and_log(
 
 # This generates a few lines of random alphanum chars to inject into the 
 # system prompt. This lets us use temp=0 while still getting variation 
-# between trials.
+# between trials, by subtly altering the prompt. This is useful for 
+# exploring different outputs while maintaining some control over determinism.
 # Temp=0 is important for better performance on deciding moves, and to 
 # ensure valid json outputs.
 def generate_random_seed(n_lines: int = 5, n_chars_per_line: int = 80):
