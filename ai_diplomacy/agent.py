@@ -121,230 +121,43 @@ class DiplomacyAgent:
         if not text or not text.strip():
             logger.warning(f"[{self.power_name}] Empty text provided to JSON extractor")
             return {}
-            
-        # Store original text for debugging
+
         original_text = text
-        
-        # Preprocessing: Normalize common formatting issues
-        # This helps with the KeyError: '\n  "negotiation_summary"' problem
-        text = re.sub(r'\n\s+"(\w+)"\s*:', r'"\1":', text)  # Remove newlines before keys
-        # Fix specific patterns that cause trouble
-        problematic_patterns = [
-            'negotiation_summary', 'relationship_updates', 'updated_relationships',
-            'order_summary', 'goals', 'relationships', 'intent'
-        ]
-        for pattern in problematic_patterns:
-            text = re.sub(fr'\n\s*"{pattern}"', f'"{pattern}"', text)
-        
-        # Try different patterns to extract JSON
-        # Order matters - try most specific patterns first
-        patterns = [
-            # Special handling for ```{{ ... }}``` format that some models use
-            r"```\s*\{\{\s*(.*?)\s*\}\}\s*```",
-            # JSON in code blocks with or without language specifier
-            r"```(?:json)?\s*\n(.*?)\n\s*```",
-            # JSON after "PARSABLE OUTPUT:" or similar
-            r"PARSABLE OUTPUT:\s*(\{.*?\})",
-            r"JSON:\s*(\{.*?\})",
-            # Any JSON object
-            r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})",
-            # Simple JSON in backticks
-            r"`(\{.*?\})`",
-        ]
-        
-        # Try each pattern
-        for pattern_idx, pattern in enumerate(patterns):
-            matches = re.findall(pattern, text, re.DOTALL)
-            if matches:
-                for match_idx, match in enumerate(matches):
-                    # Multiple attempts with different parsers
-                    json_text = match.strip()
-                    
-                    # Attempt 1: Standard JSON after basic cleaning
-                    try:
-                        cleaned = self._clean_json_text(json_text)
-                        result = json.loads(cleaned)
-                        if isinstance(result, dict):
-                            logger.debug(f"[{self.power_name}] Successfully parsed JSON object with pattern {pattern_idx}, match {match_idx}")
-                            return result
-                        else:
-                            logger.warning(f"[{self.power_name}] Parsed JSON with pattern {pattern_idx}, match {match_idx}, but got type {type(result)} instead of dict. Content: {str(result)[:200]}")
-                    except json.JSONDecodeError as e_initial:
-                        logger.debug(f"[{self.power_name}] Standard JSON parse failed: {e_initial}")
-                        
-                        # Attempt 1.5: Try surgical cleaning with original patterns if basic cleaning failed
-                        try:
-                            # Apply several different cleaning patterns from the old method
-                            cleaned_match_candidate = json_text
-                            
-                            # Pattern 1: Removes 'Sentence.' when followed by ',', '}', or ']'
-                            cleaned_match_candidate = re.sub(r'\s*([A-Z][\w\s,]*?\.(?:\s+[A-Z][\w\s,]*?\.)*)\s*(?=[,\}\]])', '', cleaned_match_candidate)
-                            
-                            # Pattern 2: Removes 'Sentence.' when it's at the very end, before the final '}' of the current scope
-                            cleaned_match_candidate = re.sub(r'\s*([A-Z][\w\s,]*?\.(?:\s+[A-Z][\w\s,]*?\.)*)\s*(?=\s*\}\s*$)', '', cleaned_match_candidate)
-                            
-                            # Pattern 3: Fix for newlines and spaces before JSON keys (common problem with LLMs)
-                            cleaned_match_candidate = re.sub(r'\n\s+"(\w+)"\s*:', r'"\1":', cleaned_match_candidate)
-                            
-                            # Pattern 4: Fix trailing commas in JSON objects
-                            cleaned_match_candidate = re.sub(r',\s*}', '}', cleaned_match_candidate)
-                            
-                            # Pattern 5: Handle specific known problematic patterns
-                            for pattern in problematic_patterns:
-                                cleaned_match_candidate = cleaned_match_candidate.replace(f'\n  "{pattern}"', f'"{pattern}"')
-                            
-                            # Pattern 6: Fix quotes - replace single quotes with double quotes for keys
-                            cleaned_match_candidate = re.sub(r"'(\w+)'\s*:", r'"\1":', cleaned_match_candidate)
+        extracted_json_text = ""
 
-                            # Only try parsing if cleaning actually changed something
-                            if cleaned_match_candidate != json_text:
-                                logger.debug(f"[{self.power_name}] Surgical cleaning applied. Attempting to parse modified JSON.")
-                                return json.loads(cleaned_match_candidate)
-                        except json.JSONDecodeError as e_surgical:
-                            logger.debug(f"[{self.power_name}] Surgical cleaning didn't work: {e_surgical}")
-                    
-                    # Attempt 2: json5 (more forgiving)
-                    try:
-                        result = json5.loads(json_text)
-                        if isinstance(result, dict):
-                            logger.debug(f"[{self.power_name}] Successfully parsed JSON object with json5")
-                            return result
-                        else:
-                            logger.warning(f"[{self.power_name}] Parsed with json5, but got type {type(result)} instead of dict. Content: {str(result)[:200]}")
-                    except Exception as e:
-                        logger.debug(f"[{self.power_name}] json5 parse failed: {e}")
-                    
-                    # Attempt 3: json-repair
-                    try:
-                        result = json_repair.loads(json_text)
-                        if isinstance(result, dict):
-                            logger.debug(f"[{self.power_name}] Successfully parsed JSON object with json-repair")
-                            return result
-                        else:
-                            logger.warning(f"[{self.power_name}] Parsed with json-repair, but got type {type(result)} instead of dict. Content: {str(result)[:200]}")
-                    except Exception as e:
-                        logger.debug(f"[{self.power_name}] json-repair failed: {e}")
-        
-        # New Strategy: Parse markdown-like key-value pairs
-        # Example: **key:** value
-        # This comes after trying to find fenced JSON blocks but before broad fallbacks.
-        if not matches: # Only try if previous patterns didn't yield a dict from a match
-            try:
-                markdown_data = {}
-                # Regex to find **key:** value, where value can be multi-line until next **key:** or end of string
-                md_pattern = r"\*\*(?P<key>[^:]+):\*\*\s*(?P<value>[\s\S]*?)(?=(?:\n\s*\*\*|$))"
-                for match in re.finditer(md_pattern, text, re.DOTALL):
-                    key_name = match.group('key').strip()
-                    value_str = match.group('value').strip()
-                    try:
-                        # Attempt to evaluate the value string as a Python literal
-                        # This handles lists, strings, numbers, booleans, None
-                        actual_value = ast.literal_eval(value_str)
-                        markdown_data[key_name] = actual_value
-                    except (ValueError, SyntaxError) as e_ast:
-                        # If ast.literal_eval fails, it might be a plain string that doesn't look like a literal
-                        # Or it could be genuinely malformed. We'll take it as a string if it's not empty.
-                        if value_str: # Only add if it's a non-empty string
-                            markdown_data[key_name] = value_str # Store as string
-                        logger.debug(f"[{self.power_name}] ast.literal_eval failed for key '{key_name}', value '{value_str[:50]}...': {e_ast}. Storing as string if non-empty.")
-                
-                if markdown_data: # If we successfully extracted any key-value pairs this way
-                    # Check if essential keys are present, if needed, or just return if any data found
-                    # For now, if markdown_data is populated, we assume it's the intended structure.
-                    logger.debug(f"[{self.power_name}] Successfully parsed markdown-like key-value format. Data: {str(markdown_data)[:200]}")
-                    return markdown_data
-                else:
-                    logger.debug(f"[{self.power_name}] No markdown-like key-value pairs found or parsed using markdown strategy.")
-            except Exception as e_md_parse:
-                logger.error(f"[{self.power_name}] Error during markdown-like key-value parsing: {e_md_parse}", exc_info=True)
-
-        # Fallback: Try to find ANY JSON-like structure
-        try:
-            # Find the first { and last }
+        # 1. Try to extract JSON from a fenced code block (most common and reliable)
+        code_block_match = re.search(r"```(?:json)?\s*\n(.*?)\n\s*```", text, re.DOTALL)
+        if code_block_match:
+            extracted_json_text = code_block_match.group(1).strip()
+            logger.debug(f"[{self.power_name}] Extracted JSON from code block.")
+        else:
+            # 2. If no code block, try to find the first and last curly braces
             start = text.find('{')
-            end = text.rfind('}') + 1  # Include the closing brace
-            if start != -1 and end > start:
-                potential_json = text[start:end]
-                
-                # Try all parsers on this extracted text
-                for parser_name, parser_func in [
-                    ("json", json.loads),
-                    ("json5", json5.loads),
-                    ("json_repair", json_repair.loads)
-                ]:
-                    try:
-                        cleaned = self._clean_json_text(potential_json) if parser_name == "json" else potential_json
-                        result = parser_func(cleaned)
-                        if isinstance(result, dict):
-                            logger.debug(f"[{self.power_name}] Fallback parse succeeded with {parser_name}, got dict.")
-                            return result
-                        else:
-                            logger.warning(f"[{self.power_name}] Fallback parse with {parser_name} succeeded, but got type {type(result)} instead of dict. Content: {str(result)[:200]}")
-                    except Exception as e:
-                        logger.debug(f"[{self.power_name}] Fallback {parser_name} failed: {e}")
-                
-                # If standard parsers failed, try aggressive cleaning
-                try:
-                    # Remove common non-JSON text that LLMs might add
-                    cleaned_text = re.sub(r'[^{}[\]"\',:.\d\w\s_-]', '', potential_json)
-                    # Replace single quotes with double quotes (common LLM error)
-                    text_fixed = re.sub(r"'([^']*)':", r'"\1":', cleaned_text)
-                    text_fixed = re.sub(r': *\'([^\']*)\'', r': "\1"', text_fixed)
-                    
-                    result = json.loads(text_fixed)
-                    if isinstance(result, dict):
-                        logger.debug(f"[{self.power_name}] Aggressive cleaning worked, got dict.")
-                        return result
-                    else:
-                        logger.warning(f"[{self.power_name}] Aggressive cleaning worked, but got type {type(result)} instead of dict. Content: {str(result)[:200]}")
-                except json.JSONDecodeError:
-                    pass
-                    
-        except Exception as e:
-            logger.debug(f"[{self.power_name}] Fallback extraction failed: {e}")
-        
-        # Last resort: Try json-repair on the entire text
+            end = text.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                extracted_json_text = text[start : end + 1].strip()
+                logger.debug(f"[{self.power_name}] Extracted JSON from first/last curly braces.")
+            else:
+                # 3. As a last resort, use the entire text
+                extracted_json_text = text.strip()
+                logger.debug(f"[{self.power_name}] Using entire text for JSON extraction.")
+
+        if not extracted_json_text:
+            logger.warning(f"[{self.power_name}] No potential JSON text extracted.")
+            return {}
+
+        # Attempt to parse using json_repair (most robust for LLM output)
         try:
-            result = json_repair.loads(text)
+            result = json_repair.loads(extracted_json_text)
             if isinstance(result, dict):
-                logger.warning(f"[{self.power_name}] Last resort json-repair succeeded, got dict.")
+                logger.debug(f"[{self.power_name}] Successfully parsed JSON with json_repair.")
                 return result
             else:
-                logger.warning(f"[{self.power_name}] Last resort json-repair succeeded, but got type {type(result)} instead of dict. Content: {str(result)[:200]}")
-                # If even the last resort doesn't give a dict, return empty dict
+                logger.warning(f"[{self.power_name}] json_repair parsed to {type(result)}, not dict. Content: {str(result)[:200]}")
                 return {}
         except Exception as e:
-            logger.error(f"[{self.power_name}] All JSON extraction attempts failed. Original text: {original_text[:500]}...")
+            logger.error(f"[{self.power_name}] json_repair failed: {e}. Original text: {original_text[:500]}...")
             return {}
-    
-    def _clean_json_text(self, text: str) -> str:
-        """Clean common JSON formatting issues from LLM responses."""
-        if not text:
-            return text
-            
-        # Remove trailing commas
-        text = re.sub(r',\s*}', '}', text)
-        text = re.sub(r',\s*]', ']', text)
-        
-        # Fix newlines before JSON keys
-        text = re.sub(r'\n\s+"(\w+)"\s*:', r'"\1":', text)
-        
-        # Replace single quotes with double quotes for keys
-        text = re.sub(r"'(\w+)'\s*:", r'"\1":', text)
-        
-        # Remove comments (if any)
-        text = re.sub(r'//.*$', '', text, flags=re.MULTILINE)
-        text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
-        
-        # Fix unescaped quotes in values (basic attempt)
-        # This is risky but sometimes helps with simple cases
-        text = re.sub(r':\s*"([^"]*)"([^",}\]]+)"', r': "\1\2"', text)
-        
-        # Remove any BOM or zero-width spaces
-        text = text.replace('\ufeff', '').replace('\u200b', '')
-        
-        return text.strip()
-
 
     def add_journal_entry(self, entry: str):
         """Adds a formatted entry string to the agent's private journal."""
