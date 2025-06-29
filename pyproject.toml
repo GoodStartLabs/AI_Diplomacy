@@ -8,6 +8,7 @@ dependencies = [
     "anthropic>=0.54.0",
     "bcrypt>=4.3.0",
     "coloredlogs>=15.0.1",
+    "diplomacy>=1.0.0,<2.0.0",
     "dotenv>=0.9.9",
     "google-genai>=1.21.1",
     "google-generativeai>=0.8.5",
