@@ -1152,15 +1152,17 @@ class TogetherAIClient(BaseModelClient):
     """
 
     def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
-        super().__init__(model_name, prompts_dir=prompts_dir)  # model_name here is the actual Together AI model identifier
+        # The model_name passed here is the full model_id (e.g., "together-llama-2-7b-chat")
+        super().__init__(model_name, prompts_dir=prompts_dir)
         self.api_key = os.environ.get("TOGETHER_API_KEY")
         if not self.api_key:
             raise ValueError("TOGETHER_API_KEY environment variable is required for TogetherAIClient")
         
-        # The model_name passed to super() is used for logging and identification.
-        # The actual model name for the API call is self.model_name (from super class).
+        # Extract the actual model name for the Together AI API call
+        together_api_model_name = model_name.split("together-", 1)[1] if model_name.startswith("together-") else model_name
         self.client = AsyncTogether(api_key=self.api_key)
-        logger.info(f"[{self.model_name}] Initialized TogetherAI client for model: {self.model_name}")
+        logger.info(f"[{self.model_name}] Initialized TogetherAI client for model: {together_api_model_name}")
+        self.together_api_model_name = together_api_model_name
 
     async def generate_response(self, prompt: str) -> str:
         """
@@ -1177,7 +1179,7 @@ class TogetherAIClient(BaseModelClient):
             # Ensure the model name used here is the one intended for the API,
             # which is self.model_name as set by BaseModelClient.__init__
             response = await self.client.chat.completions.create(
-                model=self.model_name,
+                model=self.together_api_model_name,
                 messages=messages,
                 # Consider adding max_tokens, temperature, etc. as needed
                 # max_tokens=2048, # Example
@@ -1222,9 +1224,8 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
         return OpenAIResponsesClient(model_id, prompts_dir=prompts_dir)
     # Check for OpenRouter first to handle prefixed models like openrouter-deepseek
     elif model_id.startswith("together-"):
-        actual_model_name = model_id.split("together-", 1)[1]
-        logger.info(f"Loading TogetherAI client for model: {actual_model_name} (original ID: {model_id})")
-        return TogetherAIClient(actual_model_name, prompts_dir=prompts_dir)
+        logger.info(f"Loading TogetherAI client for model: {model_id}")
+        return TogetherAIClient(model_id, prompts_dir=prompts_dir)
     elif "openrouter" in model_id.lower() or "/" in model_id: # More general check for OpenRouterClient(model_id)
         return OpenRouterClient(model_id, prompts_dir=prompts_dir)
     elif "claude" in lower_id:
