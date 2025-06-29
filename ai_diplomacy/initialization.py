@@ -4,7 +4,8 @@ import json
 from typing import Optional
 
 # Forward declaration for type hinting, actual imports in function if complex
-if False: # TYPE_CHECKING
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from diplomacy import Game
     from diplomacy.models.game import GameHistory
     from .agent import DiplomacyAgent
