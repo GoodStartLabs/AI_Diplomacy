@@ -333,7 +333,7 @@ async def initialize_new_game(
          if i < len(initialized_powers):
              power_name = initialized_powers[i]
              if isinstance(result, Exception):
-                 logger.error(f"Failed to initialize agent state for {power_name}: {result}", exc_info=result)
+                 logger.error(f"Failed to initialize agent state for {power_name}: {result}", exc_info=True)
              else:
                  logger.info(f"Successfully initialized agent state for {power_name}.")
     
