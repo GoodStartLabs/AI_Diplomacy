@@ -595,10 +595,6 @@ This project uses [uv](https://github.com/astral-sh/uv) for Python dependency ma
 #### Setup Project Dependencies
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-repo/AI_Diplomacy.git
-cd AI_Diplomacy
-
 # Install dependencies and create virtual environment
 uv sync
 
