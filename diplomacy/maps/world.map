@@ -1,0 +1,520 @@
+BEGIN SPRING 2000 MOVEMENT
+
+ARGENTINA           (ARGENTINIAN)       BAI CHI SCR
+A SCR
+F BAI
+F CHI
+
+BRAZIL              (BRAZILIAN)         BRA REC RDJ
+A BRA
+A RDJ
+F REC
+
+CHINA               (CHINESE)           BEI GUA SHA
+A BEI
+A SHA
+F GUA
+
+EUROPE              (EUROPEAN)          FRA GER ITA
+A GER
+F FRA/NC
+F ITA
+
+FROZEN-ANTARCTICA   (FROZEN)            CAS LEN MAW
+F CAS
+F LEN
+F MAW
+
+GHANA               (GHANAN)            GHA GUI MAL
+A GHA
+A MAL
+F GUI
+
+INDIA               (INDIAN)            BOM CLC DEL
+A CLC
+A DEL
+F BOM
+
+KENYA               (KENYAN)            UGA KEN TAN
+A KEN
+A UGA
+F TAN
+
+LIBYA               (LIBYAN)            EGY LIB NSU
+A LIB
+A NSU
+F EGY
+
+NEAR-EAST           (EASTERN:N)         IRQ SAR SYR
+A IRQ
+A SAR
+A SYR
+
+PACIFIC-RUSSIA      (PACIFIC)           ESI VLA YAK
+A ESI
+A VLA
+F YAK/SC
+
+QUEBEC              (QUEBECER)          ONT QBC NEW
+A QBC
+F NEW
+F ONT
+
+RUSSIA              (RUSSIAN)           BEL MOS STP
+A BEL
+A MOS
+A STP
+
+SOUTH-AFRICA        (SOUTH-AFRICAN)     NAM SAF SAN
+A NAM
+F SAN
+F SAF
+
+UNITED-STATES       (AMERICAN:U)        CLF FLO TEX
+A TEX
+F CLF
+F FLO
+
+WESTERN-CANADA      (CANADIAN:W)        BCO NWT YTE
+A YTE
+F BCO
+F NWT
+
+OZ                  (AUSTRALIAN:Z)      NSW VIC WAU
+F NSW
+F VIC
+F WAU
+
+UNOWNED                                 AFG ALA ALG ARM BAN BAT CHA COL CON ETH GBR GOD IND ITE JAP KOR LAN MAN
+UNOWNED                                 MEX MOR MOZ NZE PER SCA SHO SOP THA TRK UKR UNI URA VEN WSI ZAI ZAM
+
+
+Afghanistan                                 = AFG
+Austria-Hungary                             = AHU
+Alaska                                      = ALA
+Alberta                                     = ALB
+Algeria                                     = ALG
+Amazon                                      = AMA
+Angola                                      = ANG
+Arctic Circle                               = AOC
+Antarctic Penninsula                        = APE
+Armenia                                     = ARM
+Arabian Sea                                 = ASE
+Buenos Aires                                = BAI
+Balkans                                     = BAL
+Balkans (East Coast)                        = BAL/EC
+Balkans (South Coast)                       = BAL/SC
+Bangladesh                                  = BAN
+Barents Sea                                 = BAR
+Baltic Sea                                  = BAS
+British Antarctic Territory                 = BAT
+British Antarctic Territory (East Coast)    = BAT/EC
+British Antarctic Territory (West Coast)    = BAT/WC
+British Columbia                            = BCO
+Beijing                                     = BEI
+Belorussia                                  = BEL
+Beaufort Sea                                = BFS
+Belo Horizonte                              = BHO
+Baffin Island                               = BIS
+Black Sea                                   = BLA
+Bay of Bengal                               = BOB
+Bolivia                                     = BOL
+Bombay                                      = BOM
+Botswana                                    = BOT
+Brasillia                                   = BRA
+Bering Strait                               = BRS
+Baltic States                               = BST
+Burma                                       = BUR
+Cameroon                                    = CAM
+Central African Republic                    = CAR
+Casey                                       = CAS
+Central America                             = CEN
+Chad                                        = CHA
+Chile                                       = CHI
+Carribean Islands                           = CIS
+Calcutta                                    = CLC
+California                                  = CLF
+Colombia                                    = COL
+Colombia (North Coast)                      = COL/NC
+Colombia (West Coast)                       = COL/WC
+Congo                                       = CON
+Central Pacific Ocean                       = CPO
+Carribean Sea                               = CSE
+Delhi                                       = DEL
+Dumont dUrville                             = DMV
+Deep South                                  = DSO
+East Atlantic Ocean                         = EAO
+Egypt                                       = EGY
+East Pacific                                = EPA
+East Siberia                                = ESI
+East Siberian Sea                           = ESS
+Ethiopia                                    = ETH
+Florida                                     = FLO
+France                                      = FRA
+France (North Coast)                        = FRA/NC
+France (South Coast)                        = FRA/SC
+Great Britain                               = GBR
+Germany                                     = GER
+Province of Ghana                           = GHA Ghana?
+Godthab                                     = GOD
+Gulf of Mexico                              = GOM
+Guangzhou                                   = GUA
+Guinea                                      = GUI
+Guyana                                      = GUY
+Hudson Bay                                  = HBA
+Heilongjiang                                = HEI
+Inner Mongolia                              = IMO
+Indonesia                                   = IND
+Iran                                        = IRA
+Irkutsk                                     = IRK
+Iraq                                        = IRQ
+Italy                                       = ITA
+Indian Territory                            = ITE
+Japan                                       = JAP
+Java Sea                                    = JSE
+Kamchatka                                   = KAM
+Kazakhstan                                  = KAZ
+Province of Kenya                           = KEN kenya?
+Korea                                       = KOR
+Kyrgyzstan                                  = KYR
+Lanzhou                                     = LAN
+Leningradskaya                              = LEN
+Province of Libya                           = LIB libya?
+Labrador Sea                                = LSE
+Madagascar                                  = MAD
+Mali                                        = MAL
+Manitoba                                    = MAN
+Mauritania                                  = MAU
+Mawson                                      = MAW
+Marie Byrd Land                             = MBL
+Mozambique Channel                          = MCH
+Mediterranean                               = MED
+Mendoza                                     = MEN
+Mexico                                      = MEX
+Mexico (East Coast)                         = MEX/EC
+Mexico (West Coast)                         = MEX/WC
+Midwest                                     = MID
+Mongolia                                    = MNG
+Monterrey                                   = MNT
+Monterrey (East Coast)                      = MNT/EC
+Monterrey (West Coast)                      = MNT/WC
+Morocco                                     = MOR
+Moscow                                      = MOS
+Mozambique                                  = MOZ
+Namibia                                     = NAM
+Norwegian Dependency                        = NDE
+Northeast Atlantic                          = NEA
+Northeast Indian                            = NEI
+Northeast Pacific                           = NEP
+Nevada                                      = NEV
+NewfoundLand                                = NEW
+Nigeria                                     = NGA
+Niger                                       = NGR
+Novolazarevskaya                            = NOV
+North Pacific Ocean                         = NPO
+North Sudan                                 = NSU
+New South Wales                             = NSW
+Northern Territory                          = NTE
+North Sea                                   = NTH
+Northwest Atlantic                          = NWA
+Norwegian Sea                               = NWG
+Northwest Indian                            = NWI
+Northwest Pacific                           = NWP
+Northwest Territories                       = NWT
+New Zealand                                 = NZE
+Omsk                                        = OMS
+Ontario                                     = ONT
+Pakistan                                    = PAK
+Peru                                        = PER
+Phillipines                                 = PHI
+Pacific Islands                             = PIS
+Poland                                      = POL
+Province of Quebec                          = QBC quebec?
+Province of Quebec (North Coast)            = QBC/NC
+Province of Quebec (South Coast)            = QBC/SC
+Queensland                                  = QSL
+Rio de Janeiro                              = RDJ
+Recife                                      = REC
+Ross Ice Shelf                              = RIS
+Red Sea                                     = RSE
+South Africa                                = SAF
+Salvador                                    = SAL
+Sanae IV                                    = SAN
+Sao Paulo                                   = SAO
+Saudi Arabia                                = SAR
+Saudi Arabia (North Coast)                  = SAR/NC
+Saudi Arabia (South Coast)                  = SAR/SC
+Saskatchewan                                = SAS
+South Australia                             = SAU
+Skandanavia                                 = SCA
+Santa Cruz                                  = SCR
+South China Sea                             = SCS
+Southeast Atlantic                          = SEA
+Southeast Indian                            = SEI
+Southeast Pacific                           = SEP
+Shanghai                                    = SHA
+Syowa                                       = SHO
+Southern Indian Ocean                       = SIO
+Sea of Japan                                = SOJ
+Somalia                                     = SOM
+Sea of Othoksk                              = SOO
+South Pole                                  = SOP
+Spain                                       = SPA
+South Pacific Ocean                         = SPO
+South Sudan                                 = SSU
+Saint Petersburg                            = STP
+Saint Petersburg (North Coast)              = STP/NC
+Saint Petersburg (South Coast)              = STP/SC
+Southwest Atlantic                          = SWA
+Southwest Indian                            = SWI
+Southwest Pacific                           = SWP
+Syria                                       = SYR
+Tajikistan                                  = TAJ
+Tanzania                                    = TAN
+Texas                                       = TEX
+Thailand                                    = THA
+Thule                                       = THU
+Tibet                                       = TIB
+Turkmenistan                                = TKM
+Turkey                                      = TRK
+Tasman Sea                                  = TSE
+Uganda                                      = UGA
+Ukraine                                     = UKR
+Union                                       = UNI
+Uruguay                                     = URA
+Uzbekistan                                  = UZB
+Venezuela                                   = VEN
+Victoria                                    = VIC
+Vietnam                                     = VIE
+Vladivostok                                 = VLA
+Vostok                                      = VOS
+West Atlantic Ocean                         = WAO
+Western Australia                           = WAU
+Western China                               = WCH
+West Pacific Ocean                          = WPO
+West Siberia                                = WSI
+Yakutsk                                     = YAK
+Yakutsk (North Coast)                       = YAK/NC
+Yakutsk (South Coast)                       = YAK/SC
+Yellow Sea                                  = YSE
+Yukon Territory                             = YTE
+Yukon Territory (North Coast)               = YTE/NC
+Yukon Territory (South Coast)               = YTE/SC
+Zaire                                       = ZAI
+Zambia                                      = ZAM
+Zimbabwe                                    = ZIM
+
+LAND  AFG       ABUTS   IRA PAK TAJ TKM UZB WCH
+COAST AHU       ABUTS   BAL/SC ger ITA MED pol ukr
+COAST ALA       ABUTS   AOC BFS BRS NPO YTE/NC YTE/SC
+LAND  ALB       ABUTS   BCO ITE NWT SAS
+COAST ALG       ABUTS   LIB MAL mau MED MOR NEA NGR
+LAND  AMA       ABUTS   BOL BRA COL PER VEN
+COAST ANG       ABUTS   CON EAO NAM ZAI ZAM
+WATER AOC       ABUTS   ALA BAR BFS BRS ESS KAM YAK/NC
+COAST APE       ABUTS   BAT/EC BAT/WC SEP SWA
+COAST ARM       ABUTS   BLA ira MOS TRK
+WATER ASE       ABUTS   BOM IRA IRQ NWI PAK RSE SAR/SC SOM
+COAST BAI       ABUTS   MEN SCR SWA URA WAO
+COAST bal       ABUTS   AHU BLA MED TRK UKR
+COAST BAL/EC    ABUTS   BLA TRK UKR
+COAST BAL/SC    ABUTS   AHU MED TRK
+COAST BAN       ABUTS   BOB BUR CLC LAN
+WATER BAR       ABUTS   AOC BFS ESS GOD NWG SCA STP/NC THU WSI
+WATER BAS       ABUTS   BST GER NTH POL SCA STP/SC
+COAST bat       ABUTS   APE MBL NDE SAN SEP SOP SWA
+COAST BAT/EC    ABUTS   APE SAN SWA
+COAST BAT/WC    ABUTS   APE MBL SEP
+COAST BCO       ABUTS   ALB ITE NPO nwt YTE/SC
+COAST BEI       ABUTS   HEI IMO KOR LAN SHA YSE
+LAND  BEL       ABUTS   BST MOS POL STP UKR
+WATER BFS       ABUTS   ALA AOC BAR BIS HBA LSE NWT THU YTE/NC
+LAND  BHO       ABUTS   BRA RDJ SAL
+COAST BIS       ABUTS   BFS HBA LSE
+WATER BLA       ABUTS   ARM BAL/EC MOS TRK UKR
+WATER BOB       ABUTS   BAN BOM BUR CLC NEI THA
+LAND  BOL       ABUTS   AMA BRA CHI MEN PER SAO
+COAST BOM       ABUTS   ASE BOB CLC DEL NEI NWI PAK
+LAND  BOT       ABUTS   NAM SAF ZIM
+LAND  BRA       ABUTS   AMA BHO BOL GUY RDJ REC SAL SAO VEN
+WATER BRS       ABUTS   ALA AOC KAM NPO NWP
+COAST BST       ABUTS   BAS BEL POL STP/SC
+COAST BUR       ABUTS   BAN BOB LAN THA vie
+COAST CAM       ABUTS   CAR CHA CON EAO NGA
+LAND  CAR       ABUTS   CAM CHA CON SSU ZAI
+COAST CAS       ABUTS   DMV SEI VOS
+COAST CEN       ABUTS   COL/NC COL/WC CSE MEX/EC MEX/WC NEP
+LAND  CHA       ABUTS   CAM CAR LIB NGA NGR NSU SSU
+COAST CHI       ABUTS   BOL EPA MEN PER SCR SEP SWA
+COAST CIS       ABUTS   CSE GOM NWA
+COAST CLC       ABUTS   BAN BOB BOM DEL LAN TIB
+COAST CLF       ABUTS   ITE MNT/WC NEV NPO
+COAST col       ABUTS   AMA CEN CSE NEP PER VEN
+COAST COL/NC    ABUTS   CEN CSE VEN
+COAST COL/WC    ABUTS   CEN NEP PER
+COAST CON       ABUTS   ANG CAM CAR EAO ZAI
+WATER CPO       ABUTS   NEP NPO NWP PIS WPO
+WATER CSE       ABUTS   CEN CIS COL/NC GOM MEX/EC NWA VEN
+LAND  DEL       ABUTS   BOM CLC PAK TIB WCH
+COAST DMV       ABUTS   CAS LEN NDE SEI vos
+COAST DSO       ABUTS   FLO GOM MID NEV TEX uni
+WATER EAO       ABUTS   ANG CAM CON GHA GUI MAU NAM NEA NGA SAF SEA SWA WAO
+COAST EGY       ABUTS   LIB MED NSU RSE SAR/NC SAR/SC
+WATER EPA       ABUTS   CHI NEP PER PIS SEP SPO
+COAST ESI       ABUTS   ESS IRK OMS WSI YAK/NC
+WATER ESS       ABUTS   AOC BAR ESI WSI YAK/NC
+COAST ETH       ABUTS   ken NSU RSE SOM SSU
+COAST FLO       ABUTS   DSO GOM NWA UNI
+COAST fra       ABUTS   GER ITA MED NEA NTH SPA
+COAST FRA/NC    ABUTS   GER NEA NTH SPA
+COAST FRA/SC    ABUTS   ITA MED SPA
+COAST GBR       ABUTS   NEA NTH NWG
+COAST GER       ABUTS   ahu BAS FRA/NC ita NTH POL
+COAST GHA       ABUTS   EAO GUI MAL NGA NGR
+COAST GOD       ABUTS   BAR LSE NWG THU
+WATER GOM       ABUTS   CIS CSE DSO FLO MEX/EC MNT/EC NWA TEX
+COAST GUA       ABUTS   LAN SCS SHA VIE YSE
+COAST GUI       ABUTS   EAO GHA MAL MAU
+COAST GUY       ABUTS   BRA NWA REC VEN
+WATER HBA       ABUTS   BFS BIS LSE MAN NEW NWT ONT QBC/NC
+LAND  HEI       ABUTS   BEI IMO KOR VLA
+LAND  IMO       ABUTS   BEI HEI IRK LAN MNG VLA WCH
+COAST IND       ABUTS   JSE NEI PIS SCS WPO
+COAST IRA       ABUTS   AFG arm ASE IRQ PAK TKM trk
+LAND  IRK       ABUTS   ESI IMO MNG OMS VLA YAK
+COAST IRQ       ABUTS   ASE IRA SAR/SC syr trk
+COAST ITA       ABUTS   AHU FRA/SC ger MED
+COAST ITE       ABUTS   ALB BCO CLF MID NEV NPO SAS
+COAST JAP       ABUTS   NWP SOJ SOO WPO YSE
+WATER JSE       ABUTS   IND NEI NTE PIS QSL WAU
+COAST KAM       ABUTS   AOC BRS NWP SOO YAK/NC YAK/SC
+LAND  KAZ       ABUTS   KYR MNG MOS OMS TKM UZB WCH WSI
+COAST KEN       ABUTS   eth NWI SOM SSU TAN UGA
+COAST KOR       ABUTS   BEI HEI SOJ VLA YSE
+LAND  KYR       ABUTS   KAZ TAJ UZB WCH
+LAND  LAN       ABUTS   BAN BEI BUR CLC GUA IMO SHA TIB VIE WCH
+COAST LEN       ABUTS   DMV NDE RIS SEI SOP SWP
+COAST LIB       ABUTS   ALG CHA EGY MED NGR nsu
+WATER LSE       ABUTS   BFS BIS GOD HBA NEA NEW NWA NWG THU
+COAST MAD       ABUTS   MCH NWI SWI
+LAND  MAL       ABUTS   ALG GHA GUI MAU NGR
+COAST MAN       ABUTS   HBA MID NWT ONT SAS
+COAST MAU       ABUTS   alg EAO GUI MAL MOR NEA
+COAST MAW       ABUTS   NDE SHO SIO SWI VOS
+COAST MBL       ABUTS   BAT/WC RIS SEP SOP SPO
+WATER MCH       ABUTS   MAD MOZ NWI SAF SWI TAN
+WATER MED       ABUTS   AHU ALG BAL/SC EGY FRA/SC ITA LIB NEA SAR/NC SPA SYR TRK
+LAND  MEN       ABUTS   BAI BOL CHI SAO SCR URA
+COAST mex       ABUTS   CEN CSE GOM MNT NEP
+COAST MEX/EC    ABUTS   CEN CSE GOM MNT/EC
+COAST MEX/WC    ABUTS   CEN MNT/WC NEP
+LAND  MID       ABUTS   DSO ITE MAN NEV ONT SAS UNI
+LAND  MNG       ABUTS   IMO IRK KAZ OMS WCH
+COAST mnt       ABUTS   CLF GOM MEX NEP NEV NPO TEX
+COAST MNT/EC    ABUTS   GOM MEX/EC TEX
+COAST MNT/WC    ABUTS   CLF MEX/WC NEP NPO
+COAST MOR       ABUTS   ALG MAU NEA
+COAST MOS       ABUTS   ARM BEL BLA KAZ stp UKR wsi
+COAST MOZ       ABUTS   MCH SAF TAN ZAM ZIM
+COAST NAM       ABUTS   ANG BOT EAO SAF ZAM ZIM
+LAND  NDE       ABUTS   BAT DMV LEN MAW NOV SAN SHO SOP VOS
+WATER NEA       ABUTS   ALG EAO FRA/NC GBR LSE MAU MED MOR NTH NWA NWG SPA WAO
+WATER NEI       ABUTS   BOB BOM IND JSE NWI SCS SEI SIO THA WAU
+WATER NEP       ABUTS   CEN COL/WC CPO EPA MEX/WC MNT/WC NPO PER PIS
+LAND  NEV       ABUTS   CLF DSO ITE MID MNT TEX
+COAST NEW       ABUTS   HBA LSE NWA QBC/NC QBC/SC
+COAST NGA       ABUTS   CAM CHA EAO GHA NGR
+LAND  NGR       ABUTS   ALG CHA GHA LIB MAL NGA
+COAST NOV       ABUTS   NDE SAN SEA SHO
+WATER NPO       ABUTS   ALA BCO BRS CLF CPO ITE MNT/WC NEP NWP YTE/SC
+COAST NSU       ABUTS   CHA EGY ETH lib RSE SSU
+COAST NSW       ABUTS   QSL sau TSE VIC
+COAST NTE       ABUTS   JSE QSL sau WAU
+WATER NTH       ABUTS   BAS FRA/NC GBR GER NEA NWG SCA
+WATER NWA       ABUTS   CIS CSE FLO GOM GUY LSE NEA NEW QBC/SC REC UNI VEN WAO
+WATER NWG       ABUTS   BAR GBR GOD LSE NEA NTH SCA
+WATER NWI       ABUTS   ASE BOM KEN MAD MCH NEI SIO SOM SWI TAN
+WATER NWP       ABUTS   BRS CPO JAP KAM NPO SOO WPO
+COAST NWT       ABUTS   ALB bco BFS HBA MAN SAS YTE/NC
+COAST NZE       ABUTS   PIS SWP TSE
+LAND  OMS       ABUTS   ESI IRK KAZ MNG WSI
+COAST ONT       ABUTS   HBA MAN MID QBC/NC uni
+COAST PAK       ABUTS   AFG ASE BOM DEL IRA WCH
+COAST PER       ABUTS   AMA BOL CHI COL/WC EPA NEP
+COAST PHI       ABUTS   SCS WPO YSE
+WATER PIS       ABUTS   CPO EPA IND JSE NEP NZE QSL SPO SWP TSE WPO
+COAST POL       ABUTS   ahu BAS BEL BST GER ukr
+COAST qbc       ABUTS   HBA NEW NWA ONT UNI
+COAST QBC/NC    ABUTS   HBA NEW ONT
+COAST QBC/SC    ABUTS   NEW NWA UNI
+COAST QSL       ABUTS   JSE NSW NTE PIS sau TSE
+COAST RDJ       ABUTS   BHO BRA SAL SAO WAO
+COAST REC       ABUTS   BRA GUY NWA SAL WAO
+COAST RIS       ABUTS   LEN MBL SOP SPO SWP
+WATER RSE       ABUTS   ASE EGY ETH NSU SAR/SC SOM
+COAST SAF       ABUTS   BOT EAO MCH MOZ NAM SEA SWI ZIM
+COAST SAL       ABUTS   BHO BRA RDJ REC WAO
+COAST SAN       ABUTS   BAT/EC NDE NOV SEA SWA
+COAST SAO       ABUTS   BOL BRA MEN RDJ URA WAO
+COAST sar       ABUTS   ASE EGY IRQ MED RSE SYR
+COAST SAR/NC    ABUTS   EGY MED SYR
+COAST SAR/SC    ABUTS   ASE EGY IRQ RSE
+LAND  SAS       ABUTS   ALB ITE MAN MID NWT
+COAST SAU       ABUTS   nsw nte qsl SEI VIC WAU
+COAST SCA       ABUTS   BAR BAS NTH NWG STP/NC STP/SC
+COAST SCR       ABUTS   BAI CHI MEN SWA
+WATER SCS       ABUTS   GUA IND NEI PHI THA VIE WPO YSE
+WATER SEA       ABUTS   EAO NOV SAF SAN SHO SWA SWI
+WATER SEI       ABUTS   CAS DMV LEN NEI SAU SIO SWP VIC VOS WAU
+WATER SEP       ABUTS   APE BAT/WC CHI EPA MBL SPO SWA
+COAST SHA       ABUTS   BEI GUA LAN YSE
+COAST SHO       ABUTS   MAW NDE NOV SEA SWI
+WATER SIO       ABUTS   MAW NEI NWI SEI SWI VOS
+WATER SOJ       ABUTS   JAP KOR SOO VLA YSE
+COAST SOM       ABUTS   ASE ETH KEN NWI RSE
+WATER SOO       ABUTS   JAP KAM NWP SOJ VLA YAK/SC
+LAND  SOP       ABUTS   BAT LEN MBL NDE RIS
+COAST SPA       ABUTS   FRA/NC FRA/SC MED NEA
+WATER SPO       ABUTS   EPA MBL PIS RIS SEP SWP
+LAND  SSU       ABUTS   CAR CHA ETH KEN NSU UGA ZAI
+COAST stp       ABUTS   BAR BAS BEL BST MOS SCA WSI
+COAST STP/NC    ABUTS   BAR SCA WSI
+COAST STP/SC    ABUTS   BAS BST SCA
+WATER SWA       ABUTS   APE BAI BAT/EC CHI EAO SAN SCR SEA SEP WAO
+WATER SWI       ABUTS   MAD MAW MCH NWI SAF SEA SHO SIO
+WATER SWP       ABUTS   LEN NZE PIS RIS SEI SPO TSE VIC
+COAST SYR       ABUTS   irq MED SAR/NC TRK
+LAND  TAJ       ABUTS   AFG KYR UZB WCH
+COAST TAN       ABUTS   KEN MCH MOZ NWI UGA ZAI ZAM
+COAST TEX       ABUTS   DSO GOM MNT/EC NEV
+COAST THA       ABUTS   BOB BUR NEI SCS VIE
+COAST THU       ABUTS   BAR BFS GOD LSE
+LAND  TIB       ABUTS   CLC DEL LAN WCH
+LAND  TKM       ABUTS   AFG IRA KAZ UZB
+COAST TRK       ABUTS   ARM BAL/EC BAL/SC BLA ira irq MED SYR
+WATER TSE       ABUTS   NSW NZE PIS QSL SWP VIC
+LAND  UGA       ABUTS   KEN SSU TAN ZAI
+COAST UKR       ABUTS   ahu BAL/EC BEL BLA MOS pol
+COAST UNI       ABUTS   dso FLO MID NWA ont QBC/SC
+COAST URA       ABUTS   BAI MEN SAO WAO
+LAND  UZB       ABUTS   AFG KAZ KYR TAJ TKM
+COAST VEN       ABUTS   AMA BRA COL/NC CSE GUY NWA
+COAST VIC       ABUTS   NSW SAU SEI SWP TSE
+COAST VIE       ABUTS   bur GUA LAN SCS THA
+COAST VLA       ABUTS   HEI IMO IRK KOR SOJ SOO YAK/SC
+COAST VOS       ABUTS   CAS dmv MAW NDE SEI SIO
+WATER WAO       ABUTS   BAI EAO NEA NWA RDJ REC SAL SAO SWA URA
+COAST WAU       ABUTS   JSE NEI NTE SAU SEI
+LAND  WCH       ABUTS   AFG DEL IMO KAZ KYR LAN MNG PAK TAJ TIB
+WATER WPO       ABUTS   CPO IND JAP NWP PHI PIS SCS YSE
+COAST WSI       ABUTS   BAR ESI ESS KAZ mos OMS STP/NC
+COAST yak       ABUTS   AOC ESI ESS IRK KAM SOO VLA
+COAST YAK/NC    ABUTS   AOC ESI ESS KAM
+COAST YAK/SC    ABUTS   KAM SOO VLA
+WATER YSE       ABUTS   BEI GUA JAP KOR PHI SCS SHA SOJ WPO
+COAST yte       ABUTS   ALA BCO BFS NPO NWT
+COAST YTE/NC    ABUTS   ALA BFS NWT
+COAST YTE/SC    ABUTS   ALA BCO NPO
+LAND  ZAI       ABUTS   ANG CAR CON SSU TAN UGA ZAM
+LAND  ZAM       ABUTS   ANG MOZ NAM TAN ZAI ZIM
+LAND  ZIM       ABUTS   BOT MOZ NAM SAF ZAM

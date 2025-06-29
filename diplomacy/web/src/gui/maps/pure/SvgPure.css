@@ -1,0 +1,19 @@
+/**
+==============================================================================
+Copyright (C) 2019 - Philip Paquette, Steven Bocco
+
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU Affero General Public License as published by the Free
+ Software Foundation, either version 3 of the License, or (at your option) any
+ later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+ details.
+
+ You should have received a copy of the GNU Affero General Public License along
+ with this program.  If not, see <https:www.gnu.org/licenses/>.
+==============================================================================
+**/
+/* text */ .SvgPure svg { font-size: 100% } .SvgPure .labeltext {stroke-width:0.1; stroke:black; fill:black;} .SvgPure .currentnotetext {font-family:serif,sans-serif; font-size:1.5em; fill:black; stroke:black;} .SvgPure .currentphasetext {font-family:serif,sans-serif; fill:black; stroke:black;} /* invisible click rects fill:none does not work */ .SvgPure .invisibleContent {stroke:#000000; fill:#000000; fill-opacity:0.0; opacity:0.0} /* default region coloring, by power */ .SvgPure .provinceRed {fill:url(#patternRed); stroke: black; stroke-width: 2} .SvgPure .provinceBrown {fill:url(#patternBrown); stroke: black; stroke-width: 2} .SvgPure .provinceGreen {fill:url(#patternGreen); stroke: black; stroke-width: 2} .SvgPure .provinceBlack {fill:url(#patternBlack); stroke: black; stroke-width: 2} .SvgPure .provinceBlue {fill:url(#patternBlue); stroke: black; stroke-width: 2} .SvgPure .nopower {fill:antiquewhite; stroke:#000000; stroke-width:2} .SvgPure .water {fill:#c5dfea; stroke:#000000; stroke-width:2} .SvgPure .austria {fill:#c48f85; stroke:#000000; stroke-width:2} .SvgPure .england {fill:darkviolet; stroke:#000000; stroke-width:2} .SvgPure .france {fill:royalblue; stroke:#000000; stroke-width:2} .SvgPure .germany {fill:#a08a75; stroke:#000000; stroke-width:2} .SvgPure .italy {fill:forestgreen; stroke:#000000; stroke-width:2} .SvgPure .russia {fill:#757d91; stroke:#000000; stroke-width:2} .SvgPure .turkey {fill:#b9a61c; stroke:#000000; stroke-width:2} /* unit colors, by power note that underscores are not supported */ .SvgPure .unitaustria {fill:red; fill-opacity:0.85} .SvgPure .unitengland {fill:mediumpurple; fill-opacity:0.85} .SvgPure .unitfrance {fill:deepskyblue; fill-opacity:0.85} .SvgPure .unitgermany {fill:dimgray; fill-opacity:0.85} .SvgPure .unititaly {fill:olive; fill-opacity:0.85} .SvgPure .unitrussia {fill:white; fill-opacity:1.0} .SvgPure .unitturkey {fill:yellow; fill-opacity:0.85} /* order drawing styles, stroke and fill colors should not be specified */ .SvgPure .supportorder {stroke-width:6; fill:none; stroke-dasharray:5,5;} .SvgPure .convoyorder {stroke-dasharray:15,5; stroke-width:6; fill:none;} .SvgPure .shadowdash {stroke-width:10; fill:none; stroke:black; opacity:0.45;} .SvgPure .varwidthorder {fill:none;} .SvgPure .varwidthshadow {fill:none; stroke:black;}

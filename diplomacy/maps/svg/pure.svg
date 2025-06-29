@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "svg.dtd">
+<svg width="500px" height="500px" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"  xmlns:xlink="http://www.w3.org/1999/xlink" text-rendering="optimizeLegibility" preserveAspectRatio="xMinYMin" xmlns:jdipNS="svg.dtd">
+
+    <jdipNS:DISPLAY>
+        <jdipNS:ZOOM min="5" max="1000" factor="1.2" />
+        <jdipNS:LABELS brief="false" full="false" />
+    </jdipNS:DISPLAY>
+
+    <jdipNS:ORDERDRAWING>
+        <jdipNS:POWERCOLORS>
+            <jdipNS:POWERCOLOR power="austria" color="#DA251D" />
+            <jdipNS:POWERCOLOR power="england" color="#2D77B2" />
+            <jdipNS:POWERCOLOR power="france" color="#8E85B7" />
+            <jdipNS:POWERCOLOR power="germany" color="#666666" />
+            <jdipNS:POWERCOLOR power="italy" color="#40A340" />
+            <jdipNS:POWERCOLOR power="russia" color="#EEF0E9" />
+            <jdipNS:POWERCOLOR power="turkey" color="#E9F507" />
+        </jdipNS:POWERCOLORS>
+
+        <jdipNS:SYMBOLSIZE name="Fleet" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="Army" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="Wing" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="DislodgedFleet" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="DislodgedArmy" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="DislodgedWing" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="FailedOrder" width="30" height="30"/>
+        <jdipNS:SYMBOLSIZE name="SupplyCenter" width="20" height="20"/>
+        <jdipNS:SYMBOLSIZE name="BuildUnit" width="60" height="60"/>
+        <jdipNS:SYMBOLSIZE name="RemoveUnit" width="50" height="50"/>
+        <jdipNS:SYMBOLSIZE name="WaivedBuild" width="40" height="40"/>
+        <jdipNS:SYMBOLSIZE name="HoldUnit" width="66.6" height="66.6"/>
+        <jdipNS:SYMBOLSIZE name="SupportHoldUnit" width="76.6" height="76.6"/>
+        <jdipNS:SYMBOLSIZE name="ConvoyTriangle" width="66.4" height="57.4"/>
+        <!-- Special symbol size to contain stroke width for plain (in "height") and power-colored lines (in "width") -->
+        <jdipNS:SYMBOLSIZE name="Stroke" width="6" height="10"/>
+    </jdipNS:ORDERDRAWING>
+
+    <jdipNS:PROVINCE_DATA>
+        <jdipNS:PROVINCE name="ber">
+            <jdipNS:UNIT x="362.5" y="864.0"/>
+            <jdipNS:DISLODGED_UNIT x="374.5" y="852.0"/>
+        </jdipNS:PROVINCE>
+        <jdipNS:PROVINCE name="con">
+            <jdipNS:UNIT x="412.5" y="98.0"/>
+            <jdipNS:DISLODGED_UNIT x="424.5" y="86.0"/>
+        </jdipNS:PROVINCE>
+        <jdipNS:PROVINCE name="lon">
+            <jdipNS:UNIT x="878.5" y="514.0"/>
+            <jdipNS:DISLODGED_UNIT x="890.5" y="502.0"/>
+        </jdipNS:PROVINCE>
+        <jdipNS:PROVINCE name="mos">
+            <jdipNS:UNIT x="140.5" y="289.0"/>
+            <jdipNS:DISLODGED_UNIT x="152.5" y="277.0"/>
+        </jdipNS:PROVINCE>
+        <jdipNS:PROVINCE name="par">
+            <jdipNS:UNIT x="707.5" y="815.0"/>
+            <jdipNS:DISLODGED_UNIT x="719.5" y="803.0"/>
+        </jdipNS:PROVINCE>
+        <jdipNS:PROVINCE name="rom">
+            <jdipNS:UNIT x="116.5" y="628.0"/>
+            <jdipNS:DISLODGED_UNIT x="128.5" y="616.0"/>
+        </jdipNS:PROVINCE>
+        <jdipNS:PROVINCE name="vie">
+            <jdipNS:UNIT x="750.5" y="195.0"/>
+            <jdipNS:DISLODGED_UNIT x="762.5" y="183.0"/>
+        </jdipNS:PROVINCE>
+    </jdipNS:PROVINCE_DATA>
+
+    <title>Pure</title>
+      <defs>
+        <style type="text/css"><![CDATA[
+
+        /* text */
+        svg { font-size: 100% }
+        .labeltext {stroke-width:0.1; stroke:black; fill:black;}
+        .currentnotetext {font-family:serif,sans-serif; font-size:1.5em; fill:black; stroke:black;}
+        .currentphasetext {font-family:serif,sans-serif; fill:black; stroke:black;}
+
+        /* invisible click rects fill:none does not work */
+
+        .invisibleContent {stroke:#000000; fill:#000000; fill-opacity:0.0; opacity:0.0}
+
+        /* default region coloring, by power */
+
+        .provinceRed {fill:url(#patternRed); stroke: black; stroke-width: 2}
+        .provinceBrown {fill:url(#patternBrown); stroke: black; stroke-width: 2}
+        .provinceGreen {fill:url(#patternGreen); stroke: black; stroke-width: 2}
+        .provinceBlack {fill:url(#patternBlack); stroke: black; stroke-width: 2}
+        .provinceBlue {fill:url(#patternBlue); stroke: black; stroke-width: 2}
+
+        .nopower {fill:antiquewhite;    stroke:#000000; stroke-width:2}
+        .water {fill:#c5dfea; stroke:#000000; stroke-width:2}
+
+        .austria {fill:#c48f85; stroke:#000000; stroke-width:2}
+        .england {fill:darkviolet; stroke:#000000; stroke-width:2}
+        .france {fill:royalblue; stroke:#000000; stroke-width:2}
+        .germany {fill:#a08a75; stroke:#000000; stroke-width:2}
+        .italy {fill:forestgreen; stroke:#000000; stroke-width:2}
+        .russia {fill:#757d91; stroke:#000000; stroke-width:2}
+        .turkey {fill:#b9a61c; stroke:#000000; stroke-width:2}
+
+        /* unit colors, by power note that underscores are not supported */
+
+        .unitaustria {fill:red; fill-opacity:0.85}
+        .unitengland {fill:mediumpurple; fill-opacity:0.85}
+        .unitfrance {fill:deepskyblue; fill-opacity:0.85}
+        .unitgermany {fill:dimgray; fill-opacity:0.85}
+        .unititaly {fill:olive; fill-opacity:0.85}
+        .unitrussia {fill:white; fill-opacity:1.0}
+        .unitturkey {fill:yellow; fill-opacity:0.85}
+
+        /* order drawing styles, stroke and fill colors should not be specified */
+
+        .supportorder {stroke-width:6; fill:none; stroke-dasharray:5,5;}
+        .convoyorder {stroke-dasharray:15,5; stroke-width:6; fill:none;}
+        .shadowdash {stroke-width:10; fill:none; stroke:black; opacity:0.45;}
+        .varwidthorder {fill:none;}
+        .varwidthshadow {fill:none; stroke:black;}
+
+        ]]></style>
+
+        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="strokeWidth" markerWidth="4" markerHeight="3" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" />
+        </marker>
+
+        <!-- NON UNIT SYMBOLS -->
+
+        <!-- Currently unused. -->
+        <symbol id="WaivedBuild" viewBox="0 0 100 100" overflow="visible">
+               <linearGradient x1="15" y1="100" x2="100" y2="10" id="symWBGradient" gradientUnits="userSpaceOnUse">
+                <stop offset="20%" stop-color="yellow" stop-opacity="1"/>
+                <stop offset="95%" stop-color="yellow" stop-opacity="0"/>
+            </linearGradient>
+               <linearGradient x1="15" y1="100" x2="100" y2="10" id="symShadowWBGradient" gradientUnits="userSpaceOnUse">
+                <stop offset="20%" stop-color="black" stop-opacity="0.5"/>
+                <stop offset="90%" stop-color="black" stop-opacity="0"/>
+            </linearGradient>
+            <g>
+                <polygon transform="translate(1 7)" fill="url(#symShadowWBGradient)" points="40,100 100,35 95,30 40,85 13,65 10,70"/>
+                <polygon stroke="black" stroke-width="0.5" fill="url(#symWBGradient)" points="40,100 100,35 90,20 40,85 13,65 10,70"/>
+            </g>
+        </symbol>
+
+        <symbol id="BuildUnit" viewBox="-23.5 -23.5 153 153" overflow="visible">
+            <g>
+                <g transform="translate(6 6)" fill="none" stroke="black" opacity="0.5" stroke-width="7">
+                    <circle cx="50" cy="50" r="10"/>
+                    <circle cx="50" cy="50" r="30"/>
+                    <circle cx="50" cy="50" r="50"/>
+                    <circle cx="50" cy="50" r="70"/>
+                </g>
+                <g stroke="yellow" stroke-width="7" fill="none">
+                    <circle cx="50" cy="50" r="10"/>
+                    <circle cx="50" cy="50" r="30"/>
+                    <circle cx="50" cy="50" r="50"/>
+                    <circle cx="50" cy="50" r="70"/>
+                </g>
+            </g>
+        </symbol>
+
+        <symbol id="RemoveUnit" viewBox="-2.5 -2.5 15.5 15.5" overflow="visible">
+            <g stroke="red" stroke-width="1" fill="none">
+                <circle cx="5" cy="5" r="7"/>
+                <line x1="-2" y1="-2" x2="12" y2="12"/>
+                <line x1="-2" y1="12" x2="12" y2="-2"/>
+            </g>
+        </symbol>
+
+        <!-- Currently unused. -->
+        <symbol id="FailedOrder" viewBox="0 0 35 35" overflow="visible">
+            <g>
+                <polygon transform="translate(3.5,3.5)" class="shadow" stroke-width="1" points="0,0 12,0 17,6 22,0 35,0 22,17 32,34 19,34 15,27 9,34 -4,34 10,17"/>
+                <polygon stroke="black" fill="red" stroke-width="3%" fill-opacity="1" points="0,0 12,0 17,6 22,0 35,0 22,17 32,34 19,34 15,27 9,34 -4,34 10,17"/>
+            </g>
+        </symbol>
+
+        <symbol id="SupplyCenter" viewBox="-0.375 -0.375 10.75 10.75" overflow="visible">
+            <g>
+                <circle cx="5" cy="5" r="3" stroke="black" stroke-width="0.4"/>
+                <circle cx="5" cy="5" r="5" stroke-width="0.75" stroke="black" fill="none"/>
+            </g>
+        </symbol>
+
+        <symbol id="HoldUnit" viewBox="-5 -5 76.6 76.6" overflow="visible">
+            <g>
+                <polygon stroke-width="10" fill="none" stroke="black" points="47.1,0.0 66.6,19.5 66.6, 47.1 47.1,66.6 19.5,66.6 0.0,47.1 0.0,19.5 19.5,0.0"/>
+                <polygon stroke-width="6" fill="none" points="47.1,0.0 66.6,19.5 66.6, 47.1 47.1,66.6 19.5,66.6 0.0,47.1 0.0,19.5 19.5,0.0"/>
+            </g>
+        </symbol>
+
+        <symbol id="SupportHoldUnit" viewBox="-5 -5 86.6 86.6" overflow="visible">
+            <g>
+                <polygon stroke-width="10" fill="none" stroke="black" opacity="0.45" points="54.2,0.0 76.6,22.4 76.6,54.2 54.2,76.6 22.4,76.6 0.0,54.2 0.0,22.4 22.4,0.0"/>
+                <polygon stroke-width="6" fill="none" stroke-dasharray="5,5" points="54.2,0.0 76.6,22.4 76.6,54.2 54.2,76.6 22.4,76.6 0.0,54.2 0.0,22.4 22.4,0.0"/>
+            </g>
+        </symbol>
+
+        <symbol id="ConvoyTriangle" viewBox="-9 -10 84.4 72.4" overflow="visible">
+            <g>
+                <polygon stroke-width="10" fill="none" stroke="black" opacity="0.45" points="33.2,0.0 66.4,57.4 0.0,57.4"/>
+                <polygon stroke-width="6" fill="none" stroke-dasharray="15,5" points="33.2,0.0 66.4,57.4 0.0,57.4"/>
+            </g>
+        </symbol>
+
+        <!-- UNIT SYMBOLS -->
+        <symbol id="Army" viewBox="0 0 23 15" overflow="visible">
+            <g>
+                <rect x="2" y="2" width="23" height="13" rx="4" stroke="black" fill="black" stroke-width="1" opacity="0.40" />
+                <rect x="0" y="0" width="23" height="13" rx="4" stroke="black" stroke-width="3%" />
+                <g stroke="black" fill="black" stroke-width="1">
+                    <rect x="6" y="6" width="13" height="1"/>
+                    <rect x="5" y="7" width="14" height="1"/>
+                    <rect x="6" y="8" width="12" height="1"/>
+                    <rect x="7" y="9" width="10" height="1"/>
+                    <rect x="10" y="3" width="5" height="3"/>
+                    <rect x="15" y="4.5" width="1" height="1.5"/>
+                    <line x1="3" y1="4" x2="10" y2="4"/>
+                </g>
+            </g>
+        </symbol>
+
+        <symbol id="Fleet" viewBox="0 0 23 15" overflow="visible">
+            <g>
+                <rect x="2" y="2" width="23" height="13" rx="4" stroke="black" fill="black" stroke-width="1" opacity="0.40" />
+                <rect x="0" y="0" width="23" height="13" rx="4" stroke="black" stroke-width="3%" />
+                <g stroke="black" fill="black" stroke-width="1">
+                    <rect x="3" y="7" width="16.5" height="1"/>
+                    <rect x="4" y="8" width="15" height="1"/>
+                    <rect x="5" y="9" width="13.5" height="1"/>
+                    <rect x="13.5" y="6" width="2.75" height="1"/>
+                    <rect x="7" y="5"  width="4" height="2"/>
+                    <rect x="8.5" y="4"  width="1" height="1"/>
+                    <rect x="6" y="6" width="1" height="1"/>
+                </g>
+            </g>
+        </symbol>
+
+        <!-- DISLODGED UNIT SYMBOLS -->
+        <symbol id="DislodgedArmy" viewBox="0 0 23 15" overflow="visible">
+            <g>
+                <rect x="3" y="3" width="23" height="13" rx="4" stroke="red" fill="red" stroke-width="1" opacity="0.50" />
+                <rect x="0" y="0" width="23" height="13" rx="4" stroke="red" stroke-width="3%" />
+                <g stroke="black" fill="black" stroke-width="1">
+                    <rect x="6" y="6" width="13" height="1"/>
+                    <rect x="5" y="7" width="14" height="1"/>
+                    <rect x="6" y="8" width="12" height="1"/>
+                    <rect x="7" y="9" width="10" height="1"/>
+                    <rect x="10" y="3" width="5" height="3"/>
+                    <rect x="15" y="4.5" width="1" height="1.5"/>
+                    <line x1="3" y1="4" x2="10" y2="4"/>
+                </g>
+            </g>
+        </symbol>
+
+        <symbol id="DislodgedFleet" viewBox="0 0 23 15" overflow="visible">
+            <g>
+                <rect x="3" y="3" width="23" height="13" rx="4" stroke="red" fill="red" stroke-width="1" opacity="0.50" />
+                <rect x="0" y="0" width="23" height="13" rx="4" stroke="red" stroke-width="3%" />
+                <g stroke="black" fill="black" stroke-width="1">
+                    <rect x="3" y="7" width="16.5" height="1"/>
+                    <rect x="4" y="8" width="15" height="1"/>
+                    <rect x="5" y="9" width="13.5" height="1"/>
+                    <rect x="13.5" y="6" width="2.75" height="1"/>
+                    <rect x="7" y="5"  width="4" height="2"/>
+                    <rect x="8.5" y="4"  width="1" height="1"/>
+                    <rect x="6" y="6" width="1" height="1"/>
+                </g>
+            </g>
+        </symbol>
+
+        <marker id="arrow" markerHeight="4" markerUnits="strokeWidth" markerWidth="4" orient="auto" refX="5" refY="5" viewBox="0 0 10 10">
+            <path d="M 0 0 L 10 5 L 0 10 z"/>
+        </marker>
+
+        <pattern id="patternRed" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="scale(0.54 1)">
+            <rect x="0" y="0" width="10" height="10" fill="red"/>
+            <rect x="5" y="0" width="10" height="10" fill="pink"/>
+        </pattern>
+        <pattern id="patternBrown" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="scale(0.54 1)">
+            <rect x="0" y="0" width="10" height="10" fill="peru"/>
+            <rect x="5" y="0" width="10" height="10" fill="antiquewhite"/>
+        </pattern>
+        <pattern id="patternGreen" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="scale(0.54 1)">
+            <rect x="0" y="0" width="10" height="10" fill="seagreen"/>
+            <rect x="5" y="0" width="10" height="10" fill="yellowgreen"/>
+        </pattern>
+        <pattern id="patternBlue" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="scale(0.54 1)">
+            <rect x="0" y="0" width="10" height="10" fill="CornflowerBlue"/>
+            <rect x="5" y="0" width="10" height="10" fill="cyan"/>
+        </pattern>
+        <pattern id="patternBlack" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="scale(0.54 1)">
+            <rect x="0" y="0" width="10" height="10" fill="black"/>
+            <rect x="0" y="5" width="10" height="10" fill="gray"/>
+        </pattern>
+    </defs>
+
+    <g id="MapLayer">
+        <rect fill="rgb(240,237,168)" stroke="black" stroke-width="5" x="0" y="0" width="995" height="995"/>
+        <path id='001' fill="none" stroke="black" stroke-width="3" d="M497.619 30.1868 L866.51 207.835 L957.619 607.008 L702.338 927.12 L292.9 927.12 L37.6191 607.008 L128.728 207.835 z"/>
+        <path id='002' fill="rgb(240,237,168)" stroke="black" stroke-width="3" d="M497.619 142.283 L650.619 176.571 L774.287 275.519 L842.619 416.571 L842.619 574.899 L773.619 715.571 L651.158 814.983 L497.619 849.571 L344.08 814.983 L220.619 716.571 L152.619 574.899 L152.619 416.571 L220.951 275.519 L343.619 176.571 z"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="497.619" y1="30.5714" x2="497.619" y2="141.571"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="772.619" y1="274.571" x2="866.619" y2="207.571"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="957.619" y1="607.571" x2="841.619" y2="574.571"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="649.619" y1="814.571" x2="701.619" y2="929.571"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="291.619" y1="926.571" x2="344.619" y2="814.571"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="150.619" y1="574.571" x2="36.6191" y2="606.571"/>
+        <line fill="none" stroke="black" stroke-width="3" x1="220.619" y1="274.571" x2="128.619" y2="207.571"/>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="346" y1="198" x2="845" y2="438"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="346" y1="198" x2="776" y2="737"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="346" y1="198" x2="500" y2="871"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="346" y1="198" x2="223" y2="738"/>
+        </g>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="653" y1="198" x2="776" y2="737"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="653" y1="198" x2="500" y2="871"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="653" y1="198" x2="223" y2="738"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="653" y1="198" x2="155" y2="438"/>
+        </g>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="845" y1="438" x2="500" y2="871"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="845" y1="438" x2="223" y2="738"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="845" y1="438" x2="155" y2="438"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="845" y1="438" x2="346" y2="198"/>
+        </g>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="776" y1="737" x2="223" y2="738"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="776" y1="737" x2="155" y2="438"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="776" y1="737" x2="346" y2="198"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="776" y1="737" x2="653" y2="198"/>
+        </g>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="500" y1="871" x2="155" y2="438"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="500" y1="871" x2="346" y2="198"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="500" y1="871" x2="653" y2="198"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="500" y1="871" x2="845" y2="438"/>
+        </g>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="223" y1="738" x2="346" y2="198"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="223" y1="738" x2="653" y2="198"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="223" y1="738" x2="845" y2="438"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="223" y1="738" x2="776" y2="737"/>
+        </g>
+        <g transform="translate(-2.38095 -21.4286)">
+            <line fill="none" stroke="black" stroke-width="1" x1="155" y1="438" x2="653" y2="198"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="155" y1="438" x2="845" y2="438"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="155" y1="438" x2="776" y2="737"/>
+            <line fill="none" stroke="black" stroke-width="1" x1="155" y1="438" x2="500" y2="871"/>
+        </g>
+        <text fill="black" x="-278px" y="138px"
+              font-family="sansserif" font-size="36"
+              transform="translate(-123.913 110.87) translate(1263.04 589.13) translate(-32.6087 2.17391) rotate(309.832 -221.264 125.31) translate(-7.1597 -41.6087) translate(14.9305 -15.5542)"
+            >Paris</text>
+        <text fill="black" font-size="36"
+              font-family="sansserif" x="-287px" y="205px"
+              transform="translate(-119.565 -19.5652) translate(1354.35 219.565) translate(-64.1975 1.23457) rotate(75.7072 -220.85 195.892) translate(26.8838 14.493) translate(-21.3531 -2.98297) translate(0.45683 6.30804)"
+            >London</text>
+        <text fill="black" font-size="36"
+              font-family="sansserif" x="-274px" y="308px"
+              transform="translate(-132.609 -197.826) translate(2.17391 6.52174) translate(1069.57 -10.8696) rotate(29.8179 -218.768 295.31) translate(10.2944 29.5644) rotate(358.562 -220.214 298.775) rotate(359.007 -220.285 298.603) rotate(357.849 -220.329 298.482) translate(0.720196 6.03851) translate(-8.46365 -1.53838) translate(-11.2897 -18.3683)"
+            >Vienna</text>
+        <text fill="black" font-size="36"
+              font-family="sansserif" x="-313px" y="390px"
+              transform="translate(-93.4783 -84.7826) translate(839.13 676.087) translate(-8.69565 -2.17391) translate(0 2.17391) translate(-2.38095 -21.4286) translate(0 5.76923) translate(23 -2) translate(7 0)"
+            >Berlin</text>
+        <text fill="black" font-size="36"
+              font-family="sansserif" x="-333px" y="475px"
+              transform="translate(-60.8696 0) translate(586.957 -369.565) translate(32.6923 23.0769) rotate(335.957 -277.737 465.894) translate(17.1839 -0.756818) translate(-1.37782 7.80842) translate(0.972716 2.53974) translate(6.55609 -20.5395) rotate(358.255 -213.197 464.84) translate(-50.1197 -2.00399) translate(-10.8147 -1.39563) translate(-2.30251 0.802347) translate(2.35477 3.05259)"
+            >Constantinople</text>
+        <text fill="black" font-size="36"
+              font-family="sansserif" x="-322px" y="551px"
+              transform="translate(-71.7391 -130.435) translate(6.52174 0) translate(6.52174 2.17391) translate(330.435 6.52174) translate(1.92308 0) translate(50 0) translate(-7.69231 0) rotate(285.776 -266.269 538.335) translate(1.28651 11.6267) rotate(357.124 -268.227 538.669) translate(20.3562 -7.10479)"
+            >Moscow</text>
+        <text fill="black" font-size="36"
+              font-family="sansserif" x="-315px" y="601px"
+              transform="translate(-82.6087 -241.304) translate(476.087 471.739) translate(5.76923 -9.61538) rotate(49.7338 -280.476 591.894) translate(3.62518 -22.1318) translate(-17.89 -12.0334)"
+            >Rome</text>
+
+        <path class="nopower" d="M497.619 142.283 L650.619 176.571 L774.287 275.519 L866.51 207.835 L497.619 30.1868 z" id="_vie"/>
+        <path class="nopower" d="M774.287 275.519 L842.619 416.571 L842.619 574.899 L957.619 607.008 L866.51 207.835 z" id="_lon"/>
+        <path class="nopower" d="M842.619 574.899 L773.619 715.571 L651.158 814.983 L702.338 927.12 L957.619 607.008 z" id="_par"/>
+        <path class="nopower" d="M651.158 814.983 L497.619 849.571 L344.08 814.983 L292.9 927.12 L702.338 927.12 z" id="_ber"/>
+        <path class="nopower" d="M344.08 814.983 L220.619 716.571 L152.619 574.899 L37.6191 607.008 L292.9 927.12 z" id="_rom"/>
+        <path class="nopower" d="M152.619 574.899 L152.619 416.571 L220.951 275.519 L128.728 207.835 L37.6191 607.008 z" id="_mos"/>
+        <path class="nopower" d="M220.951 275.519 L343.619 176.571 L497.619 142.283 L497.619 30.1868 L128.728 207.835 z" id="_con"/>
+    </g>
+
+    <!-- Current phase -->
+    <text x="15" y="25" class="currentnotetext" id="CurrentNote"> </text>
+    <text x="15" y="50" class="currentnotetext" id="CurrentNote2"> </text>
+    <text x="845" y="970" class="currentphasetext" id="CurrentPhase" font-size="30">S1901M</text>
+
+    <!-- drawing layer: supply centers -->
+    <g id="SupplyCenterLayer">
+        <use height="20" id="sc_VIE" width="20" x="655.5" xlink:href="#SupplyCenter" y="138.0"/>
+        <use height="20" id="sc_LON" width="20" x="865.5" xlink:href="#SupplyCenter" y="393.0"/>
+        <use height="20" id="sc_PAR" width="20" x="791.5" xlink:href="#SupplyCenter" y="723.0"/>
+        <use height="20" id="sc_BER" width="20" x="488.5" xlink:href="#SupplyCenter" y="874.0"/>
+        <use height="20" id="sc_ROM" width="20" x="184.5" xlink:href="#SupplyCenter" y="727.0"/>
+        <use height="20" id="sc_MOS" width="20" x="110.5" xlink:href="#SupplyCenter" y="398.0"/>
+        <use height="20" id="sc_CON" width="20" x="322.5" xlink:href="#SupplyCenter" y="136.0"/>
+    </g>
+
+     <!-- drawing layer: orders -->
+    <g id="OrderLayer">
+        <g id="Layer2"/>
+        <g id="Layer1"/>
+    </g>
+
+    <!-- drawing layer: units -->
+    <g id="UnitLayer"/>
+
+    <!-- drawing layer: dislodged units -->
+    <g id="DislodgedUnitLayer"/>
+
+    <!-- drawing layer -->
+    <g id="HighestOrderLayer"/>
+
+    <!-- abbreviated name layer (not used) -->
+    <g id="BriefLabelLayer" class="labeltext" visibility="hidden"/>
+
+    <!-- full name layer (not used) -->
+    <g id="FullLabelLayer" class="labeltext" visibility="hidden"/>
+
+    <!-- Invisible shapes for click detection -->
+    <g id="MouseLayer" class="invisibleContent">
+        <path id="vie" d="M497.619 142.283 L650.619 176.571 L774.287 275.519 L866.51 207.835 L497.619 30.1868 z"/>
+        <path id="lon" d="M774.287 275.519 L842.619 416.571 L842.619 574.899 L957.619 607.008 L866.51 207.835 z"/>
+        <path id="par" d="M842.619 574.899 L773.619 715.571 L651.158 814.983 L702.338 927.12 L957.619 607.008 z"/>
+        <path id="ber" d="M651.158 814.983 L497.619 849.571 L344.08 814.983 L292.9 927.12 L702.338 927.12 z"/>
+        <path id="rom" d="M344.08 814.983 L220.619 716.571 L152.619 574.899 L37.6191 607.008 L292.9 927.12 z"/>
+        <path id="mos" d="M152.619 574.899 L152.619 416.571 L220.951 275.519 L128.728 207.835 L37.6191 607.008 z"/>
+        <path id="con" d="M220.951 275.519 L343.619 176.571 L497.619 142.283 L497.619 30.1868 L128.728 207.835 z"/>
+    </g>
+</svg>

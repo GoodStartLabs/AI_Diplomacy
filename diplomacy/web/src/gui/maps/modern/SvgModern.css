@@ -1,0 +1,19 @@
+/**
+==============================================================================
+Copyright (C) 2019 - Philip Paquette, Steven Bocco
+
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU Affero General Public License as published by the Free
+ Software Foundation, either version 3 of the License, or (at your option) any
+ later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+ details.
+
+ You should have received a copy of the GNU Affero General Public License along
+ with this program.  If not, see <https:www.gnu.org/licenses/>.
+==============================================================================
+**/
+/* Default Text */ .SvgModern text {font-size:10pt;fill:black;font-family:Arial;} /* Text */ .SvgModern /* .credits {font-size:8pt;font-family:Arial;} */ .SvgModern /* .titletext {font-size:14px;font-weight:bolder;font-family:Arial;} */ .SvgModern .labeltext {font-size:12px;fill:black;font-family:Arial;} .SvgModern .currentnoterect {fill:#c5dfea; stroke-width:0; stroke:black;} .SvgModern .currentnotetext {font-family:serif,sans-serif; font-size:12px; fill:black; stroke:black;} .SvgModern .currentphasetext {font-family:serif,sans-serif; font-size:14px; fill:black; stroke:black;} /* Mouse Layer */ .SvgModern .invisibleContent {stroke:#000000;fill:#000000;fill-opacity:0.0;opacity:0.0} .SvgModern .provinceRed {fill:url(#patternRed); stroke:black; stroke-width: 2} .SvgModern .provinceBrown {fill:url(#patternBrown); stroke:black; stroke-width: 2} .SvgModern .provinceGreen {fill:url(#patternGreen); stroke:black; stroke-width: 2} .SvgModern .provinceBlack {fill:url(#patternBlack); stroke:black; stroke-width: 2} .SvgModern .provinceBlue {fill:url(#patternBlue); stroke:black; stroke-width: 2} /* Nations */ .SvgModern .nopower {fill:#FFEEEE; stroke:black; stroke-linejoin:round; stroke-width: 2} .SvgModern .water {fill:#DDDDFF; stroke:black; stroke-linejoin:round; stroke-width: 2} .SvgModern .britain {fill:royalblue;stroke:black;; stroke-width: 2} .SvgModern .egypt {fill:#808000;stroke:black;; stroke-width: 2} .SvgModern .france {fill:#00FFFF;stroke:black;; stroke-width: 2} .SvgModern .germany {fill:darkgrey;stroke:black;; stroke-width: 2} .SvgModern .italy {fill:#80FF80;stroke:black;; stroke-width: 2} .SvgModern .poland {fill:#FF0000;stroke:black;; stroke-width: 2} .SvgModern .russia {fill:#008000;stroke:black;; stroke-width: 2} .SvgModern .spain {fill:#FF8080;stroke:black;; stroke-width: 2} .SvgModern .turkey {fill:#FFFF00;stroke:black;; stroke-width: 2} .SvgModern .ukraine {fill:#FF00FF;stroke:black;; stroke-width: 2} /* Unit Colors */ .SvgModern .unitbritain {fill:deepskyblue;stroke:black;fill-opacity:0.90;} .SvgModern .unitegypt {fill:#808000;stroke:black;fill-opacity:0.90;} .SvgModern .unitfrance {fill:#00FFFF;stroke:black;fill-opacity:0.90;} .SvgModern .unitgermany {fill:darkgrey;stroke:black;fill-opacity:0.90;} .SvgModern .unititaly {fill:#80FF80;stroke:black;fill-opacity:0.90;} .SvgModern .unitpoland {fill:#FF0000;stroke:black;fill-opacity:0.90;} .SvgModern .unitrussia {fill:#008000;stroke:black;fill-opacity:0.90;} .SvgModern .unitspain {fill:#FF8080;stroke:black;fill-opacity:0.90;} .SvgModern .unitturkey {fill:#FFFF00;stroke:black;fill-opacity:0.90;} .SvgModern .unitukraine {fill:#FF00FF;stroke:black;fill-opacity:0.90;} /* order drawing styles, stroke and fill colors should not be specified */ .SvgModern .supportorder {stroke-width:2; fill:none; stroke-dasharray:5,5;} .SvgModern .convoyorder {stroke-dasharray:15,5; stroke-width:2; fill:none;} .SvgModern .shadowdash {stroke-width:4; fill:none; stroke:black; opacity:0.45;} .SvgModern .varwidthorder {fill:none;} .SvgModern .varwidthshadow {fill:none; stroke:black;} .SvgModern .style1 {fill:darkGray}

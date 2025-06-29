@@ -1,0 +1,351 @@
+BEGIN SPRING 1994 MOVEMENT
+RULES BUILD_ANY
+
+BRITAIN  (BRITISH)      LON LIV EDI GIB
+F LON
+F LIV
+F EDI
+F GIB
+
+EGYPT    (EGYPTIAN)     CAI ALE ASW
+F CAI
+F ALE
+A ASW
+
+FRANCE   (FRENCH)       PAR BOR MAR LYO
+A PAR
+F BOR
+A MAR
+A LYO
+
+GERMANY  (GERMAN)       HAM BER FRA MUN
+F HAM
+F BER
+A FRA
+A MUN
+
+ITALY    (ITALIAN)      MIL VEN ROM NAP
+A MIL
+F VEN
+A ROM
+F NAP
+
+POLAND   (POLISH)       WAR GDA KRA
+A WAR
+F GDA
+A KRA
+
+RUSSIA   (RUSSIAN)      MOS GOR STP MUR ROS
+A MOS
+A GOR
+F STP
+F MUR
+F ROS
+
+SPAIN    (SPANISH)      BAR MAD SVE
+F BAR
+A MAD
+A SVE
+
+TURKEY   (TURKISH)      ADA IZM IST ANK
+A ADA
+F IZM
+A IST
+F ANK
+
+UKRAINE  (UKRAINIAN)    SEV KHA KIE ODE
+F SEV
+A KHA
+A KIE
+A ODE
+
+UNOWNED                IRE MOR NWY ISR LIB BEL MON SWI AUS DEN HOL CRO SER
+UNOWNED                TUN BIE CZE LIT SWE POR BUL GEO GRE IRN RUM HUN SAU
+
+Adana                    = ada
+Adriatic Sea             = adr adrs adriatic
+Aegean Sea               = aeg aegs aegean
+Albania                  = alb
+Alexandria               = ale
+Algeria                  = alg
+Alsace                   = als
+Anatolia                 = ana
+Andalusia                = adl and? andalucia
+Ankara                   = ank
+Apulia                   = apu
+Arabian Sea              = ara aras arabian
+Armenia                  = arm
+Aswan                    = asw
+Austria                  = aus aut
+Auvergne                 = auv
+Arctic Ocean             = arc arctic
+Azerbaijan               = aze
+Baltic Sea               = bal bals baltic
+Bay of Biscay            = bis bob bay biscay
+Barcelona                = bar barc
+Barents Sea              = brn bars brnts barents
+Belgium                  = bel
+Berlin                   = ber
+Bielorussia              = bie
+Bordeaux                 = bor
+Bornholm Sea             = bhm bors born bornholm Bhm.+Sea
+Bosnia                   = bos
+Brittany                 = bri
+Bulgaria                 = bul
+Cairo                    = cai
+Caspian Sea              = cas cass caspian
+Caucasus                 = cau
+Central Russian Plateau  = crp cen pla
+Clyde                    = cly
+Croatia                  = cro
+Czech Republic           = cze
+Denmark                  = den
+Donbas                   = don donetsk
+Eastern Black Sea        = ebs ebl ebla eblack
+Eastern Mediterranean    = eme emed
+Eastern Sahara           = esa esah
+Edinburgh                = edi
+English Channel          = eng english cha channel
+Estonia                  = est
+Finland                  = fin
+Frankfurt                = fra
+Gdansk                   = gda danzig dan
+Georgia                  = geo
+Gibraltar                = gib
+Gorky                    = gor
+Greece                   = gre
+Gulf of Bothnia          = gob bot bothnia gbothnia
+Gulf of Lyon             = gol glyon
+Hamburg                  = ham
+Heligoland Bight         = hel heligoland
+Holland                  = hol
+Hungary                  = hun
+Iceland                  = ice
+Ionian Sea               = ion ions ionian
+Irak                     = irk irq iraq
+Iran (north coast)       = irn/nc
+Iran (south coast)       = irn/sc
+Iran                     = irn
+Ireland                  = ire eire eir
+Irish Sea                = iri iris irish
+Israel                   = isr
+Istanbul                 = ist constantinople con
+Izmir                    = izm
+Jordan                   = jor
+Kazakhstan               = kaz
+Kharkov                  = kha
+Kiev                     = kie
+Krakow                   = kra
+Lapland                  = lap
+Latvia                   = lat
+Libya                    = lib
+Libyan Sea               = lbn libs libyan
+Ligurian Sea             = lig ligs ligurian
+Lithuania                = lit
+Liverpool                = liv lpl livp
+London                   = lon
+Lyon                     = lyo
+Macedonia                = mac skopje sko
+Madrid                   = mad
+Maltese Sea              = mal mals matlese
+Marseilles               = mar
+Mid Atlantic Ocean       = mid mao mat
+Milan                    = mil
+Moldavia                 = mol
+Monaco                   = mon
+Morocco                  = mor
+Moscow                   = mos
+Munich                   = mun
+Murmansk                 = mur
+Naples                   = nap
+Navarra                  = nav
+North Atlantic Ocean     = nao nat
+North Sea                = nth north
+Norway                   = nwy nor
+Norwegian Sea            = nwg nors norwegian
+Odessa                   = ode
+Paris                    = par
+Persian Gulf             = per perg persian
+Picardy                  = pic
+Piedmont                 = pie
+Podolia                  = pod
+Portugal                 = por
+Prussia                  = pru
+Red Sea                  = red reds
+Rome                     = rom
+Rostov                   = ros
+Ruhr                     = ruh
+Rumania                  = rum
+Saudi Arabia             = sau saudi
+Saxony                   = sax
+Serbia                   = ser
+Sevastopol               = sev seva
+Seville                  = sve sevi svl
+Siberia                  = sib
+Silesia                  = sil silecia
+Sinai                    = sin
+Skagerrak                = ska
+Slovakia                 = slk slo
+South Atlantic Ocean     = sao sat sou south
+St-Petersburg            = stp leningrad len
+Straits of Gibraltar     = sog sgib str straits sea+of+gibraltar
+Sweden                   = swe
+Switzerland              = swi sui
+Syria                    = syr
+Tunisia                  = tun tunis
+Tuscany                  = tus
+Tyrrhenian Sea           = tyr tyrs tys tyrrhenian
+Urals                    = ura
+Venice                   = ven
+Volga                    = vol
+Wales                    = wal
+Warsaw                   = war
+Western Black Sea        = wbs wbl wbla wblack
+Western Mediterranean    = wme wmed
+Western Sahara           = wsa wsah
+White Sea                = whi white
+Yorkshire                = yor york
+
+COAST    ADA        ABUTS    ANA ank ARM irk irn SYR EME
+WATER    ADR        ABUTS    ALB APU CRO ION SER VEN
+WATER    AEG        ABUTS    EME GRE ION IST IZM
+COAST    ALB        ABUTS    GRE MAC SER ADR ION
+COAST    ALE        ABUTS    asw CAI ESA EME LBN
+COAST    ALG        ABUTS    lib MOR TUN WSA SOG WME
+LAND     ALS        ABUTS    BEL LYO MUN PAR PIC RUH SWI
+COAST    ANA        ABUTS    ADA ank IZM EME
+COAST    ADL        ABUTS    BAR GIB MAD sve SOG WME
+COAST    ANK        ABUTS    ada ana ARM GEO IST izm EBS WBS
+COAST    APU        ABUTS    NAP rom VEN ADR ION
+WATER    ARA        ABUTS    IRN/SC PER RED SAU
+WATER    ARC        ABUTS    BRN ICE NAO NWG
+LAND     ARM        ABUTS    ADA ANK AZE GEO IRN
+COAST    ASW        ABUTS    ale CAI esa RED
+LAND     AUS        ABUTS    CRO CZE HUN MIL MUN SAX SLK SWI VEN
+COAST    AUV        ABUTS    BAR bor LYO MAR nav PAR GOL
+COAST    AZE        ABUTS    ARM CAU geo CAS IRN/NC
+WATER    BAL        ABUTS    BHM GDA GOB LAT LIT PRU SWE
+COAST    BAR        ABUTS    ADL AUV MAD nav GOL WME
+COAST    BEL        ABUTS    ALS HOL PIC RUH ENG NTH
+COAST    BER        ABUTS    FRA HAM PRU SAX SIL BHM
+WATER    BHM        ABUTS    BAL BER DEN HAM PRU SWE
+LAND     BIE        ABUTS    CRP KIE KRA LAT LIT MOS POD WAR
+WATER    BIS        ABUTS    BOR BRI ENG MID NAV
+COAST    BOR        ABUTS    auv BRI NAV PAR BIS
+LAND     BOS        ABUTS    CRO SER
+COAST    BRI        ABUTS    BOR PAR PIC BIS ENG
+WATER    BRN        ABUTS    ARC LAP MUR NWG URA WHI
+COAST    BUL        ABUTS    gre IST MAC RUM ser WBS
+COAST    CAI        ABUTS    ALE ASW ISR SIN EME RED
+WATER    CAS        ABUTS    AZE CAU IRN/NC KAZ VOL
+COAST    CAU        ABUTS    AZE geo ros VOL CAS
+COAST    CLY        ABUTS    EDI LIV NAO NWG
+COAST    CRO        ABUTS    AUS BOS HUN SER VEN ADR
+LAND     CRP        ABUTS    BIE KHA KIE MOS VOL
+LAND     CZE        ABUTS    AUS KRA SAX SIL SLK
+COAST    DEN        ABUTS    HAM SWE BHM HEL NTH SKA
+COAST    DON        ABUTS    KHA KIE ROS SEV vol EBS
+WATER    EBS        ABUTS    ANK DON GEO ROS SEV WBS
+COAST    EDI        ABUTS    CLY liv YOR NTH NWG
+WATER    EME        ABUTS    ADA AEG ALE ANA CAI ION ISR IZM LBN SYR
+WATER    ENG        ABUTS    BEL BIS BRI IRI LON MID NTH PIC WAL
+COAST    ESA        ABUTS    ALE asw LIB LBN
+COAST    EST        ABUTS    LAT STP GOB
+COAST    FIN        ABUTS    lap mur STP SWE GOB
+LAND     FRA        ABUTS    BER HAM MUN RUH SAX
+COAST    GDA        ABUTS    LIT PRU WAR BAL
+COAST    GEO        ABUTS    ANK ARM aze cau ROS EBS
+COAST    GIB        ABUTS    ADL SVE SAO SOG
+WATER    GOB        ABUTS    BAL EST FIN LAT STP SWE
+WATER    GOL        ABUTS    AUV BAR LIG MAR TYR WME
+LAND     GOR        ABUTS    MOS MUR STP URA VOL
+COAST    GRE        ABUTS    ALB bul IST MAC AEG ION
+COAST    HAM        ABUTS    BER DEN FRA HOL RUH BHM HEL
+WATER    HEL        ABUTS    DEN HAM HOL NTH
+COAST    HOL        ABUTS    BEL HAM RUH HEL NTH
+LAND     HUN        ABUTS    AUS CRO POD RUM SER SLK
+COAST    ICE        ABUTS    ARC NAO NWG
+WATER    ION        ABUTS    ADR AEG ALB APU EME GRE LBN MAL NAP
+COAST    IRE        ABUTS    IRI NAO
+WATER    IRI        ABUTS    ENG IRE LIV MID NAO WAL
+COAST    IRK        ABUTS    ada jor SAU syr IRN/SC PER
+COAST    IRN/NC     ABUTS    AZE CAS KAZ
+COAST    IRN/SC     ABUTS    ARA IRK PER
+COAST    irn        ABUTS    ADA ARM AZE IRK KAZ PER ARA CAS
+COAST    ISR        ABUTS    CAI jor sin SYR EME
+COAST    IST        ABUTS    ANK BUL GRE IZM AEG WBS
+COAST    IZM        ABUTS    ANA ank IST AEG EME
+COAST    JOR        ABUTS    irk isr SAU SIN syr RED
+COAST    KAZ        ABUTS    SIB VOL CAS IRN/NC
+LAND     KHA        ABUTS    CRP DON KIE VOL
+LAND     KIE        ABUTS    BIE CRP DON KHA ODE POD SEV
+LAND     KRA        ABUTS    BIE CZE POD SIL SLK WAR
+COAST    LAP        ABUTS    fin MUR NWY swe BRN NWG
+COAST    LAT        ABUTS    BIE EST LIT MOS stp BAL GOB
+WATER    LBN        ABUTS    ALE EME ESA ION LIB MAL
+COAST    LIB        ABUTS    alg ESA TUN WSA LBN MAL
+WATER    LIG        ABUTS    GOL MAR MON PIE ROM TUS TYR
+COAST    LIT        ABUTS    BIE GDA LAT WAR BAL
+COAST    LIV        ABUTS    CLY edi WAL yor IRI NAO
+COAST    LON        ABUTS    WAL YOR ENG NTH
+LAND     LYO        ABUTS    ALS AUV MAR PAR SWI
+LAND     MAC        ABUTS    ALB BUL GRE SER
+LAND     MAD        ABUTS    ADL BAR NAV POR SVE
+WATER    MAL        ABUTS    ION LBN LIB NAP TUN TYR
+COAST    MAR        ABUTS    AUV LYO MON pie SWI GOL LIG
+WATER    MID        ABUTS    BIS ENG IRI NAO NAV POR SAO
+LAND     MIL        ABUTS    AUS PIE SWI TUS VEN
+LAND     MOL        ABUTS    ODE POD RUM
+COAST    MON        ABUTS    MAR PIE LIG
+COAST    MOR        ABUTS    ALG WSA SAO SOG
+LAND     MOS        ABUTS    BIE CRP GOR LAT STP VOL
+LAND     MUN        ABUTS    ALS AUS FRA RUH SAX SWI
+COAST    MUR        ABUTS    fin GOR LAP stp URA BRN WHI
+WATER    NAO        ABUTS    ARC CLY ICE IRE IRI LIV MID NWG
+COAST    NAP        ABUTS    APU ROM ION MAL TYR
+COAST    NAV        ABUTS    auv bar BIS BOR MAD POR MID
+COAST    NWY        ABUTS    LAP SWE NTH NWG SKA
+WATER    NTH        ABUTS    BEL DEN EDI ENG HEL HOL LON NWY NWG SKA YOR
+WATER    NWG        ABUTS    ARC BRN CLY EDI ICE LAP NAO NWY NTH
+COAST    ODE        ABUTS    KIE MOL POD RUM SEV WBS
+LAND     PAR        ABUTS    ALS AUV BOR BRI LYO PIC
+WATER    PER        ABUTS    ARA IRK IRN/SC SAU
+COAST    PIC        ABUTS    ALS BEL BRI PAR ENG
+COAST    PIE        ABUTS    mar MIL MON SWI TUS LIG
+LAND     POD        ABUTS    BIE HUN KIE KRA MOL ODE RUM SLK
+COAST    POR        ABUTS    MAD NAV SVE MID SAO
+COAST    PRU        ABUTS    BER GDA SIL WAR BAL BHM
+WATER    RED        ABUTS    ARA ASW CAI JOR SAU SIN
+COAST    ROM        ABUTS    apu NAP TUS ven LIG TYR
+COAST    ROS        ABUTS    cau DON GEO VOL EBS
+LAND     RUH        ABUTS    ALS BEL FRA HAM HOL MUN
+COAST    RUM        ABUTS    BUL HUN MOL ODE POD ser WBS
+WATER    SAO        ABUTS    GIB MID MOR POR SOG SVE
+COAST    SAU        ABUTS    IRK JOR ARA PER RED
+LAND     SAX        ABUTS    AUS BER CZE FRA MUN SIL
+COAST    SER        ABUTS    ALB BOS bul CRO HUN MAC rum ADR
+COAST    SEV        ABUTS    DON KIE ODE EBS WBS
+LAND     SIB        ABUTS    KAZ URA VOL
+LAND     SIL        ABUTS    BER CZE KRA PRU SAX WAR
+COAST    SIN        ABUTS    CAI isr JOR RED
+WATER    SKA        ABUTS    DEN NWY NTH SWE
+LAND     SLK        ABUTS    AUS CZE HUN KRA POD
+COAST    STP        ABUTS    EST FIN GOR lat MOS mur GOB
+WATER    SOG        ABUTS    ALG ADL GIB MOR SAO WME
+COAST    SVE        ABUTS    adl GIB MAD POR SAO
+COAST    SWE        ABUTS    DEN FIN lap NWY BAL BHM GOB SKA
+LAND     SWI        ABUTS    ALS AUS LYO MAR MIL MUN PIE
+COAST    SYR        ABUTS    ADA irk ISR jor EME
+COAST    TUN        ABUTS    ALG LIB MAL TYR WME
+COAST    TUS        ABUTS    MIL PIE ROM ven LIG
+WATER    TYR        ABUTS    GOL LIG MAL NAP ROM TUN WME
+COAST    URA        ABUTS    GOR MUR SIB vol BRN WHI
+COAST    VEN        ABUTS    APU AUS CRO MIL rom tus ADR
+COAST    VOL        ABUTS    CAU CRP don GOR KAZ KHA MOS ROS SIB ura CAS
+COAST    WAL        ABUTS    LIV LON yor ENG IRI
+LAND     WAR        ABUTS    BIE GDA KRA LIT PRU SIL
+WATER    WBS        ABUTS    ANK BUL EBS IST ODE RUM SEV
+WATER    WHI        ABUTS    BRN MUR URA
+WATER    WME        ABUTS    ALG ADL BAR GOL SOG TUN TYR
+LAND     WSA        ABUTS    ALG LIB MOR
+COAST    YOR        ABUTS    EDI liv LON wal NTH

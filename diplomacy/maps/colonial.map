@@ -1,0 +1,299 @@
+BEGIN  SPRING 1870 MOVEMENT
+
+BRITAIN         (BRITISH)           ADE BOM DEL HON MAD SIN
+A MAD
+A DEL
+F BOM
+F HON
+F SIN
+F ADE
+
+CHINA           (CHINESE)           CAN MAC PEK SHA SIK
+A PEK
+A CAN
+A SIK
+A SHA
+A MAC
+
+FRANCE          (FRENCH)            ANN COC TON
+A TON
+F ANN
+A COC
+
+HOLLAND         (DUTCH:H)           BOR JAV SUM
+F JAV
+A BOR
+F SUM
+
+JAPAN           (JAPANESE)          KYO KYU OTA TOK
+A KYO
+F KYU
+F OTA
+F TOK
+
+RUSSIA          (RUSSIAN)           MOS ODE OMS POR VLA
+A MOS
+A VLA
+A OMS
+F ODE
+F POR
+
+TURKEY          (TURKISH)           ANG BAG CON
+A ANG
+F BAG
+F CON
+
+UNOWNED                             ASS BAN BEN BUR CEB CEY CHU DAV EGY FOR FUS KAG KAM KAR MAL MAY MNA MON NEW PER RAN RUM SAK SAR SEO SHI SUD TAB TAS
+
+
+Abysinnia               = ABY
+Aden                    = ADE
+Afghanistan             = AFG
+Akita                   = AKI
+Akmolinsk               = AKM
+Andaman Sea             = AND
+Angora                  = ANG
+Annam                   = ANN
+Arabia                  = ARB
+Arabia (North Coast)    = ARB/NC
+Arabia (South Coast)    = ARB/SC
+Armenia                 = ARM
+Arabian Sea             = ARS
+Assam                   = ASS
+Baghdad                 = BAG
+Baku                    = BAK
+Bangkok                 = BAN
+Bangkok (East Coast)    = BAN/EC
+Bangkok (West Coast)    = BAN/WC
+Bengal                  = BEN
+Black Sea               = BLA
+Bay of Bengal           = BOB
+Bokhara                 = BOK
+Bombay                  = BOM
+Borneo                  = BOR
+Upper Burma             = BUR
+Cambodia                = CAM
+Canton                  = CAN
+Cebu                    = CEB
+Celebes                 = CEL
+Ceylon                  = CEY
+Chungking               = CHU
+Celebes Sea             = CLS
+Cochin                  = COC
+Constantinople          = CON
+Davao                   = DAV
+Delhi                   = DEL
+East China Sea          = ECS
+Egypt                   = EGY
+East Indian Ocean       = EIO
+Eritrea                 = ERI
+Formosa                 = FOR
+Fusan                   = FUS
+Gulf of Aden            = GOA
+Gulf of Manaar          = GOM
+Gulf of Siam            = GOS
+Hong Kong               = HON
+Hyderabad               = HYD
+Irkutsk                 = IRK
+Java                    = JAV
+Java Sea                = JVS
+Kashgar                 = KAG
+Kashmir                 = KAM
+Karachi                 = KAR
+Kirghiz                 = KIR
+Krasnoyarsk             = KRA
+Kyoto                   = KYO
+Kyushu                  = KYU
+Langchow                = LAN
+Lower Pacific           = LOW
+Lucknow                 = LUC
+Luzon Strait            = LUZ
+Manchuria               = MAC
+Madras                  = MAD
+Malaya                  = MAL
+Mandalay                = MAY
+Mecca                   = MEC
+Mediterranean Sea       = MED
+Middle Pacific          = MID
+Manila                  = MNA
+Mongolia                = MON
+Moscow                  = MOS
+Mysore                  = MYS
+Nagpur                  = NAG
+Nanchung                = NAN
+Nepal                   = NEP
+New Guinea              = NEW
+Odessa                  = ODE
+Okhotsk Sea             = OKH
+Oman                    = OMA
+Omsk                    = OMS
+Orenburg                = ORE
+Otaru                   = OTA
+Peking                  = PEK
+Persia                  = PER
+Persian Gulf            = PGF
+Port Arthur             = POR
+Perm                    = PRM
+Punjab                  = PUN
+Rajputana               = RAJ
+Rangoon                 = RAN
+Red Sea                 = RED
+Rumania                 = RUM
+Sakhalin                = SAK
+Sarawak                 = SAR
+South China Sea         = SCS
+Semipalatinsk           = SEM
+Seoul                   = SEO
+Seoul (East Coast)      = SEO/EC
+Seoul (West Coast)      = SEO/WC
+Shanghai                = SHA
+Shiraz                  = SHI
+North Siam              = SIA
+Sinkiang                = SIK
+Singapore               = SIN
+Southeast Indian Ocean  = SIO
+Sea of Japan            = SOJ
+Somalia                 = SOM
+Sudan                   = SUD
+Sulu Sea                = SUL
+Sumatra                 = SUM
+Sunda Sea               = SUN
+Syria                   = SYR
+Tabriz                  = TAB
+Tashkent                = TAS
+Tibet                   = TIB
+Timor Sea               = TIM
+Tokyo                   = TOK
+Tongking                = TON
+Upper Pacific           = UPP
+Urumchi                 = URU
+Vladivostok             = VLA
+West Indian Ocean       = WIO
+Yellow Sea              = YEL
+Yunnan                  = YUN
+
+LAND  ABY       ABUTS   ERI SOM SUD
+COAST ADE       ABUTS   ARB/SC GOA MEC RED
+LAND  AFG       ABUTS   BOK KAG KAM KAR PER PUN TAS
+COAST AKI       ABUTS   KYO OKH OTA SOJ
+LAND  AKM       ABUTS   KIR KRA OMS ORE SEM TAS
+WATER AND       ABUTS   BAN/WC BOB EIO GOM JVS MAL RAN SUM
+COAST ANG       ABUTS   ARM BLA CON MED SYR
+COAST ANN       ABUTS   cam COC GOS SCS TON
+COAST arb       ABUTS   ADE ARS BAG GOA MEC OMA PGF SYR
+COAST ARB/NC    ABUTS   BAG OMA PGF
+COAST ARB/SC    ABUTS   ADE ARS GOA OMA
+COAST ARM       ABUTS   ANG bag BAK BLA syr TAB
+WATER ARS       ABUTS   ARB/SC BOM GOA KAR MYS OMA PGF RAJ WIO
+LAND  ASS       ABUTS   BEN BUR SIK TIB YUN
+COAST BAG       ABUTS   ARB/NC arm PGF SHI syr TAB
+COAST BAK       ABUTS   ARM BLA MOS ODE TAB
+COAST ban       ABUTS   AND CAM GOS MAL RAN SIA
+COAST BAN/EC    ABUTS   CAM GOS MAL
+COAST BAN/WC    ABUTS   AND MAL RAN
+COAST BEN       ABUTS   ASS BOB BUR HYD LUC NEP TIB
+WATER BLA       ABUTS   ANG ARM BAK MED ODE RUM
+WATER BOB       ABUTS   AND BEN BUR GOM HYD RAN
+LAND  BOK       ABUTS   AFG MOS ORE PER TAS
+COAST BOM       ABUTS   ARS hyd MYS NAG RAJ
+COAST BOR       ABUTS   CLS JVS SAR
+COAST BUR       ABUTS   ASS BEN BOB MAY RAN YUN
+COAST CAM       ABUTS   ann BAN/EC COC GOS SIA ton
+COAST CAN       ABUTS   CHU HON MAY NAN SCS TON YUN
+COAST CEB       ABUTS   DAV LOW LUZ MID MNA SUL
+COAST CEL       ABUTS   CLS JVS TIM
+COAST CEY       ABUTS   EIO GOM WIO
+LAND  CHU       ABUTS   CAN LAN NAN SIK YUN
+WATER CLS       ABUTS   BOR CEL DAV JVS LOW NEW SAR SUL TIM
+COAST COC       ABUTS   ANN CAM GOS
+COAST CON       ABUTS   ANG MED RUM
+COAST DAV       ABUTS   CEB CLS LOW MID SUL
+LAND  DEL       ABUTS   LUC NAG NEP PUN RAJ
+WATER ECS       ABUTS   FOR KYU NAN SCS SHA UPP YEL
+COAST EGY       ABUTS   MEC MED RED SUD SYR
+WATER EIO       ABUTS   AND CEY GOM SIO SUM WIO
+COAST ERI       ABUTS   ABY GOA RED SOM SUD
+COAST FOR       ABUTS   ECS LUZ MID SCS UPP
+COAST FUS       ABUTS   SEO/EC SEO/WC SOJ YEL
+WATER GOA       ABUTS   ADE ARB/SC ARS ERI RED SOM WIO
+WATER GOM       ABUTS   AND BOB CEY EIO HYD MAD WIO
+WATER GOS       ABUTS   ANN BAN/EC CAM COC MAL SCS SUN
+COAST HON       ABUTS   CAN SCS
+COAST HYD       ABUTS   BEN BOB bom GOM LUC MAD mys NAG
+LAND  IRK       ABUTS   KRA MAC MON VLA
+COAST JAV       ABUTS   JVS SIO TIM
+WATER JVS       ABUTS   AND BOR CEL CLS JAV MAL SAR SIN SIO SUM SUN TIM
+LAND  KAG       ABUTS   AFG KAM KIR SIK TAS TIB URU
+LAND  KAM       ABUTS   AFG KAG PUN TIB
+COAST KAR       ABUTS   AFG ARS PER PGF PUN RAJ
+LAND  KIR       ABUTS   AKM KAG SEM TAS URU
+LAND  KRA       ABUTS   AKM IRK MON OMS SEM URU
+COAST KYO       ABUTS   AKI KYU SOJ TOK UPP YEL
+COAST KYU       ABUTS   ECS KYO UPP YEL
+LAND  LAN       ABUTS   CHU MON NAN PEK SHA SIK
+WATER LOW       ABUTS   CEB CLS DAV MID NEW
+LAND  LUC       ABUTS   BEN DEL HYD NAG NEP
+WATER LUZ       ABUTS   CEB FOR MID MNA SCS SUL
+COAST MAC       ABUTS   IRK MON PEK POR seo SHA vla YEL
+COAST MAD       ABUTS   GOM HYD MYS WIO
+COAST MAL       ABUTS   AND BAN/EC BAN/WC GOS JVS SIN SUN
+LAND  MAY       ABUTS   BUR CAN RAN SIA TON YUN
+COAST MEC       ABUTS   ADE arb EGY RED syr
+WATER MED       ABUTS   ANG BLA CON EGY SYR
+WATER MID       ABUTS   CEB DAV FOR LOW LUZ MNA UPP
+COAST MNA       ABUTS   CEB LUZ MID
+LAND  MON       ABUTS   IRK KRA LAN MAC PEK SIK URU
+LAND  MOS       ABUTS   BAK BOK ODE ORE PRM
+COAST MYS       ABUTS   ARS BOM hyd MAD WIO
+LAND  NAG       ABUTS   BOM DEL HYD LUC RAJ
+COAST NAN       ABUTS   CAN CHU ECS LAN SCS SHA
+LAND  NEP       ABUTS   BEN DEL LUC PUN
+COAST NEW       ABUTS   CLS LOW TIM
+COAST ODE       ABUTS   BAK BLA MOS RUM
+WATER OKH       ABUTS   AKI OTA SAK SOJ TOK UPP VLA
+COAST OMA       ABUTS   ARB/NC ARB/SC ARS PGF
+LAND  OMS       ABUTS   AKM KRA ORE PRM
+LAND  ORE       ABUTS   AKM BOK MOS OMS PRM TAS
+COAST OTA       ABUTS   AKI OKH SAK SOJ
+LAND  PEK       ABUTS   LAN MAC MON SHA
+COAST PER       ABUTS   AFG BOK KAR PGF SHI TAB
+WATER PGF       ABUTS   ARB/NC ARS BAG KAR OMA PER SHI
+COAST POR       ABUTS   MAC SEO/WC YEL
+LAND  PRM       ABUTS   MOS OMS ORE
+LAND  PUN       ABUTS   AFG DEL KAM KAR NEP RAJ TIB
+COAST RAJ       ABUTS   ARS BOM DEL KAR NAG PUN
+COAST RAN       ABUTS   AND BAN/WC BOB BUR MAY SIA
+WATER RED       ABUTS   ADE EGY ERI GOA MEC SUD
+COAST RUM       ABUTS   BLA CON ODE
+COAST SAK       ABUTS   OKH OTA
+COAST SAR       ABUTS   BOR CLS JVS SUL SUN
+WATER SCS       ABUTS   ANN CAN ECS FOR GOS HON LUZ NAN SUL SUN TON
+LAND  SEM       ABUTS   AKM KIR KRA URU
+COAST seo       ABUTS   FUS MAC POR SOJ VLA YEL
+COAST SEO/EC    ABUTS   FUS SOJ VLA
+COAST SEO/WC    ABUTS   FUS POR YEL
+COAST SHA       ABUTS   ECS LAN MAC NAN PEK YEL
+COAST SHI       ABUTS   BAG PER PGF TAB
+LAND  SIA       ABUTS   BAN CAM MAY RAN TON
+LAND  SIK       ABUTS   ASS CHU KAG LAN MON TIB URU YUN
+COAST SIN       ABUTS   JVS MAL
+WATER SIO       ABUTS   EIO JAV JVS SUM TIM WIO
+WATER SOJ       ABUTS   AKI FUS KYO OKH OTA SEO/EC VLA YEL
+COAST SOM       ABUTS   ABY ERI GOA
+COAST SUD       ABUTS   ABY EGY ERI RED
+WATER SUL       ABUTS   CEB CLS DAV LUZ SAR SCS SUN
+COAST SUM       ABUTS   AND EIO JVS SIO
+WATER SUN       ABUTS   GOS JVS MAL SAR SCS SUL
+COAST SYR       ABUTS   ANG arb arm bag EGY mec MED
+LAND  TAB       ABUTS   ARM BAG BAK PER SHI
+LAND  TAS       ABUTS   AFG AKM BOK KAG KIR ORE
+LAND  TIB       ABUTS   ASS BEN KAG KAM PUN SIK
+WATER TIM       ABUTS   CEL CLS JAV JVS NEW SIO
+COAST TOK       ABUTS   KYO OKH UPP
+COAST TON       ABUTS   ANN cam CAN MAY SCS SIA
+WATER UPP       ABUTS   ECS FOR KYO KYU MID OKH TOK YEL
+LAND  URU       ABUTS   KAG KIR KRA MON SEM SIK
+COAST VLA       ABUTS   IRK mac OKH SEO/EC SOJ
+WATER WIO       ABUTS   ARS CEY EIO GOA GOM MAD MYS SIO
+WATER YEL       ABUTS   ECS FUS KYO KYU MAC POR SEO/WC SHA SOJ UPP
+LAND  YUN       ABUTS   ASS BUR CAN CHU MAY SIK

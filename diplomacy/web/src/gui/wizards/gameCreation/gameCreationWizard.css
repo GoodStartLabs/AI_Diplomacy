@@ -1,0 +1,31 @@
+.game-creation-wizard {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.game-creation-wizard .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.game-creation-wizard .fancy-box {
+    width: 75vw;
+    height: 75vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-creation-wizard .fancy-content {
+    flex-grow: 1;
+    overflow: auto;
+}
+
+.panel-choose-map {
+    height: 100%;
+}
+
+.panel-choose-map .map-list {
+    border: 1px solid gray;
+    height: 100%;
+}

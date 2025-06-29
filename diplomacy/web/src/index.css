@@ -1,0 +1,434 @@
+/** Bootstrap. **/
+/** Common. **/
+
+body {
+    overflow-y: scroll;
+}
+
+span.dropdown-item {
+    cursor: pointer;
+}
+
+.top-msg {
+    border-bottom: 1px solid black;
+    font-weight: bold;
+    text-align: center;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: white;
+}
+
+.top-msg .msg {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.top-msg .with-msg {
+    cursor: pointer;
+}
+
+.top-msg .no-msg {
+    text-overflow: initial;
+}
+
+.top-msg .msg + .msg {
+    border-left: 1px solid black;
+}
+
+.top-msg .error {
+    color: red;
+}
+
+.top-msg .info {
+    color: blue;
+}
+
+.top-msg .success {
+    color: green;
+}
+
+#past-map svg, #current-map svg, #messages-map svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.history-current-orders {
+    background-color: red;
+    color: white;
+    font-weight: bold;
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 4px solid black;
+    margin: 5px 24px;
+    padding: 5px 10px 5px 10px;
+}
+
+table caption {
+    caption-side: top;
+}
+
+main {
+    padding: 10px;
+}
+
+.power-actions-form button + button, .panel-orders .bar button + button, .games-form button + button {
+    margin-left: 0.5rem;
+}
+
+.link-unread-message {
+    display: block;
+    text-align: center;
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 1rem;
+}
+
+.link-unread-message:hover {
+    text-decoration: none;
+}
+
+.power-name {
+    font-weight: bold;
+    color: red;
+    text-align: center;
+}
+
+span.power-name {
+    display: inline-block;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    width: 10rem;
+}
+
+#current-power {
+    color: red;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    width: 10rem;
+}
+
+.form-current-power {
+    display: inline-block;
+}
+
+.page-messages {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+    width: 30%;
+}
+
+.page-message {
+    border: 8px solid;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.page-message.error {
+    border-color: rgb(245, 205, 205);
+    background-color: rgba(255, 215, 215, 0.9);
+    color: rgb(200, 120, 120);
+}
+
+.page-message.info {
+    border-color: rgb(245, 245, 205);
+    background-color: rgba(255, 255, 215, 0.9);
+    color: rgb(200, 200, 120);
+}
+
+.page-message.success {
+    border-color: rgb(205, 245, 205);
+    background-color: rgba(215, 255, 215, 0.9);
+    color: rgb(120, 200, 120);
+}
+
+.order-result {
+    font-weight: bold;
+}
+
+.order-result .bounce {
+    color: red;
+}
+
+.order-result .success {
+    color: green;
+}
+
+.past-orders {
+    font-size: 0.9rem;
+    max-height: 500px;
+    overflow: auto;
+}
+
+.past-orders .row:nth-child(odd) {
+    background-color: rgb(244, 244, 245);
+}
+
+.past-orders .row .past-power-name, .past-orders .row .past-power-orders {
+    padding: 5px;
+}
+
+.past-orders .row .past-power-name {
+    font-weight: bold;
+}
+
+.past-orders .row .past-power-orders > div:before {
+    content: "\2192";
+    margin-right: 1em;
+}
+
+.bar > * {
+    display: inline-block;
+}
+
+.page > main > .title {
+    border-bottom: 1px solid silver;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.left {
+    float: left;
+}
+
+.right {
+    float: right;
+}
+
+.action {
+    cursor: pointer;
+}
+
+.action .updated {
+    font-weight: bold;
+}
+
+.action .update {
+    font-size: 0.8em;
+    color: white;
+    background-color: red;
+    display: inline-block;
+    padding: 0 0.4em 0 0.4em;
+    margin-left: 0.4em;
+    border: 1px solid lightcoral;
+}
+
+.orders, .game-messages {
+    max-height: 500px;
+    overflow: auto;
+    border: 1px solid silver;
+    padding: 10px;
+}
+
+.panel-orders > .bar {
+    border-top: 1px solid silver;
+    border-left: 1px solid silver;
+    border-right: 1px solid silver;
+}
+
+.panel-orders .summary {
+    border-left: 1px solid silver;
+    border-right: 1px solid silver;
+}
+
+.panel-orders .summary > span + span:before {
+    content: ', ';
+}
+
+.fancy-box {
+    border: 1px solid silver;
+    position: relative;
+    margin: auto;
+}
+
+.fancy-box .fancy-bar {
+    background-color: rgb(240, 240, 240);
+    border-bottom: 1px solid silver;
+}
+
+.fancy-box .fancy-content {
+    background-color: white;
+}
+
+.power-orders {
+    padding-bottom: 8px;
+}
+
+.power-orders .no-orders, .empty-orders {
+    text-align: center;
+    font-weight: bold;
+    font-style: italic;
+}
+
+.power-orders .no-orders {
+    color: lightgray;
+}
+
+.power-orders .empty-orders {
+    color: gray;
+}
+
+.power-orders .title {
+    background-color: rgb(230, 230, 235);
+    padding: 10px;
+    margin-bottom: 2px;
+}
+
+.power-orders .title .name {
+    font-weight: bold;
+}
+
+.dummy, .neutral {
+    font-style: italic;
+    color: gray;
+}
+
+.controller {
+    font-weight: bold;
+}
+
+.power-orders .title .wait, .wait, .no {
+    font-weight: bold;
+    color: red;
+}
+
+.power-orders .title .no-wait, .no-wait, .yes {
+    font-weight: bold;
+    color: green;
+}
+
+.empty {
+    font-weight: bold;
+    color: orange;
+}
+
+.power-orders .title button {
+    font-family: "Courier New", Courier, monospace;
+}
+
+.power-orders .order-entry {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.power-orders .order-entry.server .order-string {
+    text-decoration: underline;
+}
+
+.power-orders .order-entry.server .order-mark {
+    color: red;
+}
+
+.power-orders .entry-2 {
+    background-color: rgb(248, 248, 248);
+}
+
+.power-orders .order {
+    font-weight: bold;
+}
+
+.power-orders .remove-button {
+    text-align: right;
+}
+
+.game-message {
+    width: 90%;
+    border-width: 2px;
+    border-style: solid;
+    margin: 0;
+}
+
+.game-message .message-header {
+    font-weight: bold;
+    border-right: inherit;
+}
+
+.game-message.message-recipient {
+    border-color: rgb(240, 200, 200);
+    background-color: rgb(255, 220, 220);
+    cursor: pointer;
+}
+
+.game-message.message-recipient.message-read {
+    border-color: rgb(200, 240, 200);
+    background-color: rgb(220, 255, 220);
+    cursor: default;
+}
+
+.game-message.message-sender {
+    border-color: rgb(200, 200, 240);
+    background-color: rgb(220, 220, 255);
+    float: right;
+}
+
+.game-message-wrapper {
+    clear: both;
+    overflow: auto;
+}
+
+.game-message-wrapper.other-phase {
+    color: rgb(140, 140, 140);
+}
+
+.game-message-wrapper + .game-message-wrapper {
+    padding-top: 5px;
+}
+
+.game-message-wrapper.other-phase + .game-message-wrapper.new-phase {
+    margin-top: 5px;
+}
+
+.button-server {
+    border: 1px solid silver;
+    border-radius: 4px;
+    padding: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.button-server:hover {
+    background-color: rgb(245, 245, 245);
+}
+
+.button-server:active {
+    background-color: rgb(230, 230, 230);
+}
+
+button .unroll {
+    display: none;
+}
+
+button .roll {
+    display: inline;
+}
+
+button.collapsed .unroll {
+    display: inline;
+}
+
+button.collapsed .roll {
+    display: none;
+}
+
+.inline {
+    white-space: nowrap;
+}
+
+.visibilityHidden {
+    visibility: hidden;
+}
+
+/** Page login. **/
+/** Page games. **/
+/** Page game. **/

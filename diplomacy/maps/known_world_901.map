@@ -1,0 +1,710 @@
+BEGIN  SPRING 901 MOVEMENT
+RULE BUILD_ANY
+
+ARABIA              (ARABIAN:A)             ARD BAG BSR ISF
+A BAG
+A ARD
+A ISF
+F BSR
+
+BYZANTINUM          (BYZANTINUM:B)          ATT CHS CON TAR
+F TAR
+A CON
+F CHS
+F ATT
+
+CHINA               (CHINA:C)               CHA GUA NAN YAN
+A CHA
+A YAN
+A NAN
+F GUA
+
+DENMARK             (DENMARK:D)             JLN JOR SCA VIK
+F JOR/EC
+F JLN
+F SCA
+A VIK
+
+EGYPT               (EGYPTIAN:E)            ALE AQA BAR JER
+F BAR
+A ALE
+A AQA
+F JER
+
+FRANCE              (FRENCH:F)              AQT GAS NAR PAR
+F PAR
+A AQT
+A GAS
+A NAR
+
+GERMANY             (GERMAN:G)              BAV BRE SAX SWA
+F BRE
+A SWA
+A SAX
+A BAV
+
+INDIA               (INDIAN:I)              IND KNJ UJJ VAR
+F UJJ
+A IND
+A KNJ
+A VAR
+
+KHAZARIA            (KHAZARIAN:K)           ATI BAL SRK TAM
+A TAM
+A SRK
+A ATI
+A BAL
+
+RUSSIA              (RUSSIAN:R)             KIE NOV ROS SMO
+A SMO
+F NOV
+A ROS
+A KIE
+
+SPAIN               (SPANISH:S)             CAD COR SAL VAL
+F CAD
+A SAL
+A COR
+F VAL
+
+TURAN               (TURAN:T)               BUK HER SAM URG
+A URG
+A BUK
+A SAM
+A HER
+
+SRIVIJAYA           (SRIVIJAYAN:V)          CAH JAM KAL PLM
+F KAL
+F CAH
+F PLM
+A JAM
+
+WAGADU              (WAGADUN:W)             AWL KUS NIO WAL
+F AWL
+A KUS
+A WAL
+A NIO
+
+AXUM                (AXUM:X)                ADU AXU MAL ROH
+A AXU
+A ROH
+F ADU
+A MAL
+
+NEUTRAL-STATE       (NEUTRAL:N)             ARM AZE BAS BJA BOR BRI BUL BUT CHO CRE CRS CYP DAL DUB EST GEO GHU IFR JEJ KAM KAN KAS LBU LOT MAH MAK MAN MAU MAZ MOR ORB PAG PAM PEC ROM SAI SAR SER SIC SIL SOC THR TIB TKA UYG WSX YEM ZAW ZIM
+DUMMY
+A ARM
+A AZE
+A BAS
+A BJA
+A BOR
+A BRI
+A BUL
+A BUT
+A CHO
+A CRE
+A CRS
+A CYP
+A DAL
+A DUB
+A EST
+A GEO
+A GHU
+A IFR
+A JEJ
+A KAM
+A KAN
+A KAS
+A LBU
+A LOT
+A MAH
+A MAK
+A MAN
+A MAU
+A MAZ
+A MOR
+A ORB
+A PAG
+A PAM
+A PEC
+A ROM
+A SAI
+A SAR
+A SER
+A SIC
+A SIL
+A SOC
+A THR
+A TIB
+A TKA
+A UYG
+A WSX
+A YEM
+A ZAW
+A ZIM
+
+
+Abkhazia                    = ABK
+Abodrite Sea                = ABS
+Adulis                      = ADU
+Aegean Sea                  = AES
+Alexandria                  = ALE
+Alidistan                   = ALI
+Amdo                        = AMD
+Annam                       = ANN
+Andaman Sea                 = ANS
+Al-Qatta'i                  = AQA
+Aquitaine                   = AQT
+Aquileia                    = AQU
+Ardebil                     = ARD
+Armenia                     = ARM
+Arabian Sea                 = ARS
+Assode                      = ASS
+Asturias                    = AST
+Atil                        = ATI
+Antipodean Sea              = ATS
+Attalia                     = ATT
+Autun                       = AUT
+Awdagost                    = AWD
+Awlil                       = AWL
+Province of Axum            = AXU
+Azania                      = AZA
+Azerbaijan                  = AZE
+Baghdad                     = BAG
+Balanjar                    = BAL
+Barca                       = BAR
+Bashkortostan               = BAS
+Bavaria                     = BAV
+Berenice                    = BER
+Bjarmaland                  = BJA
+Balhae                      = BLH
+Balhae (East Coast)         = BLH/EC
+Balhae (South Coast)        = BLH/SC
+Balkh                       = BLK
+Balearic Sea                = BLS
+Borussia                    = BOR
+Brittish Channel            = BRC
+Bremen                      = BRE
+Barghawata                  = BRG
+Brittany                    = BRI
+Bassikinu                   = BSK
+Basra                       = BSR
+Buccellaria                 = BUC
+Bukhara                     = BUK
+Bulgar                      = BUL
+Bure                        = BUR
+Butuan                      = BUT
+Cadiz                       = CAD
+Cahaya                      = CAH
+Cappadocia                  = CAP
+Cantabric Sea               = CAS
+Chang'an                    = CHA
+Cheremissia                 = CHE
+Chalukya                    = CHL
+Champa                      = CHM
+Changcheng                  = CHN
+Chola                       = CHO
+Cherson                     = CHS
+Coromandel Bay              = CIB
+Cilician Sea                = CIS
+Caledonia                   = CLD
+Constantinople              = CON
+Cordova                     = COR
+Crete                       = CRE
+Corsica                     = CRS
+Cyprus                      = CYP
+Daju                        = DAJ
+Dalmatia                    = DAL
+Damascus                    = DAM
+Derbent                     = DER
+Dregovichia                 = DRE
+Dublin                      = DUB
+Dvaravati                   = DVA
+Eastern Sea                 = EAS
+East Euxine Sea             = EES
+Egyptian Sea                = EGS
+Epirus                      = EPI
+Esteland                    = EST
+Fazzan                      = FAZ
+Finnish Sea                 = FIS
+Franconia                   = FRA
+Friesland                   = FRI
+Gulf of Aden                = GAD
+Galicia                     = GAL
+Gascony                     = GAS
+Georgia                     = GEO
+Ghuzz                       = GHU
+Gokomere Sea                = GOS
+Gottland                    = GOT
+Granada                     = GRA
+Guangzhou                   = GUA
+Helvetia                    = HEL
+Henan                       = HEN
+Herat                       = HER
+Icelandic Sea               = ICS
+Ifriqiya                    = IFR
+Illyrian Sea                = ILS
+Indraprastha                = IND
+Ionian Sea                  = IOS
+Isfahan                     = ISF
+Jambi                       = JAM
+Java Sea                    = JAS
+Jenne-Jeno                  = JEJ
+Jerusalem                   = JER
+Jiangxi                     = JIA
+Jelling                     = JLN
+Jorvik                      = JOR
+Jorvik (East Coast)         = JOR/EC
+Jorvik (West Coast)         = JOR/WC
+Kakheti                     = KAK
+Kalimantan                  = KAL
+Kambuja                     = KAM
+Kanem                       = KAN
+Karelia                     = KAR
+Kashmir                     = KAS
+Kattegat                    = KAT
+Khitai                      = KHI
+Khorasan                    = KHO
+Kiev                        = KIE
+Kipchak                     = KIP
+Kangaba                     = KNG
+Kannauj                     = KNJ
+Kongo                       = KON
+Kornia                      = KOR
+Kotoko                      = KOT
+Krivichia                   = KRI
+Karimata Straits            = KRS
+Kumbi Saleh                 = KUS
+Kutamia                     = KUT
+Kyzyl Kum                   = KYK
+Kyrgyzstan                  = KYR
+Lower Burgundy              = LBU
+Lettish Sea                 = LES
+Ligurian Sea                = LGS
+Libyan Sea                  = LIS
+Livonia                     = LIV
+Lombardy                    = LOM
+Lothairingia                = LOT
+Luba                        = LUB
+Luo                         = LUO
+Lusong Sea                  = LUS
+Macedonia                   = MAC
+Mahilaka                    = MAH
+Makuran                     = MAK
+Malao                       = MAL
+Mansurah                    = MAN
+Malabar Sea                 = MAS
+Mauretania                  = MAU
+Mazovia                     = MAZ
+Mecca                       = MEC
+Merkit                      = MER
+Menuthian Sea               = MES
+Minang Sea                  = MIS
+Moravia                     = MOR
+Mosul                       = MOS
+Mordvinia                   = MRD
+Meroe                       = MRO
+Munster                     = MUN
+Namib                       = NAM
+Nanjing                     = NAN
+Narbonne                    = NAR
+Nefud                       = NEF
+Nepal                       = NEP
+North German Sea            = NGS
+Niore                       = NIO
+North Khazar Sea            = NKS
+Nanzhao                     = NNZ
+Norway                      = NOR
+North Ocean Sea             = NOS
+Novgorod                    = NOV
+North Red Sea               = NRS
+Oman                        = OMA
+Onoguria                    = ONO
+Ordu-Balyk                  = ORB
+Pagan                       = PAG
+Pala                        = PAL
+Pamplona                    = PAM
+Paris                       = PAR
+Pechenega                   = PEC
+Pechenega (East Coast)      = PEC/EC
+Pechenega (West Coast)      = PEC/WC
+Phebol                      = PHE
+Palembang                   = PLM
+Polania                     = POL
+Pomerania                   = POM
+Qarluk                      = QAR
+Rastrakuta                  = RAS
+Rhapta                      = RHA
+Roha                        = ROH
+Rome                        = ROM
+Rome (East Coast)           = ROM/EC
+Rome (West Coast)           = ROM/WC
+Rostov                      = ROS
+Saamiland                   = SAA
+Saamiland (North Coast)     = SAA/NC
+Saamiland (South Coast)     = SAA/SC
+Sabah                       = SAB
+Saikaido                    = SAI
+Salamanca                   = SAL
+Samarkand                   = SAM
+Sanhaja                     = SAN
+Sardinia                    = SAR
+Saxony                      = SAX
+Scania                      = SCA
+Sea of Cham                 = SCH
+Serendib                    = SER
+Severyana                   = SEV
+South German Sea            = SGS
+Shahiya                     = SHA
+Sicily                      = SIC
+Sichuan                     = SIH
+Sijilmassa                  = SIJ
+Silla                       = SIL
+Sijistan                    = SJS
+Straits of Jebel Tarik      = SJT
+South Khazar Sea            = SKS
+Slavonia                    = SLA
+Salerno                     = SLR
+Smolensk                    = SMO
+Sea of Nihon                = SNI
+Socotra                     = SOC
+Sogdia                      = SOG
+South Ocean Sea             = SOS
+Spanish March               = SPM
+Spoleto                     = SPO
+Sarkel                      = SRK
+South Red Sea               = SRS
+Sea of Tangiers             = STA
+Stone Belt                  = STB
+Sea of Tepanga              = STP
+Sea of Tyre                 = STY
+Sudd                        = SUD
+Southern Sea                = SUS
+Swabia                      = SWA
+Sea of Worms                = SWO
+Tahert                      = TAH
+Tamantarka                  = TAM
+Taranto                     = TAR
+Takrur Sea                  = TAS
+Thrace                      = THR
+Tibet                       = TIB
+Tiraqqa                     = TIR
+Tkanaren                    = TKA
+Toledo                      = TOL
+Toulouse                    = TOU
+Tripolitania                = TRI
+Tunguz                      = TUN
+Tyrrhenian Sea              = TYS
+Upper Burgundy              = UBU
+Udmurtia                    = UDM
+Ujjain                      = UJJ
+Uppland                     = UPP
+Urgench                     = URG
+Uyghurstan                  = UYG
+Valencia                    = VAL
+Varanasi                    = VAR
+Veletia                     = VEL
+Veletia (North Coast)       = VEL/NC
+Veletia (West Coast)        = VEL/WC
+Viken                       = VIK
+Vlacha                      = VLA
+Volhynia                    = VOL
+Vyatichia                   = VYA
+Walata                      = WAL
+West Euxine Sea             = WES
+White Sea                   = WHS
+Wales                       = WLS
+Welsh Sea                   = WSS
+Wessex                      = WSX
+Western Sea                 = WTS
+Yanjing                     = YAN
+Yemen                       = YEM
+Yellow Sea                  = YES
+Yugra                       = YUG
+Zaragoza                    = ZAR
+Zawila                      = ZAW
+Zeila                       = ZEI
+Zimbabwe                    = ZIM
+
+COAST ABK       ABUTS   bal EES GEO TAM
+WATER ABS       ABUTS   BOR JLN KAT LES POM SCA VEL/NC
+COAST ADU       ABUTS   AXU GAD MRO ROH SRS ZEI
+WATER AES       ABUTS   ATT CIS CON CRE IOS
+COAST ALE       ABUTS   AQA BAR EGS FAZ JER MEC NRS tri
+COAST ALI       ABUTS   ARD ISF KHO SKS URG
+LAND  AMD       ABUTS   CHA SOG TIB UYG
+COAST ANN       ABUTS   CHM dva GUA kam NNZ SCH
+WATER ANS       ABUTS   CAH CIB DVA JAM KRS MIS SER
+COAST AQA       ABUTS   ALE BER DAJ FAZ MAK NRS
+COAST AQT       ABUTS   AUT BRI CAS GAS par TOU
+COAST AQU       ABUTS   BAV DAL ILS lom ROM/EC SLA
+COAST ARD       ABUTS   ALI AZE BAG ISF MOS SKS
+LAND  ARM       ABUTS   CAP DAM KAK MOS
+WATER ARS       ABUTS   BSR GAD MAN MAS OMA SOC UJJ YEM
+LAND  ASS       ABUTS   DAJ FAZ KAN KOT SIJ TAH TIR WAL ZAW
+COAST AST       ABUTS   CAS GAL PAM SAL ZAR
+COAST ATI       ABUTS   BAL BAS KIP MRD NKS SRK UDM
+WATER ATS       ABUTS   GOS MAH MES PHE SOS SUS WTS
+COAST ATT       ABUTS   AES buc CAP CIS CON
+LAND  AUT       ABUTS   AQT LBU LOT NAR PAR TOU UBU
+LAND  AWD       ABUTS   AWL BUR KUS NIO SAN
+COAST AWL       ABUTS   AWD BUR SAN SOS TAS
+LAND  AXU       ABUTS   ADU MRO ROH SUD
+COAST AZA       ABUTS   GAD MAL MES RHA
+COAST AZE       ABUTS   ARD DER KAK MOS SKS
+LAND  BAG       ABUTS   ARD BSR DAM ISF MOS NEF
+COAST BAL       ABUTS   abk ATI DER geo KAK NKS SRK tam
+COAST BAR       ABUTS   ALE EGS LIS TRI
+LAND  BAS       ABUTS   ATI KIP STB UDM YUG
+LAND  BAV       ABUTS   AQU HEL LOM MOR POL SAX SLA SWA
+COAST BER       ABUTS   AQA MAK MRO NRS SRS
+COAST BJA       ABUTS   che ICS kar KOR SAA/NC WHS
+COAST blh       ABUTS   KHI MER SIL SNI YAN YES
+COAST BLH/EC    ABUTS   SIL SNI
+COAST BLH/SC    ABUTS   SIL YAN YES
+LAND  BLK       ABUTS   BUK HER KAS MAN SAM SHA SOG
+WATER BLS       ABUTS   CRS LGS SAR SJT SPM TYS VAL
+COAST BOR       ABUTS   ABS DRE LES LIV MAZ POL POM
+WATER BRC       ABUTS   BRI LOT NOS PAR SGS WSX
+COAST BRE       ABUTS   FRA FRI SAX SGS VEL/WC
+COAST BRG       ABUTS   MAU SAN SIJ STA TAS
+COAST BRI       ABUTS   AQT BRC CAS NOS PAR
+LAND  BSK       ABUTS   JEJ KOT NIO TIR WAL
+COAST BSR       ABUTS   ARS BAG ISF MAN NEF OMA SJS
+COAST BUC       ABUTS   att cap CON EES GEO WES
+LAND  BUK       ABUTS   BLK HER KYK SAM URG
+LAND  BUL       ABUTS   CHE KOR MRD UDM VYA
+COAST BUR       ABUTS   AWD AWL KNG NIO SOS
+COAST BUT       ABUTS   JAS LUS SCH STP
+COAST CAD       ABUTS   COR GAL GRA NOS SAL SJT STA
+COAST CAH       ABUTS   ANS DVA KAM KRS
+COAST CAP       ABUTS   ARM ATT buc CIS DAM geo KAK STY
+WATER CAS       ABUTS   AQT AST BRI GAL GAS NOS PAM
+LAND  CHA       ABUTS   AMD CHN HEN JIA NNZ SIH TIB UYG YAN
+COAST CHE       ABUTS   bja BUL kar kor KRI ROS VYA
+COAST CHL       ABUTS   CHO CIB KNJ ras VAR
+COAST CHM       ABUTS   ANN KAM SCH
+LAND  CHN       ABUTS   CHA KHI ORB UYG YAN
+COAST CHO       ABUTS   CHL CIB MAS RAS
+COAST CHS       ABUTS   EES PEC/EC PEC/WC WES
+WATER CIB       ABUTS   ANS CHL CHO DVA MAS PAL SER VAR
+WATER CIS       ABUTS   AES ATT CAP CRE CYP EGS STY
+COAST CLD       ABUTS   ICS JOR/EC JOR/WC WSS
+COAST CON       ABUTS   AES ATT BUC EPI IOS MAC THR WES
+LAND  COR       ABUTS   CAD GRA SAL TOL VAL
+COAST CRE       ABUTS   AES CIS EGS IOS
+COAST CRS       ABUTS   BLS LGS TYS
+COAST CYP       ABUTS   CIS EGS STY
+LAND  DAJ       ABUTS   AQA ASS FAZ KAN MAK SUD ZAW
+COAST DAL       ABUTS   AQU EPI ILS MAC ONO SLA
+COAST DAM       ABUTS   ARM BAG CAP JER mec MOS NEF STY
+COAST DER       ABUTS   AZE BAL KAK NKS SKS
+LAND  DRE       ABUTS   BOR KIE LIV MAZ SMO VOL
+COAST DUB       ABUTS   ICS MUN NOS WSS
+COAST DVA       ABUTS   ann ANS CAH CIB kam NNZ PAG PAL
+WATER EAS       ABUTS   GUA LUS NAN SAI SIL SNI STP YES
+WATER EES       ABUTS   ABK BUC CHS GEO PEC/EC TAM WES
+WATER EGS       ABUTS   ALE BAR CIS CRE CYP IOS JER LIS STY
+COAST EPI       ABUTS   CON DAL ILS IOS MAC
+COAST EST       ABUTS   FIS LIV NOV
+LAND  FAZ       ABUTS   ALE AQA ASS DAJ IFR TAH TRI ZAW
+WATER FIS       ABUTS   EST KAR LES LIV NOV SAA/SC UPP
+LAND  FRA       ABUTS   BRE FRI LOT SAX SWA
+COAST FRI       ABUTS   BRE FRA LOT SGS
+WATER GAD       ABUTS   ADU ARS AZA MAH MAL MAS MES PHE SOC SRS YEM ZEI
+COAST GAL       ABUTS   AST CAD CAS NOS SAL
+COAST GAS       ABUTS   AQT CAS PAM TOU
+COAST GEO       ABUTS   ABK bal BUC cap EES KAK
+COAST GHU       ABUTS   KIP KYK NKS URG
+WATER GOS       ABUTS   ATS MES NAM SOS ZIM
+COAST GOT       ABUTS   LES SCA UPP vik
+COAST GRA       ABUTS   CAD COR SJT VAL
+COAST GUA       ABUTS   ANN EAS JIA NAN NNZ SCH STP
+LAND  HEL       ABUTS   BAV LBU LOM SWA UBU
+COAST HEN       ABUTS   CHA JIA NAN YAN YES
+LAND  HER       ABUTS   BLK BUK KHO MAN SJS URG
+WATER ICS       ABUTS   BJA CLD DUB JOR/EC MUN NGS NOR NOS SAA/NC SWO WHS WSS
+COAST IFR       ABUTS   FAZ KUT LIS SJT TAH TRI TYS
+WATER ILS       ABUTS   AQU DAL EPI IOS ROM/EC SPO TAR
+LAND  IND       ABUTS   KAS KNJ NEP SHA UJJ
+WATER IOS       ABUTS   AES CON CRE EGS EPI ILS LIS SIC TAR TYS
+LAND  ISF       ABUTS   ALI ARD BAG BSR KHO SJS
+COAST JAM       ABUTS   ANS KRS MIS PLM SUS
+WATER JAS       ABUTS   BUT KAL KRS LUS PLM SAB SCH SUS
+LAND  JEJ       ABUTS   BSK KOT TIR
+COAST JER       ABUTS   ALE DAM EGS mec STY
+LAND  JIA       ABUTS   CHA GUA HEN NAN NNZ
+COAST JLN       ABUTS   ABS KAT NGS SGS VEL/NC VEL/WC
+COAST jor       ABUTS   CLD ICS NGS WLS WSS WSX
+COAST JOR/EC    ABUTS   CLD ICS NGS WSX
+COAST JOR/WC    ABUTS   CLD WLS WSS
+LAND  KAK       ABUTS   ARM AZE BAL CAP DER GEO MOS
+COAST KAL       ABUTS   JAS KRS SAB SCH
+COAST KAM       ABUTS   ann CAH CHM dva KRS SCH
+LAND  KAN       ABUTS   ASS DAJ KOT LUO SUD
+COAST KAR       ABUTS   bja che FIS NOV ROS SAA/SC
+LAND  KAS       ABUTS   BLK IND NEP SHA SOG TIB
+WATER KAT       ABUTS   ABS JLN NGS NOR SCA VIK
+LAND  KHI       ABUTS   BLH CHN MER ORB YAN
+LAND  KHO       ABUTS   ALI HER ISF SJS URG
+LAND  KIE       ABUTS   DRE PEC SEV SMO VLA VOL VYA
+COAST KIP       ABUTS   ATI BAS GHU KYK KYR NKS yug
+COAST KNG       ABUTS   BUR KOT NIO SOS
+LAND  KNJ       ABUTS   CHL IND NEP RAS UJJ VAR
+COAST KON       ABUTS   KOT LUB NAM SOS zim
+COAST KOR       ABUTS   BJA BUL che STB UDM WHS YUG
+COAST KOT       ABUTS   ASS BSK JEJ KAN KNG KON LUB LUO NIO SOS TIR
+LAND  KRI       ABUTS   CHE NOV ROS SMO VYA
+WATER KRS       ABUTS   ANS CAH JAM JAS KAL KAM PLM SCH
+LAND  KUS       ABUTS   AWD NIO SAN WAL
+COAST KUT       ABUTS   IFR MAU SJT TAH
+LAND  KYK       ABUTS   BUK GHU KIP KYR QAR SAM URG
+LAND  KYR       ABUTS   KIP KYK ORB QAR TUN YUG
+COAST LBU       ABUTS   AUT HEL LGS LOM NAR UBU
+WATER LES       ABUTS   ABS BOR FIS GOT LIV SCA UPP
+WATER LGS       ABUTS   BLS CRS LBU LOM NAR ROM/WC SPM TYS
+WATER LIS       ABUTS   BAR EGS IFR IOS SIC TRI TYS
+COAST LIV       ABUTS   BOR DRE EST FIS LES nov SMO
+COAST LOM       ABUTS   aqu BAV HEL LBU LGS ROM/WC
+COAST LOT       ABUTS   AUT BRC FRA FRI PAR SGS SWA UBU
+LAND  LUB       ABUTS   KON KOT LUO MAL RHA ROH ZIM
+LAND  LUO       ABUTS   KAN KOT LUB ROH SUD
+WATER LUS       ABUTS   BUT EAS JAS SAI SNI STP
+LAND  MAC       ABUTS   CON DAL EPI ONO THR
+COAST MAH       ABUTS   ATS GAD MAS PHE SUS
+LAND  MAK       ABUTS   AQA BER DAJ MRO SUD
+COAST MAL       ABUTS   AZA GAD LUB rha ROH ZEI
+COAST MAN       ABUTS   ARS BLK BSR HER SHA SJS UJJ
+WATER MAS       ABUTS   ARS CHO CIB GAD MAH MIS RAS SER SOC SUS UJJ
+COAST MAU       ABUTS   BRG KUT SIJ SJT STA TAH
+LAND  MAZ       ABUTS   BOR DRE POL VOL
+COAST MEC       ABUTS   ALE dam jer NEF NRS SRS YEM
+LAND  MER       ABUTS   BLH KHI ORB TUN
+WATER MES       ABUTS   ATS AZA GAD GOS PHE RHA ZIM
+WATER MIS       ABUTS   ANS JAM MAS SER SUS
+LAND  MOR       ABUTS   BAV ONO POL SLA VOL
+LAND  MOS       ABUTS   ARD ARM AZE BAG DAM KAK
+LAND  MRD       ABUTS   ATI BUL SEV SRK UDM VYA
+COAST MRO       ABUTS   ADU AXU BER MAK SRS SUD
+COAST MUN       ABUTS   DUB ICS NOS
+COAST NAM       ABUTS   GOS KON SOS ZIM
+COAST NAN       ABUTS   EAS GUA HEN JIA YES
+COAST NAR       ABUTS   AUT LBU LGS SPM TOU
+LAND  NEF       ABUTS   BAG BSR DAM MEC OMA YEM
+LAND  NEP       ABUTS   IND KAS KNJ PAL TIB VAR
+WATER NGS       ABUTS   ICS JLN JOR/EC KAT NOR SGS WSX
+LAND  NIO       ABUTS   AWD BSK BUR KNG KOT KUS WAL
+WATER NKS       ABUTS   ATI BAL DER GHU KIP SKS URG
+LAND  NNZ       ABUTS   ANN CHA DVA GUA JIA PAG PAL SIH TIB
+COAST NOR       ABUTS   ICS KAT NGS SAA/NC upp VIK
+WATER NOS       ABUTS   BRC BRI CAD CAS DUB GAL ICS MUN STA SWO WSS WSX
+COAST NOV       ABUTS   EST FIS KAR KRI liv ROS SMO
+WATER NRS       ABUTS   ALE AQA BER MEC SRS
+COAST OMA       ABUTS   ARS BSR NEF YEM
+LAND  ONO       ABUTS   DAL MAC MOR SLA THR VLA VOL
+LAND  ORB       ABUTS   CHN KHI KYR MER QAR SAM TUN UYG
+LAND  PAG       ABUTS   DVA NNZ PAL
+COAST PAL       ABUTS   CIB DVA NEP NNZ PAG TIB VAR
+COAST PAM       ABUTS   AST CAS GAS spm TOU ZAR
+COAST PAR       ABUTS   aqt AUT BRC BRI LOT
+COAST pec       ABUTS   CHS EES KIE SEV TAM VLA WES
+COAST PEC/EC    ABUTS   CHS EES TAM
+COAST PEC/WC    ABUTS   CHS VLA WES
+COAST PHE       ABUTS   ATS GAD MAH MES
+COAST PLM       ABUTS   JAM JAS KRS SUS
+LAND  POL       ABUTS   BAV BOR MAZ MOR POM SAX VOL
+COAST POM       ABUTS   ABS BOR POL SAX VEL/NC
+LAND  QAR       ABUTS   KYK KYR ORB SAM
+COAST RAS       ABUTS   chl CHO KNJ MAS UJJ
+COAST RHA       ABUTS   AZA LUB mal MES ZIM
+LAND  ROH       ABUTS   ADU AXU LUB LUO MAL SUD ZEI
+COAST rom       ABUTS   AQU ILS LGS LOM SLR SPO TYS
+COAST ROM/EC    ABUTS   AQU ILS SPO
+COAST ROM/WC    ABUTS   LGS LOM SLR TYS
+LAND  ROS       ABUTS   CHE KAR KRI NOV
+COAST saa       ABUTS   BJA FIS ICS KAR NOR UPP
+COAST SAA/NC    ABUTS   BJA ICS NOR
+COAST SAA/SC    ABUTS   FIS KAR UPP
+COAST SAB       ABUTS   JAS KAL SCH
+COAST SAI       ABUTS   EAS LUS SNI
+LAND  SAL       ABUTS   AST CAD COR GAL TOL ZAR
+LAND  SAM       ABUTS   BLK BUK KYK ORB QAR SOG UYG
+COAST SAN       ABUTS   AWD AWL BRG KUS SIJ TAS WAL
+COAST SAR       ABUTS   BLS SJT TYS
+LAND  SAX       ABUTS   BAV BRE FRA POL POM SWA VEL
+COAST SCA       ABUTS   ABS GOT KAT LES VIK
+WATER SCH       ABUTS   ANN BUT CHM GUA JAS KAL KAM KRS SAB STP
+COAST SER       ABUTS   ANS CIB MAS MIS
+LAND  SEV       ABUTS   KIE MRD PEC SRK TAM VYA
+WATER SGS       ABUTS   BRC BRE FRI JLN LOT NGS VEL/WC WSX
+LAND  SHA       ABUTS   BLK IND KAS MAN UJJ
+COAST SIC       ABUTS   IOS LIS TYS
+LAND  SIH       ABUTS   CHA NNZ TIB
+LAND  SIJ       ABUTS   ASS BRG MAU SAN TAH WAL
+COAST SIL       ABUTS   BLH/EC BLH/SC EAS SNI YES
+LAND  SJS       ABUTS   BSR HER ISF KHO MAN
+WATER SJT       ABUTS   BLS CAD GRA IFR KUT MAU SAR STA TYS VAL
+WATER SKS       ABUTS   ALI ARD AZE DER NKS URG
+LAND  SLA       ABUTS   AQU BAV DAL MOR ONO
+COAST SLR       ABUTS   ROM/WC spo TAR TYS
+LAND  SMO       ABUTS   DRE KIE KRI LIV NOV VYA
+WATER SNI       ABUTS   BLH/EC EAS LUS SAI SIL
+COAST SOC       ABUTS   ARS GAD MAS
+LAND  SOG       ABUTS   AMD BLK KAS SAM TIB UYG
+WATER SOS       ABUTS   ATS AWL BUR GOS KNG KON KOT NAM TAS WTS
+COAST SPM       ABUTS   BLS LGS NAR pam TOU VAL ZAR
+COAST SPO       ABUTS   ILS ROM/EC slr TAR
+LAND  SRK       ABUTS   ATI BAL MRD SEV TAM
+WATER SRS       ABUTS   ADU BER GAD MEC MRO NRS YEM
+WATER STA       ABUTS   BRG CAD MAU NOS SJT SWO TAS TKA
+LAND  STB       ABUTS   BAS KOR UDM YUG
+WATER STP       ABUTS   BUT EAS GUA LUS SCH
+WATER STY       ABUTS   CAP CIS CYP DAM EGS JER
+LAND  SUD       ABUTS   AXU DAJ KAN LUO MAK MRO ROH
+WATER SUS       ABUTS   ATS JAM JAS MAH MAS MIS PLM
+LAND  SWA       ABUTS   BAV FRA HEL LOT SAX UBU
+WATER SWO       ABUTS   ICS NOS STA TKA WTS
+LAND  TAH       ABUTS   ASS FAZ IFR KUT MAU SIJ
+COAST TAM       ABUTS   ABK bal EES PEC/EC SEV SRK
+COAST TAR       ABUTS   ILS IOS SLR SPO TYS
+WATER TAS       ABUTS   AWL BRG SAN SOS STA TKA WTS
+COAST THR       ABUTS   CON MAC ONO VLA WES
+LAND  TIB       ABUTS   AMD CHA KAS NEP NNZ PAL SIH SOG
+LAND  TIR       ABUTS   ASS BSK JEJ KOT WAL
+COAST TKA       ABUTS   STA SWO TAS WTS
+LAND  TOL       ABUTS   COR SAL VAL ZAR
+LAND  TOU       ABUTS   AQT AUT GAS NAR PAM SPM
+COAST TRI       ABUTS   ale BAR FAZ IFR LIS
+COAST TUN       ABUTS   KYR MER ORB WHS YUG
+WATER TYS       ABUTS   BLS CRS IFR IOS LGS LIS ROM/WC SAR SIC SJT SLR TAR
+LAND  UBU       ABUTS   AUT HEL LBU LOT SWA
+LAND  UDM       ABUTS   ATI BAS BUL KOR MRD STB
+COAST UJJ       ABUTS   ARS IND KNJ MAN MAS RAS SHA
+COAST UPP       ABUTS   FIS GOT LES nor SAA/SC vik
+COAST URG       ABUTS   ALI BUK GHU HER KHO KYK NKS SKS
+LAND  UYG       ABUTS   AMD CHA CHN ORB SAM SOG
+COAST VAL       ABUTS   BLS COR GRA SJT SPM TOL ZAR
+COAST VAR       ABUTS   CHL CIB KNJ NEP PAL
+COAST vel       ABUTS   ABS BRE JLN POM SAX SGS
+COAST VEL/NC    ABUTS   ABS JLN POM
+COAST VEL/WC    ABUTS   BRE JLN SGS
+COAST VIK       ABUTS   got KAT NOR SCA upp
+COAST VLA       ABUTS   KIE ONO PEC/WC THR VOL WES
+LAND  VOL       ABUTS   DRE KIE MAZ MOR ONO POL VLA
+LAND  VYA       ABUTS   BUL CHE KIE KRI MRD SEV SMO
+LAND  WAL       ABUTS   ASS BSK KUS NIO SAN SIJ TIR
+WATER WES       ABUTS   BUC CHS CON EES PEC/WC THR VLA
+WATER WHS       ABUTS   BJA ICS KOR TUN YUG
+COAST WLS       ABUTS   JOR/WC WSS WSX
+WATER WSS       ABUTS   CLD DUB ICS JOR/WC NOS WLS WSX
+COAST WSX       ABUTS   BRC JOR/EC NGS NOS SGS WLS WSS
+WATER WTS       ABUTS   ATS SOS SWO TAS TKA
+COAST YAN       ABUTS   BLH/SC CHA CHN HEN KHI YES
+COAST YEM       ABUTS   ARS GAD MEC NEF OMA SRS
+WATER YES       ABUTS   BLH/SC EAS HEN NAN SIL YAN
+COAST YUG       ABUTS   BAS kip KOR KYR STB TUN WHS
+LAND  ZAR       ABUTS   AST PAM SAL SPM TOL VAL
+LAND  ZAW       ABUTS   ASS DAJ FAZ
+COAST ZEI       ABUTS   ADU GAD MAL ROH
+COAST ZIM       ABUTS   GOS kon LUB MES NAM RHA
+

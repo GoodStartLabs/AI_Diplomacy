@@ -1,0 +1,19 @@
+/**
+==============================================================================
+Copyright (C) 2019 - Philip Paquette, Steven Bocco
+
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU Affero General Public License as published by the Free
+ Software Foundation, either version 3 of the License, or (at your option) any
+ later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+ details.
+
+ You should have received a copy of the GNU Affero General Public License along
+ with this program.  If not, see <https:www.gnu.org/licenses/>.
+==============================================================================
+**/
+/* text */ .SvgAncMed .smalllabeltext {text-anchor:middle;stroke-width:0.1;stroke:black;fill:black;font-family:serif;font-style:italic;font-size:14px;} .SvgAncMed .currentnoterect {fill:#c5dfea; stroke-width:0; stroke:black;} .SvgAncMed .currentnotetext {font-family:serif,sans-serif; font-size:12px; fill:black; stroke:black;} .SvgAncMed .currentphasetext {font-family:serif,sans-serif; font-size:18px; fill:black; stroke:black;} /* style class for invisible regions */ .SvgAncMed .invisibleContent {stroke:white;fill:white;fill-opacity:0.0;opacity:0.0} /* default region coloring, by power (nopower if region not owned) */ .SvgAncMed .provinceRed {fill:url(#patternRed); stroke: black; stroke-width:2} .SvgAncMed .provinceBrown {fill:url(#patternBrown); stroke: black; stroke-width:2} .SvgAncMed .provinceGreen {fill:url(#patternGreen); stroke: black; stroke-width:2} .SvgAncMed .provinceBlack {fill:url(#patternBlack); stroke: black; stroke-width:2} .SvgAncMed .provinceBlue {fill:url(#patternBlue); stroke: black; stroke-width:2} .SvgAncMed .nopower {fill:none;stroke:black;stroke-width:2} .SvgAncMed .water {fill:lightblue;stroke:black;stroke-width:2} .SvgAncMed .rome {fill:#c48f85;stroke:black;stroke-width:2} .SvgAncMed .carthage {fill:royalblue;stroke:black;stroke-width:2} .SvgAncMed .persia {fill:gray;stroke:black;stroke-width:2} .SvgAncMed .greece {fill:forestgreen;stroke:black;stroke-width:2} .SvgAncMed .egypt {fill:#b9a61c;stroke:black;stroke-width:2} /* unit colors fills, by power (units always have a power) */ .SvgAncMed .unitrome {fill:red;} .SvgAncMed .unitcarthage {fill:deepskyblue;} .SvgAncMed .unitpersia {fill:white;} .SvgAncMed .unitgreece {fill:#8db600;} .SvgAncMed .unitegypt {fill:yellow;} /* map accents */ .SvgAncMed .thickdash {fill:none;stroke:black;stroke-width:6;stroke-dasharray:2,1.5;} /* order drawing styles, stroke and fill colors should not be specified */ .SvgAncMed .supportorder {stroke-width:3; fill:none; stroke-dasharray:5,5;} .SvgAncMed .convoyorder {stroke-dasharray:15,5; stroke-width:3; fill:none;} .SvgAncMed .shadowdash {stroke-width:5; fill:none; stroke:black; opacity:0.45;} .SvgAncMed .varwidthorder {fill:none;} .SvgAncMed .varwidthshadow {fill:none; stroke:black;} .SvgAncMed .style1 {fill:none;stroke:#17A1F8;stroke-width:5;} .SvgAncMed .style2 {fill:none;stroke:black;stroke-width:2}
