@@ -18,7 +18,7 @@ import pytest_asyncio
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from .test_fake_websocket_server import FakeServerManager, FakeWebSocketServer
-from typed_websocket_client import TypedWebSocketDiplomacyClient
+from websocket_diplomacy_client import WebSocketDiplomacyClient
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
@@ -39,13 +39,13 @@ def credentials() -> Generator[Dict[str, str], None]:
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[TypedWebSocketDiplomacyClient, None]:
+async def client() -> AsyncGenerator[WebSocketDiplomacyClient, None]:
     """
-    Fixture that provides a TypedWebSocketDiplomacyClient instance.
+    Fixture that provides a WebSocketDiplomacyClient instance.
 
     The client is configured to connect to the fake server on port 8433.
     """
-    client = TypedWebSocketDiplomacyClient("localhost", 8433, use_ssl=False)
+    client = WebSocketDiplomacyClient("localhost", 8433, use_ssl=False)
     yield client
 
     # Cleanup: close the client connection
@@ -58,13 +58,13 @@ async def client() -> AsyncGenerator[TypedWebSocketDiplomacyClient, None]:
 @pytest.fixture
 async def authenticated_client(fake_server, client):
     """
-    Fixture that provides an authenticated TypedWebSocketDiplomacyClient.
+    Fixture that provides an authenticated WebSocketDiplomacyClient.
 
     This client is already connected and authenticated, ready for testing
     game operations.
     """
-    await client.connect()
-    token = await client.authenticate("test_user", "test_password")
+    await client.connect_and_authenticate("test_user", "test_password")
+    token = client.token
     assert token is not None
     assert client.token == token
     yield client

@@ -19,16 +19,14 @@ from models import (
     serialize_message,
     parse_message,
 )
-from typed_websocket_client import TypedWebSocketDiplomacyClient
+from websocket_diplomacy_client import WebSocketDiplomacyClient
 
 
 class TestAuthentication:
     """Test authentication flow and message handling."""
 
     @pytest.mark.websocket
-    async def test_successful_authentication(
-        self, client: TypedWebSocketDiplomacyClient, helpers
-    ):
+    async def test_successful_authentication(self, client: WebSocketDiplomacyClient, helpers):
         """Test successful authentication with valid credentials."""
         await client.connect_and_authenticate("test_user", "test_password")
         helpers.assert_valid_token(client.token)
@@ -44,16 +42,12 @@ class TestAuthentication:
         assert client.token is None
 
     @pytest.mark.websocket
-    async def test_authentication_message_format(
-        self, credentials: Dict[str, str], client: TypedWebSocketDiplomacyClient
-    ):
+    async def test_authentication_message_format(self, credentials: Dict[str, str], client: WebSocketDiplomacyClient):
         """Test that authentication messages are properly formatted."""
         await client.connect_and_authenticate(**credentials)
 
         # Create a sign-in request manually to test message format
-        request = SignInRequest(
-            request_id=str(uuid.uuid4()), username="test_user", password="test_password"
-        )
+        request = SignInRequest(request_id=str(uuid.uuid4()), username="test_user", password="test_password")
 
         # Verify the request serializes correctly
         message_data = serialize_message(request)
@@ -74,9 +68,7 @@ class TestGameOperations:
     @pytest.mark.websocket
     async def test_create_game(self, authenticated_client, helpers):
         """Test creating a new game."""
-        game_data = await authenticated_client.create_game(
-            power_name="FRANCE", n_controls=1
-        )
+        game_data = await authenticated_client.create_game(power_name="FRANCE", n_controls=1)
 
         helpers.assert_valid_game_data(game_data)
         assert authenticated_client.game_id is not None
@@ -98,9 +90,7 @@ class TestGameOperations:
         assert authenticated_client.game_id in game_ids
 
     @pytest.mark.websocket
-    async def test_join_existing_game(
-        self, client: TypedWebSocketDiplomacyClient, helpers
-    ):
+    async def test_join_existing_game(self, client: WebSocketDiplomacyClient, helpers):
         """Test joining an existing game."""
         # Connect and authenticate a first client
         await client.connect()
@@ -130,9 +120,7 @@ class TestGameOperations:
     async def test_join_nonexistent_game(self, authenticated_client):
         """Test joining a game that doesn't exist."""
         with pytest.raises(ValueError, match="Game .* not found"):
-            await authenticated_client.join_game(
-                "NONEXISTENT_GAME", power_name="FRANCE"
-            )
+            await authenticated_client.join_game("NONEXISTENT_GAME", power_name="FRANCE")
 
 
 class TestGamePlay:
@@ -246,9 +234,7 @@ class TestMessageValidation:
         """Test that messages can be serialized and parsed correctly."""
         # Test various message types
         messages = [
-            SignInRequest(
-                request_id=str(uuid.uuid4()), username="test", password="pass"
-            ),
+            SignInRequest(request_id=str(uuid.uuid4()), username="test", password="pass"),
             CreateGameRequest(
                 request_id=str(uuid.uuid4()),
                 token="test_token",
@@ -289,7 +275,7 @@ class TestConcurrentOperations:
         try:
             # Create multiple clients
             for i in range(3):
-                client = TypedWebSocketDiplomacyClient("localhost", 8433, use_ssl=False)
+                client = WebSocketDiplomacyClient("localhost", 8433, use_ssl=False)
                 await client.connect()
                 await client.authenticate("test_user", "test_password")
                 clients.append(client)
@@ -300,9 +286,7 @@ class TestConcurrentOperations:
 
             # Each can create games independently
             for i, client in enumerate(clients):
-                game_data = await client.create_game(
-                    power_name="FRANCE" if i == 0 else None, n_controls=1
-                )
+                game_data = await client.create_game(power_name="FRANCE" if i == 0 else None, n_controls=1)
                 assert game_data["game_id"] is not None
 
         finally:

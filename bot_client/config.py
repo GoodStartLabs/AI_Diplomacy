@@ -6,7 +6,7 @@ import warnings
 
 class Configuration(BaseSettings):
     DEBUG: bool = False
-    log_file_path: Path
+    log_file_path: Path | None = None
     DEEPSEEK_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
     ANTHROPIC_API_KEY: str | None = None

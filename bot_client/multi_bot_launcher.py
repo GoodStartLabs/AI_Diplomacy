@@ -72,7 +72,7 @@ class MultiBotLauncher:
         logger.info("Creating new game...")
 
         # Connect as the game creator
-        creator_username = f"{self.base_username}_{creator_power.lower()}"
+        creator_username = f"{self.base_username}_{creator_power}"
         client = await connect_to_diplomacy_server(
             hostname=self.hostname,
             port=self.port,
@@ -105,6 +105,9 @@ class MultiBotLauncher:
         game_id: str,
         log_level: str = "INFO",
         negotiation_rounds: int = 3,
+        connection_timeout: float = 30.0,
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
     ) -> subprocess.Popen:
         """
         Launch a single bot process.
@@ -141,6 +144,12 @@ class MultiBotLauncher:
             log_level,
             "--negotiation-rounds",
             str(negotiation_rounds),
+            "--connection-timeout",
+            str(connection_timeout),
+            "--max-retries",
+            str(max_retries),
+            "--retry-delay",
+            str(retry_delay),
         ]
 
         logger.info(f"Launching bot for {power} with model {model}")
@@ -165,6 +174,9 @@ class MultiBotLauncher:
         log_level: str = "INFO",
         stagger_delay: float = 0.5,
         negotiation_rounds: int = 3,
+        connection_timeout: float = 30.0,
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
     ):
         """
         Launch bots for all specified powers.
@@ -188,7 +200,7 @@ class MultiBotLauncher:
             model = models.get(power, "gpt-3.5-turbo")
 
             try:
-                process = self.launch_bot(power, model, game_id, log_level, negotiation_rounds)
+                process = self.launch_bot(power, model, game_id, log_level, negotiation_rounds, connection_timeout, max_retries, retry_delay)
                 self.bot_processes.append(process)
                 self.process_to_power[process] = power
 
@@ -266,7 +278,7 @@ class MultiBotLauncher:
                                         break
                                     print(f"{power}_{process.pid}: {line.strip()}")
                                     lines_read += 1
-                                except:
+                                except Exception:
                                     break
 
                     except (OSError, ValueError):
@@ -299,7 +311,7 @@ class MultiBotLauncher:
                         break
                     print(f"{power}_{process.pid}: {line.strip()}")
                     lines_read += 1
-                except:
+                except Exception:
                     break
 
     def stop_all_bots(self):
@@ -329,6 +341,9 @@ class MultiBotLauncher:
         log_level: str = "INFO",
         creator_power: str = "FRANCE",
         negotiation_rounds: int = 3,
+        connection_timeout: float = 30.0,
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
     ):
         """
         Create a game and launch all bots for a complete game.
@@ -352,6 +367,9 @@ class MultiBotLauncher:
                 models,
                 log_level=log_level,
                 negotiation_rounds=negotiation_rounds,
+                connection_timeout=connection_timeout,
+                max_retries=max_retries,
+                retry_delay=retry_delay,
             )
 
             # Monitor the bots
@@ -369,6 +387,9 @@ class MultiBotLauncher:
         models: Optional[Dict[str, str]] = None,
         log_level: str = "INFO",
         negotiation_rounds: int = 3,
+        connection_timeout: float = 30.0,
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
     ):
         """
         Launch bots to join an existing game.
@@ -389,6 +410,9 @@ class MultiBotLauncher:
                 powers,
                 log_level,
                 negotiation_rounds=negotiation_rounds,
+                connection_timeout=connection_timeout,
+                max_retries=max_retries,
+                retry_delay=retry_delay,
             )
 
             # Monitor the bots
@@ -419,12 +443,33 @@ def parse_arguments():
         default=3,
         help="Number of negotiation rounds per movement phase (default: 3)",
     )
+    parser.add_argument(
+        "--connection-timeout",
+        type=float,
+        default=30.0,
+        help="Timeout for network operations in seconds (default: 30.0)",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for failed operations (default: 3)",
+    )
+    parser.add_argument(
+        "--retry-delay",
+        type=float,
+        default=2.0,
+        help="Base delay between retries in seconds (default: 2.0)",
+    )
 
     return parser.parse_args()
 
 
 async def main():
     """Main entry point."""
+
+    # FIXME: Arg parse appears to not like game ids with hypens in the name. e.g.
+    # uv run python multi_bot_launcher.py --game-id "-1D0i-fobmvprIh1" results in an error
     args = parse_arguments()
 
     launcher = MultiBotLauncher(
@@ -454,6 +499,9 @@ async def main():
                 models=models,
                 log_level=args.log_level,
                 negotiation_rounds=args.negotiation_rounds,
+                connection_timeout=args.connection_timeout,
+                max_retries=args.max_retries,
+                retry_delay=args.retry_delay,
             )
         else:
             # Create new game and launch all bots
@@ -462,6 +510,9 @@ async def main():
                 log_level=args.log_level,
                 creator_power=args.creator_power,
                 negotiation_rounds=args.negotiation_rounds,
+                connection_timeout=args.connection_timeout,
+                max_retries=args.max_retries,
+                retry_delay=args.retry_delay,
             )
 
     except KeyboardInterrupt:
