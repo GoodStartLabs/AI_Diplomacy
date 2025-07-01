@@ -317,15 +317,10 @@ async def main():
 
         for i, result in enumerate(order_results):
             p_name = order_power_names[i]
-            for i, result in enumerate(order_results):
-            p_name = order_power_names[i]
 
             if isinstance(result, Exception):
                 logger.error("Error getting orders for %s: %s", p_name, result, exc_info=result)
                 valid, invalid = [], []
-            else:
-                valid   = result.get("valid", [])
-                invalid = result.get("invalid", [])
             else:
                 valid   = result.get("valid", [])
                 invalid = result.get("invalid", [])
