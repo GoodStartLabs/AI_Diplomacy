@@ -214,14 +214,10 @@ def construct_order_generation_prompt(
         include_messages=not _use_simple,  # include only when *not* simple
     )
 
-    # Append goals at the end for focus
-    goals_section = ""
-    if agent_goals:
-        goals_section = (
-            "\n\nYOUR STRATEGIC GOALS:\n" + "\n".join(f"- {g}" for g in agent_goals) + "\n\nKeep these goals in mind when choosing your orders."
-        )
+    # delete unused section from context:
+    context = context.replace('Messages This Round\n\n\nEnd Messages', '')
 
-    final_prompt = system_prompt + "\n\n" + context + "\n\n" + instructions + goals_section
+    final_prompt = system_prompt + "\n\n" + context + "\n\n" + instructions
 
     # Make the power names more LLM friendly
     final_prompt = (

@@ -1039,7 +1039,7 @@ class OpenRouterClient(BaseModelClient):
 
         logger.debug(f"[{self.model_name}] Initialized OpenRouter client")
 
-    async def generate_response(self, prompt: str, temperature: float = 0.5, inject_random_seed: bool = True) -> str:
+    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
         """Generate a response using OpenRouter with robust error handling."""
         try:
             # Append the call to action to the user's prompt

@@ -227,6 +227,8 @@ def _plot_relationships_per_game(
 
         # ── NEW: discard rows with no relationship info ────────────
         game_df = game_df[game_df["rel_dict"].apply(bool)]
+        # ── keep only MOVE phases; drop retreat (R) and adjustment (A) ─────
+        game_df = game_df[game_df["game_phase"].str.upper().str.endswith("M")]
         if game_df.empty:               # nothing left to plot
             continue
 
@@ -334,9 +336,18 @@ def _plot_relationships_per_game(
                         else to_rgba(base_colour, alpha=0.35)
                     )
 
+                    # ── “double” a lone point so it shows up as a short flat line ──
+                    finite_pts = [(x, y) for x, y in zip(data["x"], y_off) if not math.isnan(y)]
+                    if len(finite_pts) == 1:
+                        x0, y0 = finite_pts[0]
+                        xs = [x0 - 0.05, x0 + 0.05]   # tiny horizontal spread
+                        ys = [y0, y0]
+                    else:
+                        xs, ys = data["x"], y_off
+
                     plt.plot(
-                        data["x"],
-                        y_off,
+                        xs,
+                        ys,
                         label=f"{other} ({kind})",
                         color=colour,
                         linewidth=2,

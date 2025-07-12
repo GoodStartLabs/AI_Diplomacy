@@ -17,9 +17,6 @@ YOUR RELATIONSHIPS BEFORE THIS PHASE
 YOUR GOALS
 {agent_goals}
 
-YOUR ACTUAL ORDERS
-{your_actual_orders}
-
 TASK
 Analyze what actually happened this phase compared to negotiations and expectations.
 

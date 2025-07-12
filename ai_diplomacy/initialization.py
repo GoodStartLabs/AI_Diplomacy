@@ -158,7 +158,7 @@ async def initialize_agent_state_ext(
         # Fallback if LLM data was not applied or parsing failed
         if not initial_goals_applied:
             if not agent.goals:  # Only set defaults if no goals were set during agent construction or by LLM
-                agent.goals = ["Survive and expand", "Form beneficial alliances", "Secure key territories"]
+                agent.goals = []
                 agent.add_journal_entry(f"[{current_phase}] Set default initial goals as LLM provided none or parse failed.")
                 logger.info(f"[{power_name}] Default goals set.")
 
@@ -180,7 +180,7 @@ async def initialize_agent_state_ext(
         success_status = f"Failure: Exception ({type(e).__name__})"
         # Fallback logic for goals/relationships if not already set by earlier fallbacks
         if not agent.goals:
-            agent.goals = ["Survive and expand", "Form beneficial alliances", "Secure key territories"]
+            agent.goals = []
             logger.info(f"[{power_name}] Set fallback goals after top-level error: {agent.goals}")
         if not agent.relationships or all(r == "Neutral" for r in agent.relationships.values()):
             agent.relationships = {p: "Neutral" for p in ALL_POWERS if p != power_name}

@@ -334,6 +334,17 @@ async def main():
             if neg_diary_tasks:
                 await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
 
+        # Diary Consolidation
+        if current_short_phase.startswith("S") and current_short_phase.endswith("M"):
+            consolidation_tasks = [
+                run_diary_consolidation(agent, game, llm_log_file_path,
+                                        prompts_dir=agent.prompts_dir)
+                for agent in agents.values()
+                if not game.powers[agent.power_name].is_eliminated()
+            ]
+            if consolidation_tasks:
+                await asyncio.gather(*consolidation_tasks, return_exceptions=True)
+
         # --- 4c. Order Generation ---
         logger.info("Getting orders from agents...")
         board_state = game.get_state()
@@ -350,7 +361,7 @@ async def main():
                         game, agent.client, board_state, power_name, possible_orders,
                         game_history, model_error_stats,
                         agent_goals=agent.goals, agent_relationships=agent.relationships,
-                        agent_private_diary_str=agent.format_private_diary_for_prompt(),
+                        agent_private_diary_str=agent.get_latest_phase_diary_entries(), # only include latest phase in orders prompt
                         log_file_path=llm_log_file_path, phase=current_phase,
                     )
                 )
@@ -378,10 +389,11 @@ async def main():
             submitted_orders_this_phase[p_name] = valid + invalid
 
             # diary entry only for the orders we tried to submit
-            if valid or invalid:
-                await agents[p_name].generate_order_diary_entry(
-                    game, valid + invalid, llm_log_file_path
-                )
+            if False: # disabled for now
+                if valid or invalid:
+                    await agents[p_name].generate_order_diary_entry(
+                        game, valid + invalid, llm_log_file_path
+                    )
                 
         # --- 4d. Process Phase ---
         completed_phase = current_phase
@@ -414,26 +426,18 @@ async def main():
         all_orders_this_phase = game.order_history.get(current_short_phase, {})
         
         # Phase Result Diary Entries
-        phase_result_diary_tasks = [
-            agent.generate_phase_result_diary_entry(game, game_history, phase_summary, all_orders_this_phase, llm_log_file_path)
-            for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
-        ]
-        if phase_result_diary_tasks:
-            await asyncio.gather(*phase_result_diary_tasks, return_exceptions=True)
-
-        # Diary Consolidation
-        if current_short_phase.startswith("S") and current_short_phase.endswith("M"):
-            consolidation_tasks = [
-                run_diary_consolidation(agent, game, llm_log_file_path,
-                                        prompts_dir=agent.prompts_dir)
-                for agent in agents.values()
-                if not game.powers[agent.power_name].is_eliminated()
+        if current_short_phase.endswith("M"):
+            phase_result_diary_tasks = [
+                agent.generate_phase_result_diary_entry(game, game_history, phase_summary, all_orders_this_phase, llm_log_file_path, current_short_phase)
+                for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
             ]
-            if consolidation_tasks:
-                await asyncio.gather(*consolidation_tasks, return_exceptions=True)
+            if phase_result_diary_tasks:
+                await asyncio.gather(*phase_result_diary_tasks, return_exceptions=True)
+
+        
 
         # Agent State Updates
-        if current_short_phase.endswith("M"):
+        if current_short_phase.endswith("M") and run_config.num_negotiation_rounds == 0: # r'ships are updated in negotiation round. otherwise in no press, updated in a separate step.
             current_board_state = game.get_state()
             state_update_tasks = [
                 agent.analyze_phase_and_update_state(game, current_board_state, phase_summary, game_history, llm_log_file_path)

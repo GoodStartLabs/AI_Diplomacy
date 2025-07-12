@@ -133,7 +133,7 @@ def save_game_state(
         if year_val is not None and year_val > run_config.max_year:
             break
 
-        phase_name = phase_block["name"]
+        phase_name = phase_block["name"]        
 
         # 3a.  Re-attach anything we cached from a previous save.
         if phase_name in previous_phase_extras:
@@ -151,12 +151,15 @@ def save_game_state(
             # -------------------------------------------------------------------
             phase_block["config"] = cfg
             phase_block["state_agents"] = current_state_agents
+            phase_block["order_results"] = game_history.get_orders_history_for_phase(
+                game, completed_phase_name
+            )
 
     # -------------------------------------------------------------- #
     # 4.  Attach top-level metadata and write atomically.            #
     # -------------------------------------------------------------- #
     saved_game["phase_summaries"] = getattr(game, "phase_summaries", {})
-    saved_game["final_agent_states"] = {p_name: {"relationships": a.relationships, "goals": a.goals} for p_name, a in agents.items()}
+    saved_game["final_agent_states"] = {p_name: {"relationships": a.relationships, "goals": a.goals} for p_name, a in agents.items()}    
 
     # Filter out phases > max_year
     # saved_game["phases"] = [
@@ -210,8 +213,8 @@ def load_game_state(
     last_phase = saved_game_data["phases"][-1]
 
     # Wipe the data that must be regenerated **but preserve the keys**
-    last_phase["orders"] = {}  # was dict
-    last_phase["results"] = {}  # was dict
+    last_phase["orders"] = {}
+    last_phase["results"] = {}
     last_phase["messages"] = []
 
     game = from_saved_game_format(saved_game_data)
