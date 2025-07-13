@@ -1179,6 +1179,9 @@ class RequestsOpenAIClient(BaseModelClient):
     ) -> str:
         system_prompt_content = f"{generate_random_seed()}\n\n{self.system_prompt}" if inject_random_seed else self.system_prompt
 
+        if self.model_name == "qwen/qwen3-235b-a22b":
+            system_prompt_content += "\n/no_think"
+
         payload = {
             "model": self.model_name,
             "messages": [
@@ -1188,6 +1191,12 @@ class RequestsOpenAIClient(BaseModelClient):
             "temperature": temperature,
             "max_tokens": self.max_tokens,
         }
+
+        if self.model_name == "qwen/qwen3-235b-a22b" and self.base_url == "https://openrouter.ai/api/v1":
+            payload["provider"] = {
+                "order": ["Cerebras"],     # fast qwen-2-35B
+                "allow_fallbacks": False,
+            }
 
         loop = asyncio.get_running_loop()
         try:
