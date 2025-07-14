@@ -30,18 +30,36 @@ from collections import defaultdict, Counter
 import re
 from typing import Dict, List, Tuple, Optional, Any
 import statistics
-try:
-    # Absolute import – works when the project root is on sys.path
-    from models import PowerEnum
-except ImportError:
+from pathlib import Path
+import importlib
+
+def _get_power_enum():
+    # 1. Absolute import used by existing code paths
     try:
-        # Relative import – works when file is executed as part of the ai_diplomacy package
-        from ..models import PowerEnum
-    except ImportError as exc:
-        # Re-raise with context so the root cause is visible
-        raise ImportError(
-            "models.PowerEnum not found via absolute or relative import. "
-        ) from exc
+        return importlib.import_module("models").PowerEnum
+    except (ModuleNotFoundError, AttributeError):
+        pass
+
+    # 2. Common package-style location
+    try:
+        return importlib.import_module("ai_diplomacy.models").PowerEnum
+    except (ModuleNotFoundError, AttributeError):
+        pass
+
+    # 3. Script run: ensure project root is on sys.path, then retry #1
+    if __package__ is None:  # executed directly, not as part of a package
+        project_root = Path(__file__).resolve().parent.parent
+        sys.path.insert(0, str(project_root))
+        try:
+            return importlib.import_module("models").PowerEnum
+        except (ModuleNotFoundError, AttributeError):
+            pass
+
+    raise ImportError(
+        "Unable to locate PowerEnum. Checked 'models' and 'ai_diplomacy.models'."
+    )
+
+PowerEnum = _get_power_enum()
 
 csv.field_size_limit(sys.maxsize)
 
@@ -133,6 +151,10 @@ class StatisticalGameAnalyzer:
             
             with open(game_json_path, 'r', encoding='utf-8') as f:
                 game_data = json.load(f)
+
+            if "run_dir" not in game_data:
+                # the folder we’re analysing *is* the run directory
+                game_data["run_dir"] = str(folder_path.resolve())
             
             if not game_data.get('phases'):
                 raise ValueError("lmvsgame.json contains no phase data")
@@ -1078,6 +1100,10 @@ class StatisticalGameAnalyzer:
                             break
                     except Exception:
                         continue
+        else:
+            print('! Warning: overview.jsonl not found. Defaulting to assumption of max year = 1930 (game score calcs may be wrong).')
+            print(overview_path)
+
 
         # ------------------------------------------------------------------
         # 2. Build helper: map phase index → turn number (year - 1900)
