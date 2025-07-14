@@ -1052,63 +1052,89 @@ class StatisticalGameAnalyzer:
 
     def _compute_game_scores(self, game_data: dict) -> dict[str, int]:
         """
-        Return {power → game_score} using the Diplobench scheme.
+        Return {power → game_score} using the revised Diplobench scheme.
 
-            max_turns = number of *years* actually played
-            solo winner   → max_turns + 17 + (max_turns − win_turn)
-            full-length survivor (no solo) → max_turns + final_SCs
-            everyone else → elimination_turn   (or win_turn if someone else solos)
+        Rules
+        -----
+        max_year   : taken from overview.jsonl (default 1930 → 30)
+        win_year   : year in which a power reached 18+ SCs (1900 subtracted)
+        score:
+            • solo winner   : max_year + (max_year - win_year) + 18
+            • survivor      : max_year + final_SCs
+            • eliminated    : elimination_year
         """
+        # ------------------------------------------------------------------
+        # 1. Determine max_year from overview.jsonl (or default 1930 → 30)
+        # ------------------------------------------------------------------
+        max_year = 30  # default
+        overview_path = Path(game_data.get("run_dir", "")) / "overview.jsonl"
+        if overview_path.exists():
+            with open(overview_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        obj = json.loads(line.strip())
+                        if isinstance(obj, dict) and "max_year" in obj:
+                            max_year = int(obj["max_year"]) - 1900
+                            break
+                    except Exception:
+                        continue
+
+        # ------------------------------------------------------------------
+        # 2. Build helper: map phase index → turn number (year - 1900)
+        # ------------------------------------------------------------------
         phases = game_data.get("phases", [])
         if not phases:
             return {}
 
-        # years played
-        years = [self._year_from_phase(p["name"]) for p in phases if self._year_from_phase(p["name"]) is not None]
-        if not years:
-            return {}
-        start_year, last_year = years[0], years[-1]
-        max_turns = last_year - start_year + 1
+        def _turn_from_phase(idx: int) -> int | None:
+            """Return year-1900 for the given phase index, walking backward if needed."""
+            for j in range(idx, -1, -1):
+                m = re.search(r"(\d{4})", phases[j]["name"])
+                if m:
+                    return int(m.group(1)) - 1900
+            return None
 
-        # solo winner?
+        # ------------------------------------------------------------------
+        # 3. Determine solo winner and win_year
+        # ------------------------------------------------------------------
         solo_winner = None
-        win_turn = None
-        last_state = phases[-1]["state"]
-        for pwr, scs in last_state.get("centers", {}).items():
-            if len(scs) >= 18:
-                solo_winner = pwr
-                # first phase in which 18+ SCs were reached
-                for idx in range(len(phases) - 1, -1, -1):
-                    if len(phases[idx]["state"]["centers"].get(pwr, [])) >= 18:
-                        yr = self._phase_year(phases, idx)
-                        if yr is not None:
-                            win_turn = yr - start_year + 1
-                        break
+        win_year = None
+        for idx, ph in enumerate(phases):
+            for pwr, scs in ph.get("state", {}).get("centers", {}).items():
+                if len(scs) >= 18:
+                    solo_winner = pwr
+                    win_year = _turn_from_phase(idx)
+                    break
+            if solo_winner:
                 break
 
-        # elimination turn for every power
-        elim_turn: dict[str, int | None] = {p: None for p in [power.value for power in PowerEnum]}
+        # ------------------------------------------------------------------
+        # 4. Determine elimination year for every power
+        # ------------------------------------------------------------------
+        elim_year: dict[str, int | None] = {p.value: None for p in PowerEnum}
         for idx, ph in enumerate(phases):
-            yr = self._phase_year(phases, idx)
-            if yr is None:
+            turn = _turn_from_phase(idx)
+            if turn is None:
                 continue
-            turn = yr - start_year + 1
-            for pwr in elim_turn:
-                if elim_turn[pwr] is None and not ph["state"]["centers"].get(pwr):
-                    elim_turn[pwr] = turn
+            for pwr in elim_year:
+                if elim_year[pwr] is None and not ph["state"]["centers"].get(pwr):
+                    elim_year[pwr] = turn
 
+        # ------------------------------------------------------------------
+        # 5. Compute final scores
+        # ------------------------------------------------------------------
+        final_state = phases[-1]["state"]
         scores: dict[str, int] = {}
-        for pwr in elim_turn:
+
+        for pwr in elim_year:
             if pwr == solo_winner:
-                scores[pwr] = max_turns + 17 + (max_turns - (win_turn or max_turns))
-            elif solo_winner is not None:            # somebody else soloed
-                scores[pwr] = win_turn or max_turns
-            else:                                    # no solo
-                if elim_turn[pwr] is None:           # survived the distance
-                    final_scs = len(last_state.get("centers", {}).get(pwr, []))
-                    scores[pwr] = max_turns + final_scs
-                else:                                # eliminated earlier
-                    scores[pwr] = elim_turn[pwr]
+                scores[pwr] = max_year + (max_year - (win_year or max_year)) + 18
+            elif elim_year[pwr] is None:  # survived to max_year
+                final_scs = len(final_state.get("centers", {}).get(pwr, []))
+                scores[pwr] = max_year + final_scs
+            else:  # eliminated
+                scores[pwr] = elim_year[pwr]
+
         return scores
 
     
