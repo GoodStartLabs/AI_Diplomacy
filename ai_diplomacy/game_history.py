@@ -291,10 +291,15 @@ class GameHistory:
 
         def _order_type(order: str) -> str:
             o = order.upper()
-            if o == "WAIVE":
+
+            if o.strip() == "WAIVE":
                 return "waive"
-            if " H" in o or " HOLD" in o:
+
+            # hold: ends with “ H” or “ HOLD”
+            import re
+            if re.search(r"\sH\s*$", o) or re.search(r"\sHOLD\s*$", o):
                 return "hold"
+
             if " S " in o:
                 return "support"
             if " C " in o:
@@ -303,11 +308,12 @@ class GameHistory:
                 return "retreat"
             if " - " in o:
                 return "move"
-            if " BUILD" in o or o.endswith(" B") or " B " in o:
+            if re.search(r"\sBUILD\s*$", o) or o.endswith(" B") or " B " in o:
                 return "build"
-            if " DISBAND" in o or o.endswith(" D") or " D " in o:
+            if re.search(r"\sDISBAND\s*$", o) or o.endswith(" D") or " D " in o:
                 return "disband"
             return "other"
+
 
         # engine fallback
         engine_phases = {ph.name: ph for ph in getattr(game, "get_phase_history", lambda: [])()}
