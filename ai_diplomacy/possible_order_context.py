@@ -934,7 +934,7 @@ def generate_rich_order_context(
         include_summary – emit the condensed per-unit order list (default False)
     """
 
-    #if power_name.lower() == 'france':
+    #if power_name.lower() == 'germany':
     #    include_summary = True
     #    include_full = True
 
