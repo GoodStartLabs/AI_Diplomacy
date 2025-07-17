@@ -579,3 +579,28 @@ def parse_prompts_dir_arg(raw: str | None) -> Dict[str, Path]:
 
     paths = [_norm(p) for p in parts]
     return dict(zip(POWERS_ORDER, paths))
+
+def get_board_state(board_state: dict, game: Game) -> Tuple[str, str]:
+    # Build units representation with power status and counts
+    units_lines = []
+    for p, units in board_state["units"].items():
+        units_str   = ", ".join(units)
+        units_count = len(units)
+        line = f"  {p}: {units_count} unit{'s' if units_count != 1 else ''} – {units_str}"
+        if game.powers[p].is_eliminated():
+            line += " [ELIMINATED]"
+        units_lines.append(line)
+    units_repr = "\n".join(units_lines)
+
+    # Build centers representation with power status and counts
+    centers_lines = []
+    for p, centers in board_state["centers"].items():
+        centers_str   = ", ".join(centers)
+        centers_count = len(centers)
+        line = f"  {p}: {centers_count} supply center{'s' if centers_count != 1 else ''} – {centers_str}"
+        if game.powers[p].is_eliminated():
+            line += " [ELIMINATED]"
+        centers_lines.append(line)
+    centers_repr = "\n".join(centers_lines)
+
+    return (units_repr, centers_repr)

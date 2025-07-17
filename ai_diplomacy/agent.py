@@ -13,7 +13,7 @@ from config import config
 from .clients import BaseModelClient
 
 # Import load_prompt and the new logging wrapper from utils
-from .utils import load_prompt, run_llm_and_log, log_llm_response, get_prompt_path
+from .utils import load_prompt, run_llm_and_log, log_llm_response, get_prompt_path, get_board_state
 from .prompt_constructor import build_context_prompt  # Added import
 from .clients import GameHistory
 from diplomacy import Game
@@ -96,26 +96,6 @@ class DiplomacyAgent:
             logger.error(f"Could not load default system prompt either! Agent {power_name} may not function correctly.")
         logger.info(f"Initialized DiplomacyAgent for {self.power_name} with goals: {self.goals}")
         self.add_journal_entry(f"Agent initialized. Initial Goals: {self.goals}")
-
-    def _format_board_state(self, board_state_dict):
-        units = board_state_dict.get('units', {})
-        centers = board_state_dict.get('centers', {})
-
-        eliminated = {power for power, scs in centers.items() if not scs}
-
-        parts = ["Units:"]
-        for power, unit_list in sorted(units.items()):
-            label = f"{power} (Eliminated)" if power in eliminated else power
-            parts.append(f"  {label}: {', '.join(unit_list)}")
-
-        parts.append("Centers:")
-        for power, center_list in sorted(centers.items()):
-            label = f"{power} (Eliminated)" if power in eliminated else power
-            parts.append(f"  {label}: {', '.join(center_list)}")
-
-        return "\n".join(parts)
-
-
 
     def _extract_json_from_text(self, text: str) -> dict:
         """Extract and parse JSON from text, handling common LLM response formats."""
@@ -497,7 +477,8 @@ class DiplomacyAgent:
 
             # Prepare context for the prompt
             board_state_dict = game.get_state()
-            board_state_str = self._format_board_state(board_state_dict)
+            units_str, centers_str = get_board_state(board_state_dict, game)
+            board_state_str = f"Units Held:\n{units_str}\n\nSupply Centers Held:\n{centers_str}"
 
             messages_this_round = game_history.get_messages_this_round(power_name=self.power_name, current_phase_name=game.current_short_phase)
             if not messages_this_round.strip() or messages_this_round.startswith("\n(No messages"):
@@ -876,7 +857,8 @@ class DiplomacyAgent:
             formatted_diary = self.format_private_diary_for_prompt()
 
             board_state_dict = game.get_state()
-            board_state_str = self._format_board_state(board_state_dict)
+            units_str, centers_str = get_board_state(board_state_dict, game)
+            board_state_str = f"Units Held:\n{units_str}\n\nSupply Centers Held:\n{centers_str}"
 
             # Get recent negotiations for this phase
             messages_this_round = game_history.get_messages_this_round(power_name=self.power_name, current_phase_name=game.current_short_phase)

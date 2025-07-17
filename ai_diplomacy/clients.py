@@ -434,16 +434,12 @@ class BaseModelClient:
         power_name: str,
         possible_orders: Dict[str, List[str]],
         game_history: GameHistory,
-        # game_phase: str, # Not used directly by build_context_prompt
-        # log_file_path: str, # Not used directly by build_context_prompt
         agent_goals: Optional[List[str]] = None,
         agent_relationships: Optional[Dict[str, str]] = None,
         agent_private_diary_str: Optional[str] = None,  # Added
     ) -> str:
-        # MINIMAL CHANGE: Just change to load unformatted version conditionally
         instructions = load_prompt(get_prompt_path("conversation_instructions.txt"), prompts_dir=self.prompts_dir)
 
-        # KEEP ORIGINAL: Use build_context_prompt as before
         context = build_context_prompt(
             game,
             board_state,
@@ -456,16 +452,13 @@ class BaseModelClient:
             prompts_dir=self.prompts_dir,
         )
 
-        # KEEP ORIGINAL: Get recent messages targeting this power to prioritize responses
         recent_messages_to_power = game_history.get_recent_messages_to_power(power_name, limit=3)
 
-        # KEEP ORIGINAL: Debug logging to verify messages
         logger.info(f"[{power_name}] Found {len(recent_messages_to_power)} high priority messages to respond to")
         if recent_messages_to_power:
             for i, msg in enumerate(recent_messages_to_power):
                 logger.info(f"[{power_name}] Priority message {i + 1}: From {msg['sender']} in {msg['phase']}: {msg['content'][:50]}...")
 
-        # KEEP ORIGINAL: Add a section for unanswered messages
         unanswered_messages = "\n\nRECENT MESSAGES REQUIRING YOUR ATTENTION:\n"
         if recent_messages_to_power:
             for msg in recent_messages_to_power:
