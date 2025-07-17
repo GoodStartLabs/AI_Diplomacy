@@ -934,9 +934,10 @@ def generate_rich_order_context(
         include_summary – emit the condensed per-unit order list (default False)
     """
 
-    #if power_name.lower() == 'germany':
+    #if power_name.lower() == 'france':
     #    include_summary = True
     #    include_full = True
+    
 
     phase_type = game.current_short_phase[-1]
     sections: List[str] = []

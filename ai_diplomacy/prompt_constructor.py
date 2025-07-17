@@ -43,6 +43,8 @@ def build_context_prompt(
     prompts_dir: Optional[str] = None,
     include_messages: Optional[bool] = True,
     display_phase: Optional[str] = None,
+    include_order_history: Optional[str] = True,
+    include_possible_moves_summary: Optional[str] = False,
 ) -> str:
     """Builds the detailed context part of the prompt.
 
@@ -84,7 +86,7 @@ def build_context_prompt(
         possible_orders_context_str = "(not relevant in this context)"
     else:
         if _use_simple:
-            possible_orders_context_str = generate_rich_order_context(game, power_name, possible_orders)
+            possible_orders_context_str = generate_rich_order_context(game, power_name, possible_orders, include_summary=include_possible_moves_summary)
         else:
             possible_orders_context_str = generate_rich_order_context_xml(game, power_name, possible_orders)
 
@@ -128,6 +130,9 @@ def build_context_prompt(
         current_phase_name=year_phase,
         num_movement_phases_to_show=1,
     )
+
+    if not include_order_history:
+        order_history_str = "" # !! setting to blank for ablation. REMEMBER TO REVERT!
 
     # Replace token only if it exists (template may not include it)
     if "{home_centers}" in context_template:
@@ -200,6 +205,10 @@ def construct_order_generation_prompt(
     instructions = load_prompt(instructions_file, prompts_dir=prompts_dir)
     _use_simple = config.SIMPLE_PROMPTS
 
+    include_order_history = False # defaulting to not include order history in order generation prompt for now
+    #if power_name.lower() == 'france':
+    #    include_order_history = True # REVERT THIS
+
     # Build the context prompt
     context = build_context_prompt(
         game,
@@ -212,6 +221,8 @@ def construct_order_generation_prompt(
         agent_private_diary=agent_private_diary_str,
         prompts_dir=prompts_dir,
         include_messages=not _use_simple,  # include only when *not* simple
+        include_order_history=include_order_history,
+        include_possible_moves_summary=True,
     )
 
     # delete unused section from context:

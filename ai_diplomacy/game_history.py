@@ -3,6 +3,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+import re
 
 logger = logging.getLogger("utils")
 logger.setLevel(logging.INFO)
@@ -237,7 +238,7 @@ class GameHistory:
                     
                     # don't show (success) tag for hold moves, it might be causing convergence on
                     # always-hold behaviour
-                    is_hold = any(kw in order.upper() for kw in (" H", " HOLD"))
+                    is_hold = re.search(r"\sH\s*$", order) or re.search(r"\sHOLD\s*$", order)
                     if tag == "success" and is_hold:
                         out_lines.append(f"    {order}")
                     else:
@@ -295,8 +296,7 @@ class GameHistory:
             if o.strip() == "WAIVE":
                 return "waive"
 
-            # hold: ends with “ H” or “ HOLD”
-            import re
+            # hold: ends with “ H” or “ HOLD”            
             if re.search(r"\sH\s*$", o) or re.search(r"\sHOLD\s*$", o):
                 return "hold"
 

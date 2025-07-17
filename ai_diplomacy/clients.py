@@ -1198,6 +1198,15 @@ class RequestsOpenAIClient(BaseModelClient):
         #        "allow_fallbacks": False,
         #    }
 
+        if self.model_name == "moonshotai/kimi-k2" and self.base_url == "https://openrouter.ai/api/v1":
+            logger.info('Using chutes')
+            payload["provider"] = {
+                "order": ["Chutes"],     # cheap kimi
+                "allow_fallbacks": False,
+            }
+
+        
+
         loop = asyncio.get_running_loop()
         try:
             data = await loop.run_in_executor(None, self._post_sync, payload)
