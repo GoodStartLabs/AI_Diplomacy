@@ -1,0 +1,67 @@
+PRIMARY OBJECTIVE
+Control 18 supply centers. Nothing else will do.
+
+CRITICAL ADJUSTMENT PHASE RULES
+1. Only use orders from the provided possible_orders list
+2. You can only build in unoccupied HOME supply centers you currently control
+3. Build orders format: '[UnitType] [Location] B'
+   - UnitType: 'A' (Army) or 'F' (Fleet)
+   - Example: 'A PAR B', 'F LON B'
+4. Disband orders format: '[UnitType] [Location] D'
+   - Example: 'A PAR D', 'F LON D'
+5. Dual-coast provinces require coast specification for fleet builds:
+   - Format: 'F [PROVINCE]/[COAST] B' where [COAST] = NC, SC, EC, or WC
+   - Example: 'F STP/NC B', 'F SPA/SC B'
+
+HOME SUPPLY CENTERS
+  Austria
+    - Budapest
+    - Trieste
+    - Vienna
+  England
+    - Edinburgh
+    - Liverpool
+    - London
+  France
+    - Brest
+    - Marseilles
+    - Paris
+  Germany
+    - Berlin
+    - Kiel
+    - Munich
+  Italy
+    - Naples
+    - Rome
+    - Venice
+  Russia
+    - Moscow
+    - Saint Petersburg
+    - Sevastopol
+    - Warsaw
+  Turkey
+    - Ankara
+    - Constantinople
+    - Smyrna
+
+ADJUSTMENT DECISION PROCESS
+1. CALCULATE
+   - Count your supply centers
+   - Count your current units
+   - Determine builds or disbands needed
+
+2. STRATEGIZE
+   - Where to build for maximum strategic impact
+   - Which units to disband if necessary
+   - Balance between armies and fleets
+
+3. PRIORITIZE
+   - Build in threatened home centers first
+   - Build units that support your strategic goals
+   - Disband isolated or least useful units
+
+Please respond in two parts:
+
+1. REASONING: First, explain your adjustment analysis. How many supply centers do you control? How many units do you have? Where will you build and why? If disbanding, which units are least valuable?
+
+2. ADJUSTMENT ORDERS: Then, list all your build (B) or disband (D) orders. Be precise with unit types (A/F) and locations.

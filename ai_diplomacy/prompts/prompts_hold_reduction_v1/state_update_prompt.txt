@@ -1,0 +1,141 @@
+You are analyzing the results of a phase in Diplomacy for {power_name}.
+
+GAME STATE
+Year: {current_year}
+Phase: {current_phase}
+Board State:
+{board_state_str}
+
+PHASE SUMMARY ({current_phase}):
+{phase_summary}
+
+CURRENT STATUS
+Goals:
+{current_goals}
+
+Relationships with other powers ({other_powers}):
+{current_relationships}
+
+TASK
+Analyze the phase summary and game state to update your relationships and goals.
+
+IMPORTANT RULES
+1. Update relationships for ALL powers in {other_powers}
+2. Use ONLY these relationship values: Enemy, Unfriendly, Neutral, Friendly, Ally
+3. Make goals specific and actionable
+4. Base analysis on actual events, not assumptions
+5. Return ONLY valid JSON - no text before or after
+
+Example Response Structure:
+{{
+  "reasoning": "Brief explanation of your analysis",
+  "relationships": {{
+    "FRANCE": "Neutral",
+    "GERMANY": "Unfriendly",
+    "RUSSIA": "Enemy"
+  }},
+  "goals": [
+    "Specific goal 1",
+    "Specific goal 2"
+  ]
+}}
+
+EXAMPLE SCENARIOS
+
+1. After Cooperation:
+{{
+  "reasoning": "Austria helped take Warsaw. Russia attacked Prussia.",
+  "relationships": {{
+    "AUSTRIA": "Ally",
+    "RUSSIA": "Enemy",
+    "TURKEY": "Neutral",
+    "ITALY": "Unfriendly",
+    "FRANCE": "Neutral"
+  }},
+  "goals": [
+    "Hold Warsaw against Russia",
+    "Keep Austrian alliance",
+    "Block Italian expansion"
+  ]
+}}
+
+2. After Betrayal:
+{{
+  "reasoning": "France betrayed Channel agreement. Russia cooperating north.",
+  "relationships": {{
+    "FRANCE": "Enemy",
+    "RUSSIA": "Friendly",
+    "GERMANY": "Unfriendly",
+    "ITALY": "Neutral",
+    "AUSTRIA": "Neutral"
+  }},
+  "goals": [
+    "Counter French fleet",
+    "Secure Norway with Russia",
+    "Build London fleet"
+  ]
+}}
+
+3. After Builds:
+{{
+  "reasoning": "Naval buildup in north. Russia threatening.",
+  "relationships": {{
+    "RUSSIA": "Enemy",
+    "GERMANY": "Unfriendly",
+    "FRANCE": "Neutral",
+    "AUSTRIA": "Neutral",
+    "TURKEY": "Neutral"
+  }},
+  "goals": [
+    "Control northern waters",
+    "Take Denmark first",
+    "Find anti-Russia ally"
+  ]
+}}
+
+4. As England, after a failed attack on Belgium (BEL) which was occupied by France, supported by Germany. Russia moved into Sweden (SWE) uncontested. Austria and Italy skirmished over Trieste (TRI). Turkey was quiet.
+
+{{
+  "reasoning": "My attack on Belgium was decisively repulsed due to Franco-German cooperation, marking them as a significant threat bloc. Russia's acquisition of Sweden is concerning for my northern position. The Austro-Italian conflict seems localized for now, and Turkey's inactivity makes them an unknown variable, potentially open to diplomacy.",
+  "relationships": {{
+    "FRANCE": "Enemy",
+    "GERMANY": "Enemy",
+    "RUSSIA": "Unfriendly",
+    "AUSTRIA": "Neutral",
+    "ITALY": "Neutral",
+    "TURKEY": "Neutral"
+  }},
+  "goals": [
+    "Break the Franco-German alliance or find a way to counter their combined strength.",
+    "Secure North Sea (NTH) and prevent further Russian expansion towards Norway (NWY).",
+    "Seek dialogue with Turkey or Austria/Italy to create a counterweight to the dominant bloc."
+  ]
+}}
+
+5. As Russia, after successfully negotiating passage through Black Sea (BLA) with Turkey to take Rumania (RUM). Germany moved into Silesia (SIL), threatening Warsaw (WAR). Austria and France exchanged hostile messages but made no direct moves against each other. England built a new fleet in London (LON). Italy seems focused west.
+
+{{
+  "reasoning": "Securing Rumania via Turkish agreement is a major success. This improves my southern position and Turkey is now a provisional ally. Germany's move into Silesia is a direct and immediate threat to Warsaw; they are now my primary adversary. Austria and France are posturing, but their conflict doesn't directly affect me yet, keeping them neutral. England's new fleet is a long-term concern but not immediate. Italy's westward focus means they are not a current threat or priority.",
+  "relationships": {{
+    "GERMANY": "Enemy",
+    "AUSTRIA": "Neutral",
+    "TURKEY": "Ally",
+    "ITALY": "Neutral",
+    "FRANCE": "Neutral",
+    "ENGLAND": "Unfriendly"
+  }},
+  "goals": [
+    "Defend Warsaw against Germany, possibly by moving Lvn-War or Mos-War.",
+    "Solidify alliance with Turkey, potentially coordinating further moves in the south or against Austria if Germany allies with them.",
+    "Monitor English fleet movements and prepare for a potential northern threat in future turns.",
+    "Explore diplomatic options with France or Austria to counter German aggression."
+  ]
+}}
+
+JSON FORMAT
+Return a single JSON object with these exact keys:
+- reasoning: String explaining your updates
+- relationships: Object mapping power names to relationship values
+- goals: Array of specific goal strings
+
+RETURN JSON BELOW ONLY (DO NOT PREPEND WITH ```json or ``` or any other text)
