@@ -101,25 +101,28 @@ def build_context_prompt(
     active_powers = [p for p in game.powers.keys() if not game.powers[p].is_eliminated()]
     eliminated_powers = [p for p in game.powers.keys() if game.powers[p].is_eliminated()]
 
-    # Build units representation with power status
+    # Build units representation with power status and counts
     units_lines = []
-    for p, u in board_state["units"].items():
-        u_str = ", ".join(u)
+    for p, units in board_state["units"].items():
+        units_str   = ", ".join(units)
+        units_count = len(units)
+        line = f"  {p}: {units_count} unit{'s' if units_count != 1 else ''} – {units_str}"
         if game.powers[p].is_eliminated():
-            units_lines.append(f"  {p}: {u_str} [ELIMINATED]")
-        else:
-            units_lines.append(f"  {p}: {u_str}")
+            line += " [ELIMINATED]"
+        units_lines.append(line)
     units_repr = "\n".join(units_lines)
 
-    # Build centers representation with power status
+    # Build centers representation with power status and counts
     centers_lines = []
-    for p, c in board_state["centers"].items():
-        c_str = ", ".join(c)
+    for p, centers in board_state["centers"].items():
+        centers_str   = ", ".join(centers)
+        centers_count = len(centers)
+        line = f"  {p}: {centers_count} supply center{'s' if centers_count != 1 else ''} – {centers_str}"
         if game.powers[p].is_eliminated():
-            centers_lines.append(f"  {p}: {c_str} [ELIMINATED]")
-        else:
-            centers_lines.append(f"  {p}: {c_str}")
+            line += " [ELIMINATED]"
+        centers_lines.append(line)
     centers_repr = "\n".join(centers_lines)
+
 
     # Build {home_centers}
     home_centers_str = ", ".join(HOME_CENTERS.get(power_name.upper(), []))
