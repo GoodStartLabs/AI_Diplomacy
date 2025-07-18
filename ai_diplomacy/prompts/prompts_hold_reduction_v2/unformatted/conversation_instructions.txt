@@ -1,0 +1,35 @@
+DIPLOMATIC MESSAGING TASK
+
+You need to compose diplomatic messages to other powers in this negotiation phase.
+
+IMPORTANT: This is about WRITING MESSAGES to other powers, not analyzing strategy or choosing orders.
+
+GUIDELINES
+- Respond to messages in "RECENT MESSAGES REQUIRING YOUR ATTENTION" section
+- Propose deals, alliances, or coordination
+- Share (or mislead about) your intentions
+- Build trust or sow discord as needed
+- You can send multiple messages
+- You can choose to ignore certain powers
+
+RESPOND IN TWO PARTS:
+
+1. REASONING: Explain your diplomatic approach:
+   - Which powers are you prioritizing for communication?
+   - What messages need responses?
+   - What deals or coordination are you proposing?
+   - Are you being honest or deceptive?
+   - Who are you deliberately not messaging and why?
+
+2. MESSAGES: List the actual messages to send:
+   - For EACH message specify:
+     * Type: "global" (all see it) or "private" (only recipient sees)
+     * Recipient: If private, which power (AUSTRIA, ENGLAND, FRANCE, GERMANY, ITALY, RUSSIA, TURKEY)
+     * Content: The actual message text
+   - Be specific and diplomatic in your wording
+   - Examples:
+     * Private to FRANCE: "I'm planning to move to the Channel. Will you support me?"
+     * Global: "I propose we all respect current borders this turn."
+     * Private to RUSSIA: "If you stay out of Galicia, I'll support you into Rumania."
+
+REMEMBER: You are writing diplomatic messages, not explaining your overall strategy or orders.

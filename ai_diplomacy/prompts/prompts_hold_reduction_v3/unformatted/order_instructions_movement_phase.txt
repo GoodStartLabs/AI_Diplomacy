@@ -1,0 +1,85 @@
+HOLDS = 0% WIN RATE. MOVES = VICTORY.
+
+Statistics: 0% of holds capture centers. 30%+ of moves do.
+Failed attacks >>> successful holds. Why? Forces defensive waste.
+Every unit must: Attack centers OR Support attacks OR Convoy armies.
+Math check: Count potential center gains. If zero, revise ALL orders.
+
+CRITICAL RULES
+1. Only use orders from the provided possible_orders list
+2. Support orders must match actual moves (e.g., 'A PAR S F PIC - ENG' needs 'F PIC - ENG')
+3. Build orders (build phase only):
+   - Format: '[UnitType] [Location3LetterCode] B'
+   - UnitType: 'A' (Army) or 'F' (Fleet)
+   - Example: 'A PAR B', 'F LON B'
+   - NOTE YOU CAN ONLY BUILD UNITS IN YOUR HOME CENTER THAT ARE EMPTY, THE ONES YOU STARTED WITH, IF YOU LOSE THESE YOU CANNOT BUILD UNITS SO THEY ARE CRITICAL
+  Austria
+    - Budapest
+    - Trieste
+    - Vienna
+  England
+    - Edinburgh
+    - Liverpool
+    - London
+  France
+    - Brest
+    - Marseilles
+    - Paris
+  Germany
+    - Berlin
+    - Kiel
+    - Munich
+  Italy
+    - Naples
+    - Rome
+    - Venice
+  Russia
+    - Moscow
+    - Saint Petersburg
+    - Sevastopol
+    - Warsaw
+  Turkey
+    - Ankara
+    - Constantinople
+    - Smyrna
+
+VICTORY CALCULATION
+Before ordering, calculate:
+- Centers I'll capture: ___ (must be >0)
+- Centers I'll threaten: ___ (forces defensive waste)
+- Enemy supports I'll break: ___ (weakens their attacks)
+If all zeros = FAILED TURN. Revise everything.
+
+ORDER PRIORITIES
+1. ATTACK enemy/neutral centers
+   - Direct assaults on undefended targets
+   - Multi-unit coordinated invasions
+   - Exploit defensive gaps
+
+2. SUPPORT attacks for guaranteed success
+   - Your own attacks first (100% reliable)
+   - Allied attacks second (diplomatic value)
+   - Format: '[Unit] [Location] S [Unit] [From] - [To]'
+
+3. CONVOY for surprise deep strikes
+   - Army: 'A [From] - [To]'
+   - Fleet: 'F [Sea] C A [From] - [To]'
+   - Chain convoys for maximum reach
+
+4. NEVER HOLD unless facing 3+ enemy units
+   - Even then, consider supporting elsewhere
+   - Or moving to force enemy supports
+
+3. FORMAT
+   - Dual-coast provinces (STP, SPA, BUL):
+     * Specify coast when needed: 'F [PROVINCE]/[COAST_CODE]'
+     * Example: 'F STP/NC B', 'A MAR S F SPA/SC - WES'
+     * Coast codes: NC (North), SC (South), EC (East), WC (West)
+   - All orders resolve simultaneously
+   - Submit orders only, no messages
+
+Please respond in two parts:
+
+1. REASONING: First, explain your detailed strategic analysis including victory calculations above.
+
+2. ORDERS: Then, list each order you want to submit, one per line. Be precise with unit types (A/F) and location codes.

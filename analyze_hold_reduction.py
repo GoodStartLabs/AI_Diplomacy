@@ -93,7 +93,160 @@ def calculate_rates(order_stats):
     return rates
 
 def main():
-    # Define experiment directories
+    import sys
+    
+    # Check if specific experiment directories are provided
+    if len(sys.argv) > 1:
+        # Analyze specific experiments provided as arguments
+        experiments = []
+        for exp_path in sys.argv[1:]:
+            exp_dir = Path(exp_path)
+            if exp_dir.exists():
+                experiments.append((exp_dir.name, exp_dir))
+        
+        print(f"Analyzing {len(experiments)} experiments")
+        print("=" * 50)
+        
+        results = {}
+        for exp_name, exp_dir in experiments:
+            print(f"\nAnalyzing {exp_name}...")
+            stats = analyze_orders_for_experiment(exp_dir)
+            rates = calculate_rates(stats)
+            results[exp_name] = rates
+            
+            print(f"\n{exp_name} Results (n={rates['n_phases']} phases):")
+            print(f"  Hold rate:    {rates['hold_rate']:.3f} ± {rates['hold_se']:.3f}")
+            print(f"  Support rate: {rates['support_rate']:.3f} ± {rates['support_se']:.3f}")
+            print(f"  Move rate:    {rates['move_rate']:.3f} ± {rates['move_se']:.3f}")
+            print(f"  Convoy rate:  {rates['convoy_rate']:.3f} ± {rates['convoy_se']:.3f}")
+        
+        # Create visualization for multiple experiments
+        if len(results) > 2:
+            # Group by model
+            models = {}
+            for exp_name, rates in results.items():
+                if 'mistral' in exp_name.lower():
+                    model = 'Mistral'
+                elif 'gemini' in exp_name.lower():
+                    model = 'Gemini'
+                elif 'kimi' in exp_name.lower():
+                    model = 'Kimi'
+                else:
+                    continue
+                
+                if model not in models:
+                    models[model] = {}
+                
+                # Determine version
+                if 'baseline' in exp_name:
+                    version = 'Baseline'
+                elif '_v3_' in exp_name:
+                    version = 'V3'
+                elif '_v2_' in exp_name:
+                    version = 'V2'
+                elif '_v1_' in exp_name or (model == 'Mistral' and 'hold_reduction_mistral_' in exp_name):
+                    version = 'V1'
+                else:
+                    version = 'V1'  # Default for gemini/kimi first intervention
+                
+                models[model][version] = rates
+            
+            # Create subplots for each model
+            fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+            
+            for idx, (model, versions) in enumerate(sorted(models.items())):
+                ax = axes[idx]
+                
+                # Sort versions
+                version_order = ['Baseline', 'V1', 'V2', 'V3']
+                sorted_versions = [(v, versions[v]) for v in version_order if v in versions]
+                
+                # Prepare data
+                version_names = [v[0] for v in sorted_versions]
+                hold_rates = [v[1]['hold_rate'] for v in sorted_versions]
+                support_rates = [v[1]['support_rate'] for v in sorted_versions]
+                move_rates = [v[1]['move_rate'] for v in sorted_versions]
+                
+                hold_errors = [v[1]['hold_se'] for v in sorted_versions]
+                support_errors = [v[1]['support_se'] for v in sorted_versions]
+                move_errors = [v[1]['move_se'] for v in sorted_versions]
+                
+                x = np.arange(len(version_names))
+                width = 0.25
+                
+                # Create bars
+                bars1 = ax.bar(x - width, hold_rates, width, yerr=hold_errors,
+                               label='Hold', capsize=3, color='#ff7f0e')
+                bars2 = ax.bar(x, support_rates, width, yerr=support_errors,
+                               label='Support', capsize=3, color='#2ca02c')
+                bars3 = ax.bar(x + width, move_rates, width, yerr=move_errors,
+                               label='Move', capsize=3, color='#1f77b4')
+                
+                # Formatting
+                ax.set_xlabel('Version')
+                ax.set_ylabel('Orders per Unit')
+                ax.set_title(f'{model} - Hold Reduction Progression')
+                ax.set_xticks(x)
+                ax.set_xticklabels(version_names)
+                ax.legend()
+                ax.grid(axis='y', alpha=0.3)
+                ax.set_ylim(0, 1.0)
+                
+                # Add value labels on bars
+                for bars in [bars1, bars2, bars3]:
+                    for bar in bars:
+                        height = bar.get_height()
+                        if height > 0.02:  # Only label visible bars
+                            ax.annotate(f'{height:.2f}',
+                                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                                        xytext=(0, 2),
+                                        textcoords="offset points",
+                                        ha='center', va='bottom',
+                                        fontsize=8)
+            
+            plt.suptitle('Hold Reduction Experiment Results Across Models', fontsize=16, y=1.02)
+            plt.tight_layout()
+            plt.savefig('experiments/hold_reduction_all_models_comparison.png', dpi=150, bbox_inches='tight')
+            print(f"\nComparison plot saved to experiments/hold_reduction_all_models_comparison.png")
+            
+            # Save results to CSV
+            csv_data = []
+            for model, versions in models.items():
+                for version, rates in versions.items():
+                    csv_data.append({
+                        'Model': model,
+                        'Version': version,
+                        'Hold_Rate': rates['hold_rate'],
+                        'Hold_SE': rates['hold_se'],
+                        'Support_Rate': rates['support_rate'],
+                        'Support_SE': rates['support_se'],
+                        'Move_Rate': rates['move_rate'],
+                        'Move_SE': rates['move_se'],
+                        'N_Phases': rates['n_phases']
+                    })
+            
+            df = pd.DataFrame(csv_data)
+            df = df.sort_values(['Model', 'Version'])
+            df.to_csv('experiments/hold_reduction_all_results.csv', index=False)
+            print(f"Results saved to experiments/hold_reduction_all_results.csv")
+            
+            # Print summary statistics
+            print("\n" + "="*60)
+            print("SUMMARY: Hold Rate Changes from Baseline")
+            print("="*60)
+            for model in sorted(models.keys()):
+                print(f"\n{model}:")
+                if 'Baseline' in models[model]:
+                    baseline = models[model]['Baseline']['hold_rate']
+                    for version in ['V1', 'V2', 'V3']:
+                        if version in models[model]:
+                            rate = models[model][version]['hold_rate']
+                            change = (rate - baseline) / baseline * 100
+                            print(f"  {version}: {rate:.3f} ({change:+.1f}% from baseline)")
+        
+        return
+    
+    # Default behavior - analyze baseline vs intervention
     baseline_dir = Path("experiments/hold_reduction_baseline_S1911M")
     intervention_dir = Path("experiments/hold_reduction_intervention_S1911M")
     

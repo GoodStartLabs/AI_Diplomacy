@@ -71,13 +71,13 @@ def assign_models_to_powers() -> Dict[str, str]:
     # POWER MODELS
     """
     return {
-        "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview-05-20",
-        "ENGLAND": "openrouter-moonshotai/kimi-dev-72b:free",
-        "FRANCE": "together-arcee-ai/AFM-4.5B-Preview",
-        "GERMANY": "openrouter-google/gemini-2.5-flash-lite-preview-06-17",
-        "ITALY": "together-lgai/exaone-deep-32b",
-        "RUSSIA": "deepseek-reasoner",
-        "TURKEY": "openrouter-cohere/command-a",
+        "AUSTRIA": "openrouter-google/gemini-2.5-flash",
+        "ENGLAND": "openrouter-moonshotai/kimi-k2/chutes/fp8",
+        "FRANCE": "openrouter-google/gemini-2.5-flash",
+        "GERMANY": "openrouter-moonshotai/kimi-k2/chutes/fp8",
+        "ITALY": "openrouter-google/gemini-2.5-flash",
+        "RUSSIA": "openrouter-moonshotai/kimi-k2/chutes/fp8",
+        "TURKEY": "openrouter-google/gemini-2.5-flash",
     }
     """
     # TEST MODELS

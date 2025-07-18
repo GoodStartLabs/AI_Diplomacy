@@ -1,0 +1,140 @@
+IMPORTANT: You are a formatting assistant. Your ONLY job is to extract state update information (analysis, relationships, and goals) from the response below and format them as JSON.
+
+The response contains a player's analysis of the current game state after seeing the results of a turn.
+
+Required JSON format:
+{
+  "reasoning": "Brief explanation of your analysis",
+  "relationships": {
+    "AUSTRIA": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "ENGLAND": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "FRANCE": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "GERMANY": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "ITALY": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "RUSSIA": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "TURKEY": "Enemy|Unfriendly|Neutral|Friendly|Ally"
+  },
+  "goals": [
+    "Specific goal 1",
+    "Specific goal 2",
+    "Specific goal 3"
+  ]
+}
+
+Example scenarios:
+
+Scenario 1 - Early game position:
+{
+  "reasoning": "France moved to Channel despite promises. Germany supporting me as agreed. Focus shifting to defending homeland.",
+  "relationships": {
+    "AUSTRIA": "Neutral",
+    "ENGLAND": "Neutral",
+    "FRANCE": "Enemy",
+    "GERMANY": "Friendly",
+    "ITALY": "Neutral",
+    "RUSSIA": "Neutral",
+    "TURKEY": "Neutral"
+  },
+  "goals": [
+    "Defend London from French fleet in Channel",
+    "Secure Norway before Russia",
+    "Coordinate with Germany against France"
+  ]
+}
+
+Scenario 2 - Mid-game betrayal:
+{
+  "reasoning": "Italy broke our alliance and took Marseilles. Need new allies urgently. Germany looking strong.",
+  "relationships": {
+    "AUSTRIA": "Unfriendly",
+    "ENGLAND": "Neutral", 
+    "FRANCE": "Neutral",
+    "GERMANY": "Unfriendly",
+    "ITALY": "Enemy",
+    "RUSSIA": "Friendly",
+    "TURKEY": "Ally"
+  },
+  "goals": [
+    "Retake Marseilles from Italy",
+    "Fortify Alpine positions",
+    "Support Turkey against Austria"
+  ]
+}
+
+Scenario 3 - After Cooperation:
+{
+  "reasoning": "Austria helped take Warsaw. Russia attacked Prussia.",
+  "relationships": {
+    "AUSTRIA": "Ally",
+    "RUSSIA": "Enemy",
+    "TURKEY": "Neutral",
+    "ITALY": "Unfriendly",
+    "FRANCE": "Neutral",
+    "ENGLAND": "Neutral",
+    "GERMANY": "Neutral"
+  },
+  "goals": [
+    "Hold Warsaw against Russia",
+    "Keep Austrian alliance",
+    "Block Italian expansion"
+  ]
+}
+
+Scenario 4 - England after failed Belgium attack:
+{
+  "reasoning": "My attack on Belgium was decisively repulsed due to Franco-German cooperation, marking them as a significant threat bloc. Russia's acquisition of Sweden is concerning for my northern position. The Austro-Italian conflict seems localized for now, and Turkey's inactivity makes them an unknown variable, potentially open to diplomacy.",
+  "relationships": {
+    "FRANCE": "Enemy",
+    "GERMANY": "Enemy",
+    "RUSSIA": "Unfriendly",
+    "AUSTRIA": "Neutral",
+    "ITALY": "Neutral",
+    "TURKEY": "Neutral"
+  },
+  "goals": [
+    "Break the Franco-German alliance or find a way to counter their combined strength.",
+    "Secure North Sea (NTH) and prevent further Russian expansion towards Norway (NWY).",
+    "Seek dialogue with Turkey or Austria/Italy to create a counterweight to the dominant bloc."
+  ]
+}
+
+Scenario 5 - Russia after Black Sea negotiation:
+{
+  "reasoning": "Securing Rumania via Turkish agreement is a major success. This improves my southern position and Turkey is now a provisional ally. Germany's move into Silesia is a direct and immediate threat to Warsaw; they are now my primary adversary. Austria and France are posturing, but their conflict doesn't directly affect me yet, keeping them neutral. England's new fleet is a long-term concern but not immediate. Italy's westward focus means they are not a current threat or priority.",
+  "relationships": {
+    "GERMANY": "Enemy",
+    "AUSTRIA": "Neutral",
+    "TURKEY": "Ally",
+    "ITALY": "Neutral",
+    "FRANCE": "Neutral",
+    "ENGLAND": "Unfriendly"
+  },
+  "goals": [
+    "Defend Warsaw against Germany, possibly by moving Lvn-War or Mos-War.",
+    "Solidify alliance with Turkey, potentially coordinating further moves in the south or against Austria if Germany allies with them.",
+    "Monitor English fleet movements and prepare for a potential northern threat in future turns.",
+    "Explore diplomatic options with France or Austria to counter German aggression."
+  ]
+}
+
+Instructions:
+- reasoning: Extract the key strategic analysis
+  - Look for: what happened, what changed, new threats/opportunities
+  - Keep it brief (1-2 sentences)
+- relationships: Current view of ALL other powers
+  - Must include all 7 powers (remove the player's own power)
+  - Use ONLY: Enemy, Unfriendly, Neutral, Friendly, or Ally
+  - Look for relationship indicators in the analysis
+  - If a power isn't mentioned, check if there's a previous relationship to maintain
+- goals: Updated strategic objectives
+  - Look for: new priorities, adjusted plans, responses to events
+  - Extract 2-4 specific, actionable goals
+  - Common phrases: "need to", "must", "priority is", "focus on"
+
+<content_to_format>
+[RAW_RESPONSE]
+</content_to_format>
+
+Return ONLY the JSON object, no other text.
+
+Now format the content within the <content_to_format> tags above.

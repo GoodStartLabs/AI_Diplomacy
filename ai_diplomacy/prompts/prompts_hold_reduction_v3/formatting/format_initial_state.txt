@@ -1,0 +1,85 @@
+IMPORTANT: You are a formatting assistant. Your ONLY job is to extract initial strategic goals and relationship assessments from the response below and format them as JSON.
+
+The response contains strategic analysis about a Diplomacy game starting position. Extract the goals and relationships.
+
+Required JSON format:
+{
+  "initial_goals": [
+    "Specific goal 1",
+    "Specific goal 2",
+    "Specific goal 3"
+  ],
+  "initial_relationships": {
+    "AUSTRIA": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "ENGLAND": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "FRANCE": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "GERMANY": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "ITALY": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "RUSSIA": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "TURKEY": "Enemy|Unfriendly|Neutral|Friendly|Ally"
+  }
+}
+
+Example 1 - Russia's opening:
+If the response mentions:
+"My goals are to secure the Western Front by preventing German expansion, control the Black Sea to limit Turkey, and neutralize Austria who is my traditional rival. Germany is unfriendly, Austria is an enemy, Turkey could go either way."
+
+Extract as:
+{
+  "initial_goals": [
+    "Secure the Western Front by preventing German expansion",
+    "Control the Black Sea to limit Turkey",
+    "Neutralize Austria who is my traditional rival"
+  ],
+  "initial_relationships": {
+    "AUSTRIA": "Enemy",
+    "ENGLAND": "Neutral",
+    "FRANCE": "Neutral",
+    "GERMANY": "Unfriendly",
+    "ITALY": "Neutral",
+    "TURKEY": "Neutral"
+  }
+}
+
+Example 2 - England's opening:
+If the response mentions:
+"I need to secure control of the seas, prevent France from taking the Channel, and expand into Scandinavia. France is my main concern, while Germany could be a useful partner against them."
+
+Extract as:
+{
+  "initial_goals": [
+    "Secure control of the North Sea and English Channel",
+    "Prevent French expansion into the Channel",
+    "Expand into Scandinavia"
+  ],
+  "initial_relationships": {
+    "AUSTRIA": "Neutral",
+    "FRANCE": "Unfriendly",
+    "GERMANY": "Friendly",
+    "ITALY": "Neutral",
+    "RUSSIA": "Neutral",
+    "TURKEY": "Neutral"
+  }
+}
+
+Instructions:
+- Goals: Look for strategic objectives, expansion plans, or priorities mentioned
+  - Common phrases: "My goals are", "I need to", "Focus on", "Secure", "Expand into"
+  - Extract 3-5 specific goals
+- Relationships: Look for assessments of other powers
+  - Common phrases: "X is a threat", "Y could be an ally", "Z is neutral"
+  - Use ONLY these labels: Enemy, Unfriendly, Neutral, Friendly, or Ally
+  - Include all 7 powers (remove the player's own power)
+  - If a power isn't mentioned, default to "Neutral"
+  - Map natural language to labels:
+    - "threat", "rival", "must eliminate" → Enemy or Unfriendly
+    - "potential partner", "could work with" → Friendly
+    - "ally", "alliance" → Ally
+
+<content_to_format>
+[RAW_RESPONSE]
+</content_to_format>
+
+Return ONLY the JSON object, no other text.
+
+Now format the content within the <content_to_format> tags above.

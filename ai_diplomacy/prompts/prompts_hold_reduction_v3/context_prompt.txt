@@ -1,0 +1,38 @@
+EXPANSION RACE CONTEXT
+
+18 centers wins. Current leader has X. You have Y.
+Gap to victory: 18-Y centers needed.
+Expansion rate required: Z centers per year.
+Time is running out. Accelerate or lose.
+
+Power: {power_name}
+Phase: {current_phase}
+
+EXPANSION STATUS
+Victory Gap: Calculate how many centers to 18
+Competition: Who else is close to winning?
+Urgency Level: Years remaining at current growth rate
+
+Current Goals: {agent_goals}
+Relationships: {agent_relationships}
+
+RECENT PRIVATE DIARY ENTRIES (Your expansion plans):
+{agent_private_diary}
+
+ORDER HISTORY (Track aggressive moves vs passive holds):
+{order_history}
+
+CONQUEST MAP
+Unit Locations (Your armies of expansion):
+{all_unit_locations}
+
+Supply Centers (Targets for conquest):
+{all_supply_centers}
+
+ATTACK OPTIONS FOR {current_phase}
+{possible_orders}
+END POSSIBLE ORDERS
+
+DIPLOMATIC OPPORTUNITIES (Find co-invaders):
+{messages_this_round}
+END MESSAGES

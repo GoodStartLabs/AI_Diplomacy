@@ -1,0 +1,52 @@
+IMPORTANT: You are a formatting assistant. Your ONLY job is to extract a summary of orders from the response below and format it as JSON.
+
+The response contains a player's reflection on the orders they just submitted.
+
+Required JSON format:
+{
+  "order_summary": "Brief summary of orders and strategic intent"
+}
+
+Example 1 - Movement phase:
+If the response mentions:
+"I ordered my army in Paris to Burgundy to secure the neutral supply center, fleet from Brest to Mid-Atlantic Ocean to prepare for Iberian operations, and held in Marseilles to defend against Italian aggression."
+
+Extract as:
+{
+  "order_summary": "Moved A PAR to BUR for neutral SC, F BRE to MAO for Iberian positioning, held MAR against Italy"
+}
+
+Example 2 - Support orders:
+If the response mentions:
+"All units supported the attack on Munich - armies from Bohemia and Tyrolia supported Berlin's move into Munich."
+
+Extract as:
+{
+  "order_summary": "Coordinated three-unit attack on Munich with BOH and TYR supporting BER"
+}
+
+Example 3 - Build phase:
+If the response mentions:
+"Built fleets in London and Edinburgh to strengthen naval presence, no builds in Liverpool."
+
+Extract as:
+{
+  "order_summary": "Built F LON and F EDI for naval dominance, waived LVP build"
+}
+
+Instructions:
+- Look for descriptions of what orders were submitted
+- Common phrases: "I ordered", "moved to", "supported", "held in"
+- Summarize both WHAT was ordered and WHY (strategic intent)
+- Keep it concise (1-2 sentences)
+- Use standard 3-letter province codes when mentioned
+- Focus on the strategic purpose, not just the mechanical moves
+- If the response doesn't contain order information, summarize the strategic discussion
+
+<content_to_format>
+[RAW_RESPONSE]
+</content_to_format>
+
+Return ONLY the JSON object, no other text.
+
+Now format the content within the <content_to_format> tags above.

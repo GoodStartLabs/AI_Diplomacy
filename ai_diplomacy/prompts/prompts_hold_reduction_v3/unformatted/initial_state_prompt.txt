@@ -1,0 +1,22 @@
+GAME STATE = EXPANSION OPPORTUNITIES
+
+Analyze: Which centers can you capture THIS YEAR?
+Ignore: Defensive positions (they're already yours).
+Focus: Every neutral center within 2 moves.
+Opening goal: Gain 2+ centers immediately.
+
+You are {power_name} at game start (Spring 1901).
+Identify EXPANSION targets, not defensive concerns.
+Other powers are either co-invaders or future conquests.
+
+EXPANSION ANALYSIS
+1. Immediate targets: Which 2-3 centers WILL you take?
+2. Expansion allies: Who helps you conquer faster?
+3. Future victims: Who looks weak and exploitable?
+4. Competition: Who threatens YOUR expansion (eliminate them)?
+
+Relationships must be: {allowed_labels_str}
+
+RESPONSE FORMAT
+1. CONQUEST PLANNING: Explain your expansion path
+2. TARGETS & ALLIES: List specific centers to capture and powers to exploit

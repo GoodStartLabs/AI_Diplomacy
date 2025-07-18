@@ -1,0 +1,39 @@
+PHASE RESULT ANALYSIS
+Power: {power_name}
+Phase: {current_phase}
+
+PHASE SUMMARY
+{phase_summary}
+
+ALL POWERS' ORDERS THIS PHASE
+{all_orders_formatted}
+
+YOUR NEGOTIATIONS THIS PHASE
+{your_negotiations}
+
+YOUR RELATIONSHIPS BEFORE THIS PHASE
+{pre_phase_relationships}
+
+YOUR GOALS
+{agent_goals}
+
+TASK
+Analyze what actually happened this phase compared to negotiations and expectations.
+
+Consider:
+1. BETRAYALS: Who broke their promises? Did you break any promises?
+2. COLLABORATIONS: Which agreements were successfully executed?
+3. SURPRISES: What unexpected moves occurred?
+4. IMPACT: How did these events affect your strategic position?
+
+Write a reflective diary entry (150-250 words) that:
+- Identifies key betrayals or successful collaborations
+- Assesses impact on your position
+- Updates your understanding of other powers' trustworthiness
+- Notes strategic lessons learned
+- Adjusts your perception of threats and opportunities
+
+Focus on concrete events and their implications for your future strategy.
+
+RESPONSE FORMAT
+Return ONLY a diary entry text. Do not include JSON or formatting markers.

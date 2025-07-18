@@ -1,0 +1,34 @@
+ORDER DIARY ENTRY - POST-ORDER REFLECTION
+
+You have ALREADY SUBMITTED the following orders for this turn:
+{orders_list_str}
+
+Power: {power_name}
+Phase: {current_phase}
+
+GAME CONTEXT (state BEFORE orders were executed):
+{board_state_str}
+
+Your Strategic Framework:
+Goals: {agent_goals}
+Relationships: {agent_relationships}
+
+IMPORTANT TASK
+You have ALREADY SUBMITTED your orders (listed above). Now write a diary entry reflecting on WHY you chose these specific orders.
+
+This is NOT about choosing new orders - it's about documenting your reasoning for the orders you ALREADY SUBMITTED.
+
+RESPOND IN TWO PARTS:
+
+1. REASONING: Explain your strategic thinking:
+   - What threats were you responding to when you chose these orders?
+   - What opportunities were you trying to seize?
+   - How did your relationships and recent negotiations influence these choices?
+   - What calculated risks did you decide to take?
+
+2. ORDER SUMMARY: Provide a concise summary (1-2 sentences):
+   - Briefly restate the key moves you made (e.g., "Moved armies to secure BUR and supported the attack on MUN")
+   - Explain the strategic intent (e.g., "to block French expansion while gaining a foothold in Germany")
+   - Note any contingencies or backup plans
+
+REMEMBER: Focus on explaining the orders SHOWN ABOVE that you ALREADY SUBMITTED.

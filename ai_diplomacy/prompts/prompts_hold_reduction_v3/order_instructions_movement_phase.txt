@@ -1,0 +1,103 @@
+HOLDS = 0% WIN RATE. MOVES = VICTORY.
+
+Statistics: 0% of holds capture centers. 30%+ of moves do.
+Failed attacks >>> successful holds. Why? Forces defensive waste.
+Every unit must: Attack centers OR Support attacks OR Convoy armies.
+Math check: Count potential center gains. If zero, revise ALL orders.
+
+CRITICAL RULES
+1. Only use orders from the provided possible_orders list
+2. Support orders must match actual moves (e.g., 'A PAR S F PIC - ENG' needs 'F PIC - ENG')
+3. Build orders (build phase only):
+   - Format: '[UnitType] [Location3LetterCode] B'
+   - UnitType: 'A' (Army) or 'F' (Fleet)
+   - Example: 'A PAR B', 'F LON B'
+   - Build in YOUR home centers when empty (lose them = no builds!)
+
+VICTORY CALCULATION
+Before ordering, calculate:
+- Centers I'll capture: ___ (must be >0)
+- Centers I'll threaten: ___ (forces defensive waste)
+- Enemy supports I'll break: ___ (weakens their attacks)
+If all zeros = FAILED TURN. Revise everything.
+
+ORDER PRIORITIES
+1. ATTACK enemy/neutral centers
+   - Direct assaults on undefended targets
+   - Multi-unit coordinated invasions
+   - Exploit defensive gaps
+
+2. SUPPORT attacks for guaranteed success
+   - Your own attacks first (100% reliable)
+   - Allied attacks second (diplomatic value)
+   - Format: '[Unit] [Location] S [Unit] [From] - [To]'
+
+3. CONVOY for surprise deep strikes
+   - Army: 'A [From] - [To]'
+   - Fleet: 'F [Sea] C A [From] - [To]'
+   - Chain convoys for maximum reach
+
+4. NEVER HOLD unless facing 3+ enemy units
+   - Even then, consider supporting elsewhere
+   - Or moving to force enemy supports
+
+FORMAT
+Return orders in this exact format:
+PARSABLE OUTPUT:
+{{
+  "orders": ["order1", "order2", ...]
+}}
+
+AGGRESSIVE EXAMPLES
+
+Example 1: France S1901 - Maximum Expansion
+Reasoning:
+- Target: 2 neutrals (Spain, Belgium) + pressure on Germany
+- Every unit attacks or supports attacks
+- Zero defensive considerations
+
+PARSABLE OUTPUT:
+{{
+  "orders": [
+    "A PAR - BUR",  // Threaten Munich, force German defense
+    "A MAR - SPA",  // Guaranteed neutral capture
+    "F BRE - MAO"   // Position for Portugal/convoy options
+  ]
+}}
+
+Example 2: Germany S1901 - Triple Threat
+Reasoning:
+- Targets: Denmark, Holland, Belgium (3 centers!)
+- Supports ensure captures despite resistance
+- Forces all neighbors into defensive positions
+
+PARSABLE OUTPUT:
+{{
+  "orders": [
+    "F KIE - DEN",      // Neutral capture
+    "A BER - KIE",      // Follow fleet for future support
+    "A MUN - RUH",      // Threaten Belgium/Holland
+    "A RUH - HOL",      // Neutral capture
+    "F HEL S F KIE - DEN" // Guarantee Denmark
+  ]
+}}
+
+Example 3: Italy A1902 - Breakthrough Attack
+Units: A VEN, A ROM, F NAP, F ION, A APU
+Reasoning:
+- Primary: Break Austria with 3-unit attack on Trieste
+- Secondary: Position for Balkan exploitation
+- NO HOLDS - Rome can support instead of defending
+
+PARSABLE OUTPUT:
+{{
+  "orders": [
+    "A VEN - TRI",         // Primary assault
+    "A APU S A VEN - TRI", // Guarantee success
+    "F ION - ADR",         // Future Balkan access
+    "A ROM - VEN",         // Backfill for continued pressure
+    "F NAP - ION"          // Mediterranean control
+  ]
+}}
+
+RESPOND WITH YOUR EXPANSION ORDERS BELOW

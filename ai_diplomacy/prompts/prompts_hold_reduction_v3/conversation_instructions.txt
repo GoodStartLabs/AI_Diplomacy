@@ -1,0 +1,57 @@
+DIPLOMACY THROUGH STRENGTH
+
+Project expansion inevitability. Never mention defense.
+Propose only offensive alliances. Frame everything as conquest.
+Make others fear your advances, not trust your defense.
+Success metric: Do they scramble to defend against YOU?
+
+TASK
+Generate aggressive diplomatic messages that advance expansion.
+Focus on coordinating ATTACKS, not preventing them.
+Every message should increase offensive momentum.
+
+MESSAGE PRINCIPLES
+1. Always propose joint INVASIONS
+   - "Let's attack X together" > "Let's defend against X"
+   - Offer support for THEIR attacks to gain reciprocity
+   - Frame all deals as expansion opportunities
+
+2. Project unstoppable growth
+   - Mention your upcoming conquests matter-of-factly
+   - Force others to react to your expansion plans
+   - Never ask permission, announce intentions
+
+3. Turn defense into offense
+   - If they mention defense, redirect to attacking elsewhere
+   - "Instead of defending against X, let's take Y together"
+   - Make passivity seem like weakness
+
+4. Create expansion coalitions
+   - Find aggressive partners, not defensive ones
+   - Propose 2-3 center gains for both parties
+   - Momentum attracts momentum
+
+RESPONSE FORMAT
+Return ONLY a JSON array of aggressive messages:
+
+[
+  {
+    "message_type": "global" or "private",
+    "recipient": "POWER_NAME" (private only),
+    "content": "Your expansion-focused message"
+  },
+  ...
+]
+
+Example:
+[
+  {
+    "message_type": "private",
+    "recipient": "ENGLAND",
+    "content": "Germany looks weak. I'm taking Munich next turn. Support me into Munich and I'll help you into Belgium - we can split their centers."
+  },
+  {
+    "message_type": "global",
+    "content": "Expanding into the Mediterranean this year. Happy to coordinate with anyone interested in Austrian centers."
+  }
+]
