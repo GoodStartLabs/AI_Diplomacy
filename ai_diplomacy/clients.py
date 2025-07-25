@@ -799,7 +799,7 @@ class OpenAIClient(BaseModelClient):
 
             
 
-            if (self.model_name == 'o3'):
+            if (self.model_name == 'o3' or self.model_name == 'o4-mini'):
                 response = await self.client.chat.completions.create(
                     model=self.model_name,
                     messages=[
@@ -819,7 +819,12 @@ class OpenAIClient(BaseModelClient):
                     max_tokens=self.max_tokens,
                 )
 
-            if not response or not response.choices or not response.choices[0].message.content:
+            if (
+                not response
+                or not response.choices
+                or not response.choices[0].message
+                or not response.choices[0].message.content
+            ):
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
 
             return response.choices[0].message.content.strip()
@@ -828,7 +833,30 @@ class OpenAIClient(BaseModelClient):
             logger.error(f"[{self.model_name}] JSON decode error: {json_err}")
             raise
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error: {e}", exc_info=True)
+            extra = ""
+            try:
+                from openai import OpenAIError  # runtime import avoids circulars
+                if isinstance(e, OpenAIError):
+                    status = getattr(e, "status_code", None)
+                    resp  = getattr(e, "response", None)
+                    if status:
+                        extra += f" (status {status})"
+                    if resp is not None:
+                        try:
+                            body = resp.json() if hasattr(resp, "json") else resp
+                        except Exception:
+                            body = str(resp)
+                        body_str = (
+                            json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+                        )
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                # best‑effort only; never mask original error
+                pass
+
+            logger.error(f"[{self.model_name}] OpenAI client error: {e}{extra}", exc_info=True)
             raise
 
 
@@ -863,7 +891,21 @@ class ClaudeClient(BaseModelClient):
             logger.error(f"[{self.model_name}] JSON decoding failed in generate_response: {json_err}")
             raise
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error in generate_response: {e}")
+            extra = ""
+            try:
+                import anthropic
+                if isinstance(e, anthropic.errors.APIStatusError):
+                    extra += f" (status {e.status_code})"
+                    body = getattr(e, "response_json", None)
+                    if body:
+                        body_str = json.dumps(body)
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                pass
+
+            logger.error(f"[{self.model_name}] Claude client error: {e}{extra}", exc_info=True)
             raise
 
 
@@ -901,7 +943,11 @@ class GeminiClient(BaseModelClient):
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
             return response.text.strip()
         except Exception as e:
-            logger.error(f"[{self.model_name}] Error in Gemini generate_response: {e}")
+            # Gemini’s sdk wraps grpc errors; include full message
+            msg = str(e)
+            if len(msg) > 3_000:
+                msg = msg[:3_000] + "…[truncated]"
+            logger.error(f"[{self.model_name}] Gemini client error: {msg}", exc_info=True)
             raise
 
 
@@ -945,7 +991,29 @@ class DeepSeekClient(BaseModelClient):
             return content
 
         except Exception as e:
-            logger.error(f"[{self.model_name}] Unexpected error in generate_response: {e}")
+            extra = ""
+            try:
+                from openai import OpenAIError
+                if isinstance(e, OpenAIError):
+                    status = getattr(e, "status_code", None)
+                    if status:
+                        extra += f" (status {status})"
+                    resp = getattr(e, "response", None)
+                    if resp is not None:
+                        try:
+                            body = resp.json() if hasattr(resp, "json") else resp
+                        except Exception:
+                            body = str(resp)
+                        body_str = (
+                            json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+                        )
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                pass
+
+            logger.error(f"[{self.model_name}] DeepSeek client error: {e}{extra}", exc_info=True)
             raise
 
 
@@ -981,9 +1049,14 @@ class OpenAIResponsesClient(BaseModelClient):
             payload = {
                 "model": self.model_name,
                 "input": full_prompt,
-                #"temperature": temperature,
-                #"max_tokens": self.max_tokens,
+                "temperature": temperature,
+                "max_tokens": self.max_tokens,
             }
+
+            if (self.model_name == 'o3' or self.model_name == 'o4-mini'):
+                del payload["temperature"]
+                del payload["max_tokens"]
+                payload["max_completion_tokens"] = self.max_tokens
 
             headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
@@ -1077,17 +1150,30 @@ class OpenRouterClient(BaseModelClient):
             return content
 
         except Exception as e:
-            error_msg = str(e)
-            # Check if it's a specific OpenRouter error
-            if "429" in error_msg or "rate" in error_msg.lower():
-                logger.warning(f"[{self.model_name}] OpenRouter rate limit error: {e}")
-                raise e  # Re-raise to trigger retry
-            elif "provider" in error_msg.lower() and "error" in error_msg.lower():
-                logger.error(f"[{self.model_name}] OpenRouter provider error: {e}")
-                raise e  # Re-raise to trigger retry or fallback
-            else:
-                logger.error(f"[{self.model_name}] Error in OpenRouter generate_response: {e}")
-                raise
+            extra = ""
+            try:
+                from openai import OpenAIError
+                if isinstance(e, OpenAIError):
+                    status = getattr(e, "status_code", None)
+                    if status:
+                        extra += f" (status {status})"
+                    resp = getattr(e, "response", None)
+                    if resp is not None:
+                        try:
+                            body = resp.json() if hasattr(resp, "json") else resp
+                        except Exception:
+                            body = str(resp)
+                        body_str = (
+                            json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+                        )
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                pass
+
+            logger.error(f"[{self.model_name}] OpenRouter client error: {e}{extra}", exc_info=True)
+            raise
 
 
 ##############################################################################
@@ -1137,7 +1223,10 @@ class TogetherAIClient(BaseModelClient):
             content = response.choices[0].message.content
             return content.strip()
         except TogetherAPIError as e:
-            logger.error(f"[{self.model_name}] Together AI API error: {e}", exc_info=True)
+            body = getattr(e, "body", None) or str(e)
+            if len(body) > 3_000:
+                body = body[:3_000] + "…[truncated]"
+            logger.error(f"[{self.model_name}] TogetherAI API error: {body}", exc_info=True)
             raise
         except Exception as e:
             logger.error(f"[{self.model_name}] Unexpected error in TogetherAIClient: {e}", exc_info=True)
@@ -1179,8 +1268,20 @@ class RequestsOpenAIClient(BaseModelClient):
             "Authorization": f"Bearer {self.api_key}",
         }
         r = requests.post(self.endpoint, headers=headers, json=payload, timeout=600)
-        r.raise_for_status()
+
+        if r.status_code >= 400:
+            # try to surface the real OpenAI error message
+            body_excerpt = r.text.strip()
+            # don’t blow the logs with megabytes of prompt echo
+            if len(body_excerpt) > 3_000:
+                body_excerpt = body_excerpt[:3_000] + "…[truncated]"
+            raise requests.HTTPError(
+                f"{r.status_code} {r.reason} – OpenAI response body:\n{body_excerpt}",
+                response=r,
+            )
+
         return r.json()
+
 
     # ---------------- public async API ---------------- #
     async def generate_response(
@@ -1210,6 +1311,11 @@ class RequestsOpenAIClient(BaseModelClient):
         #        "allow_fallbacks": False,
         #    }
 
+        if (self.model_name == 'o3' or self.model_name == 'o4-mini'):
+            del payload["temperature"]
+            del payload["max_tokens"]
+            payload["max_completion_tokens"] = self.max_tokens
+
         loop = asyncio.get_running_loop()
         try:
             data = await loop.run_in_executor(None, self._post_sync, payload)
@@ -1223,7 +1329,8 @@ class RequestsOpenAIClient(BaseModelClient):
             logger.error(f"[{self.model_name}] Bad response format: {e}", exc_info=True)
             raise
         except requests.RequestException as e:
-            logger.error(f"[{self.model_name}] HTTP error: {e}", exc_info=True)
+            # bubble up the richer message we attached in _post_sync
+            logger.error(f"[{self.model_name}] HTTP error while calling OpenAI: {e}", exc_info=True)
             raise
         except Exception as e:
             logger.error(f"[{self.model_name}] Unexpected error: {e}", exc_info=True)
