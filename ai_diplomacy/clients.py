@@ -797,15 +797,27 @@ class OpenAIClient(BaseModelClient):
             system_prompt_content = f"{generate_random_seed()}\n\n{self.system_prompt}" if inject_random_seed else self.system_prompt
             prompt_with_cta = f"{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"
 
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt_content},
-                    {"role": "user", "content": prompt_with_cta},
-                ],
-                temperature=temperature,
-                max_tokens=self.max_tokens,
-            )
+            
+
+            if (self.model_name == 'o3'):
+                response = await self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt_content},
+                        {"role": "user", "content": prompt_with_cta},
+                    ],
+                    max_completion_tokens=self.max_tokens,
+                )
+            else:
+                response = await self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt_content},
+                        {"role": "user", "content": prompt_with_cta},
+                    ],
+                    temperature=temperature,
+                    max_tokens=self.max_tokens,
+                )
 
             if not response or not response.choices or not response.choices[0].message.content:
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
@@ -1166,7 +1178,7 @@ class RequestsOpenAIClient(BaseModelClient):
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
         }
-        r = requests.post(self.endpoint, headers=headers, json=payload, timeout=60)
+        r = requests.post(self.endpoint, headers=headers, json=payload, timeout=600)
         r.raise_for_status()
         return r.json()
 
@@ -1203,7 +1215,10 @@ class RequestsOpenAIClient(BaseModelClient):
             data = await loop.run_in_executor(None, self._post_sync, payload)
             if not data.get("choices") or not data["choices"][0].get("message") or not data["choices"][0]["message"].get("content"):
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
-            return data["choices"][0]["message"]["content"].strip()
+            content = data["choices"][0]["message"]["content"].strip()
+            if '<think>' in content and '</think>' in content:
+                content = content[content.rfind('</think>') + len('</think>'):]
+            return content
         except (KeyError, IndexError, TypeError) as e:
             logger.error(f"[{self.model_name}] Bad response format: {e}", exc_info=True)
             raise
