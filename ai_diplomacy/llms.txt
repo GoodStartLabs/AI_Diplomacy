@@ -2,7 +2,7 @@
 
 This document provides an analysis of key Python modules within the `ai_diplomacy` package, focusing on their roles, functions, interdependencies, and implementation status.
 
-**Last Major Update**: January 2025 - Added diary system details, consolidation logic, and comprehensive agent memory management.
+**Last Major Update**: Added diary system details, consolidation logic, and comprehensive agent memory management.
 
 ---
 

@@ -1,22 +1,38 @@
-GAME STATE = EXPANSION OPPORTUNITIES
+INITIAL STATE SETUP - NOT AN ORDER PHASE
 
-Analyze: Which centers can you capture THIS YEAR?
-Ignore: Defensive positions (they're already yours).
-Focus: Every neutral center within 2 moves.
-Opening goal: Gain 2+ centers immediately.
+You are {power_name} at the start of Spring 1901.
 
-You are {power_name} at game start (Spring 1901).
-Identify EXPANSION targets, not defensive concerns.
-Other powers are either co-invaders or future conquests.
+This is the initial state setup. DO NOT provide orders. Instead, analyze the board and establish your initial strategic position.
 
-EXPANSION ANALYSIS
-1. Immediate targets: Which 2-3 centers WILL you take?
-2. Expansion allies: Who helps you conquer faster?
-3. Future victims: Who looks weak and exploitable?
-4. Competition: Who threatens YOUR expansion (eliminate them)?
+Think about:
+- Which neutral supply centers can you realistically capture?
+- What defensive positions must you maintain?
+- Who are your natural allies and enemies based on geography?
 
-Relationships must be: {allowed_labels_str}
+REQUIRED OUTPUT FORMAT:
+Provide your response as valid JSON in exactly this format:
 
-RESPONSE FORMAT
-1. CONQUEST PLANNING: Explain your expansion path
-2. TARGETS & ALLIES: List specific centers to capture and powers to exploit
+{{
+  "initial_goals": [
+    "Goal 1 - be specific about supply centers or strategic positions",
+    "Goal 2 - focus on concrete early game objectives", 
+    "Goal 3 - consider both expansion and defense"
+  ],
+  "initial_relationships": {{
+    "AUSTRIA": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "ENGLAND": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "FRANCE": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "GERMANY": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "ITALY": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "RUSSIA": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "TURKEY": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally"
+  }}
+}}
+
+IMPORTANT: 
+- This is NOT an order phase - provide goals and relationships ONLY
+- Remove your own power from the relationships
+- Use ONLY the allowed relationship labels: {allowed_labels_str}
+- Goals should be specific (e.g., "Secure Norway and Sweden", not "expand north")
+- Base relationships on geographic realities and opening conflicts
+- Return ONLY the JSON above, no orders or other text

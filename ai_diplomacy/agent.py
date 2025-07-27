@@ -13,7 +13,7 @@ from config import config
 from .clients import BaseModelClient
 
 # Import load_prompt and the new logging wrapper from utils
-from .utils import load_prompt, run_llm_and_log, log_llm_response, get_prompt_path, get_board_state
+from .utils import load_prompt, run_llm_and_log, log_llm_response, log_llm_response_async, get_prompt_path, get_board_state
 from .prompt_constructor import build_context_prompt  # Added import
 from .clients import GameHistory
 from diplomacy import Game
@@ -84,10 +84,12 @@ class DiplomacyAgent:
         power_prompt_path = os.path.join(prompts_root, power_prompt_name)
         default_prompt_path = os.path.join(prompts_root, default_prompt_name)
 
+        logger.info(f"[{power_name}] Attempting to load power-specific prompt from: {power_prompt_path}")
         system_prompt_content = load_prompt(power_prompt_path)
 
         if not system_prompt_content:
             logger.warning(f"Power-specific prompt not found at {power_prompt_path}. Falling back to default.")
+            logger.info(f"[{power_name}] Loading default prompt from: {default_prompt_path}")
             system_prompt_content = load_prompt(default_prompt_path)
 
         if system_prompt_content:  # Ensure we actually have content before setting
@@ -96,6 +98,10 @@ class DiplomacyAgent:
             logger.error(f"Could not load default system prompt either! Agent {power_name} may not function correctly.")
         logger.info(f"Initialized DiplomacyAgent for {self.power_name} with goals: {self.goals}")
         self.add_journal_entry(f"Agent initialized. Initial Goals: {self.goals}")
+
+    async def _extract_json_from_text_async(self, text: str) -> dict:
+        """Async wrapper for _extract_json_from_text that runs CPU-intensive parsing in a thread pool."""
+        return await asyncio.to_thread(self._extract_json_from_text, text)
 
     def _extract_json_from_text(self, text: str) -> dict:
         """Extract and parse JSON from text, handling common LLM response formats."""
@@ -584,7 +590,7 @@ class DiplomacyAgent:
                 else:
                     # Use the raw response directly (already formatted)
                     formatted_response = raw_response
-                parsed_data = self._extract_json_from_text(formatted_response)
+                parsed_data = await self._extract_json_from_text_async(formatted_response)
                 logger.debug(f"[{self.power_name}] Parsed diary data: {parsed_data}")
                 success_status = "Success: Parsed diary data"
             except json.JSONDecodeError as e:
@@ -673,7 +679,7 @@ class DiplomacyAgent:
         finally:
             if log_file_path:  # Ensure log_file_path is provided
                 try:
-                    log_llm_response(
+                    await log_llm_response_async(
                         log_file_path=log_file_path,
                         model_name=self.client.model_name if self.client else "UnknownModel",
                         power_name=self.power_name,
@@ -771,7 +777,7 @@ class DiplomacyAgent:
                     else:
                         # Use the raw response directly (already formatted)
                         formatted_response = raw_response
-                    response_data = self._extract_json_from_text(formatted_response)
+                    response_data = await self._extract_json_from_text_async(formatted_response)
                     if response_data:
                         # Directly attempt to get 'order_summary' as per the prompt
                         diary_text_candidate = response_data.get("order_summary")
@@ -790,7 +796,7 @@ class DiplomacyAgent:
                     logger.error(f"[{self.power_name}] Error processing order diary JSON: {e}. Raw response: {raw_response[:200]} ", exc_info=False)
                     success_status = "FALSE"
 
-            log_llm_response(
+            await log_llm_response_async(
                 log_file_path=log_file_path,
                 model_name=self.client.model_name,
                 power_name=self.power_name,
@@ -815,7 +821,7 @@ class DiplomacyAgent:
             # Ensure prompt is defined or handled if it might not be (it should be in this flow)
             current_prompt = prompt if "prompt" in locals() else "[prompt_unavailable_in_exception]"
             current_raw_response = raw_response if "raw_response" in locals() and raw_response is not None else f"Error: {e}"
-            log_llm_response(
+            await log_llm_response_async(
                 log_file_path=log_file_path,
                 model_name=self.client.model_name if hasattr(self, "client") else "UnknownModel",
                 power_name=self.power_name,
@@ -920,7 +926,7 @@ class DiplomacyAgent:
                 self.add_diary_entry(fallback_diary, phase_name)
                 success_status = f"FALSE: {type(e).__name__}"
             finally:
-                log_llm_response(
+                await log_llm_response_async(
                     log_file_path=log_file_path,
                     model_name=self.client.model_name,
                     power_name=self.power_name,
@@ -1028,7 +1034,7 @@ class DiplomacyAgent:
                     else:
                         # Use the raw response directly (already formatted)
                         formatted_response = response
-                    update_data = self._extract_json_from_text(formatted_response)
+                    update_data = await self._extract_json_from_text_async(formatted_response)
                     logger.debug(f"[{power_name}] Successfully parsed JSON: {update_data}")
 
                     # Ensure update_data is a dictionary
@@ -1067,7 +1073,7 @@ class DiplomacyAgent:
                 # log_entry_success remains "FALSE"
 
             # Log the attempt and its outcome
-            log_llm_response(
+            await log_llm_response_async(
                 log_file_path=log_file_path,
                 model_name=self.client.model_name,
                 power_name=power_name,

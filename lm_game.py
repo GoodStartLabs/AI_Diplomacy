@@ -181,15 +181,30 @@ async def main():
     args = parse_arguments()
     start_whole = time.time()
 
+    logger.info(f"args.simple_prompts = {args.simple_prompts} (type: {type(args.simple_prompts)}), args.prompts_dir = {args.prompts_dir}")
+    logger.info(f"config.SIMPLE_PROMPTS before update = {config.SIMPLE_PROMPTS}")
+    
+    # IMPORTANT: Check if user explicitly provided a prompts_dir
+    user_provided_prompts_dir = args.prompts_dir is not None
+    
     if args.simple_prompts:
         config.SIMPLE_PROMPTS = True
         if args.prompts_dir is None:
             pkg_root = os.path.join(os.path.dirname(__file__), "ai_diplomacy")
             args.prompts_dir = os.path.join(pkg_root, "prompts_simple")
+            logger.info(f"Set prompts_dir to {args.prompts_dir} because simple_prompts=True and prompts_dir was None")
+        else:
+            # User provided their own prompts_dir, but simple_prompts is True
+            # This is likely a conflict - warn the user
+            logger.warning(f"Both --simple_prompts=True and --prompts_dir={args.prompts_dir} were specified. Using user-provided prompts_dir.")
+    else:
+        logger.info(f"simple_prompts is False, using prompts_dir: {args.prompts_dir}")
 
     # Prompt-dir validation & mapping
     try:
+        logger.info(f"About to parse prompts_dir: {args.prompts_dir}")
         args.prompts_dir_map = parse_prompts_dir_arg(args.prompts_dir)
+        logger.info(f"prompts_dir_map after parsing: {args.prompts_dir_map}")
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -447,7 +462,7 @@ async def main():
                 await asyncio.gather(*state_update_tasks, return_exceptions=True)
 
         # --- 4f. Save State At End of Phase ---
-        save_game_state(game, agents, game_history, game_file_path, run_config, completed_phase)
+        await save_game_state(game, agents, game_history, game_file_path, run_config, completed_phase)
         logger.info(f"Phase {current_phase} took {time.time() - phase_start:.2f}s")
 
     # --- 5. Game End ---

@@ -15,7 +15,7 @@ from .agent import DiplomacyAgent, ALL_POWERS
 from .clients import load_model_client
 from .game_history import GameHistory
 from .initialization import initialize_agent_state_ext
-from .utils import atomic_write_json, assign_models_to_powers
+from .utils import atomic_write_json, atomic_write_json_async, assign_models_to_powers
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def _phase_year(phase_name: str) -> Optional[int]:
 
 
 
-def save_game_state(
+async def save_game_state(
     game: "Game",
     agents: Dict[str, "DiplomacyAgent"],
     game_history: "GameHistory",
@@ -159,7 +159,7 @@ def save_game_state(
         p_name: {"relationships": a.relationships, "goals": a.goals} for p_name, a in agents.items()
     }
 
-    atomic_write_json(saved_game, output_path)
+    await atomic_write_json_async(saved_game, output_path)
     logger.info("Game state saved successfully.")
 
 
@@ -331,8 +331,10 @@ async def initialize_new_game(
             # Determine the prompts directory for this power
             if hasattr(args, "prompts_dir_map") and args.prompts_dir_map:
                 prompts_dir_for_power = args.prompts_dir_map.get(power_name, args.prompts_dir)
+                logger.info(f"[{power_name}] Using prompts_dir from map: {prompts_dir_for_power}")
             else:
                 prompts_dir_for_power = args.prompts_dir
+                logger.info(f"[{power_name}] Using prompts_dir from args: {prompts_dir_for_power}")
 
             try:
                 client = load_model_client(model_id, prompts_dir=prompts_dir_for_power)
