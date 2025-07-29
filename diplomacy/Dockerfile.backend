@@ -1,0 +1,22 @@
+FROM python:3.8-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+  gcc \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy setup files
+COPY setup.py ./
+COPY . ./diplomacy/
+COPY README.md /app/
+
+# Install Python dependencies
+RUN pip install -e .
+
+# Expose the default diplomacy server port
+EXPOSE 8432
+
+# Run the diplomacy server
+CMD ["python", "-m", "diplomacy.server.run"]

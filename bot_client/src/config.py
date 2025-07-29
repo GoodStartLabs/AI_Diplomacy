@@ -1,4 +1,5 @@
 import datetime
+from typing import Dict, List
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import warnings
@@ -12,10 +13,22 @@ class Configuration(BaseSettings):
     ANTHROPIC_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
+    DEFAULT_GAME_RULES: List[str] = ["POWER_CHOICE"]  # Allow messages and power choice
 
-    def __init__(self, power_name, **kwargs):
+    # Default power to model mapping
+    DEFAULT_POWER_MODELS_MAP: Dict[str, str] = {
+        "AUSTRIA": "gemini-2.5-flash-lite-preview-06-17",
+        "ENGLAND": "gemini-2.5-flash-lite-preview-06-17",
+        "FRANCE": "gemini-2.5-flash-lite-preview-06-17",
+        "GERMANY": "gemini-2.5-flash-lite-preview-06-17",
+        "ITALY": "gemini-2.5-flash-lite-preview-06-17",
+        "RUSSIA": "gemini-2.5-flash-lite-preview-06-17",
+        "TURKEY": "gemini-2.5-flash-lite-preview-06-17",
+    }
+
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.log_file_path = Path(f"./logs/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}/{power_name}.txt")
+        self.log_file_path = Path(f"./logs/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}.txt")
         # Make the path absolute, gets rid of weirdness of calling this in different places
         self.log_file_path = self.log_file_path.resolve()
         self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -46,3 +59,6 @@ class Configuration(BaseSettings):
             raise ValueError(f"API key '{name}' is not set or is empty. Please configure it before use.")
 
         return value
+
+
+config = Configuration()

@@ -40,8 +40,6 @@ from websocket_negotiations import (
 
 dotenv.load_dotenv()
 
-# TODO: This, but better
-
 
 class SingleBotPlayer:
     """
@@ -55,8 +53,6 @@ class SingleBotPlayer:
 
     def __init__(
         self,
-        username: str,
-        password: str,
         power_name: str,
         model_name: str,
         hostname: str = "localhost",
@@ -67,19 +63,17 @@ class SingleBotPlayer:
         max_retries: int = 3,
         retry_delay: float = 2.0,
     ):
-        assert username is not None
-        assert password is not None
         assert power_name is not None
         assert model_name is not None
 
         self.hostname = hostname
         self.port = port
-        self.username = username
-        self.password = password
+        self.username = f"bot_{power_name}"
+        self.password = "password"
         self.power_name = power_name
         self.model_name = model_name
         self.game_id = game_id
-        self.config = Configuration(power_name=power_name)
+        self.config = Configuration()
 
         # Bot state
         self.client: WebSocketDiplomacyClient
@@ -311,20 +305,14 @@ class SingleBotPlayer:
 
     async def _handle_game_processed_async(self):
         """Async handler for game processing."""
-        try:
-            # Synchronize to get the results with retry logic
-            await self._retry_with_backoff(self.client.game.synchronize)
+        # Synchronize to get the results with retry logic
+        await self._retry_with_backoff(self.client.game.synchronize)
 
-            # Analyze the results
-            await self._analyze_phase_results()
+        # Analyze the results
+        await self._analyze_phase_results()
 
-            self.orders_submitted = False
-            self.waiting_for_orders = False
-        except Exception as e:
-            logger.error(f"Failed to handle game processing: {e}")
-            # Reset state even if synchronization failed
-            self.orders_submitted = False
-            self.waiting_for_orders = False
+        self.orders_submitted = False
+        self.waiting_for_orders = False
 
     def _on_message_received(self, game, notification):
         """Handle incoming diplomatic messages."""
@@ -431,74 +419,61 @@ class SingleBotPlayer:
             logger.debug("Orders already submitted for this phase")
             return
 
-        try:
-            current_phase = self.client.game.get_current_phase()
-            logger.info(f"Generating orders for {self.power_name} in phase {current_phase}...")
+        current_phase = self.client.game.get_current_phase()
+        logger.info(f"Generating orders for {self.power_name} in phase {current_phase}...")
 
-            # Get current board state
-            board_state = self.client.game.get_state()
+        # Get current board state
+        board_state = self.client.game.get_state()
 
-            # Get possible orders
-            possible_orders = gather_possible_orders(self.client.game, self.power_name)
+        # Get possible orders
+        possible_orders = gather_possible_orders(self.client.game, self.power_name)
 
-            logger.debug(f"Possible orders for {self.power_name}: {possible_orders}")
+        logger.debug(f"Possible orders for {self.power_name}: {possible_orders}")
 
-            if not possible_orders:
-                logger.info(f"No possible orders for {self.power_name}, submitting empty order set")
-                await self._retry_with_backoff(self.client.set_orders, self.power_name, [])
-                self.orders_submitted = True
-                return
+        if not possible_orders:
+            logger.info(f"No possible orders for {self.power_name}, submitting empty order set")
+            await self._retry_with_backoff(self.client.set_orders, self.power_name, [])
+            self.orders_submitted = True
+            return
 
-            # Generate orders using AI
-            orders = await get_valid_orders(
-                game=self.client.game,
-                client=self.agent.client,
-                board_state=board_state,
-                power_name=self.power_name,
-                possible_orders=possible_orders,
-                game_history=self.game_history,
-                model_error_stats=self.error_stats,
-                agent_goals=self.agent.goals,
-                agent_relationships=self.agent.relationships,
-                agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
-                phase=self.client.game.get_current_phase(),
+        # Generate orders using AI
+        orders = await get_valid_orders(
+            game=self.client.game,
+            client=self.agent.client,
+            board_state=board_state,
+            power_name=self.power_name,
+            possible_orders=possible_orders,
+            game_history=self.game_history,
+            model_error_stats=self.error_stats,
+            agent_goals=self.agent.goals,
+            agent_relationships=self.agent.relationships,
+            agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
+            phase=self.client.game.get_current_phase(),
+        )
+
+        # Submit orders with retry logic
+        if orders:
+            logger.info(f"Submitting orders: {orders}")
+            await self._retry_with_backoff(self.client.set_orders, self.power_name, orders)
+
+            # Generate order diary entry (don't retry this if it fails)
+            await self.agent.generate_order_diary_entry(
+                self.client.game,
+                orders,
+                self.config.log_file_path,
             )
+        else:
+            logger.info("No valid orders generated, submitting empty order set")
+            await self._retry_with_backoff(self.client.set_orders, self.power_name, [])
 
-            # Submit orders with retry logic
-            if orders:
-                logger.info(f"Submitting orders: {orders}")
-                await self._retry_with_backoff(self.client.set_orders, self.power_name, orders)
+        self.orders_submitted = True
+        self.waiting_for_orders = False
+        logger.info("Orders submitted successfully")
 
-                # Generate order diary entry (don't retry this if it fails)
-                try:
-                    await self.agent.generate_order_diary_entry(
-                        self.client.game,
-                        orders,
-                        self.config.log_file_path,
-                    )
-                except Exception as diary_error:
-                    logger.warning(f"Failed to generate order diary entry: {diary_error}")
-            else:
-                logger.info("No valid orders generated, submitting empty order set")
-                await self._retry_with_backoff(self.client.set_orders, self.power_name, [])
-
-            self.orders_submitted = True
-            self.waiting_for_orders = False
-            logger.info("Orders submitted successfully")
-
-            # Call the no wait so we don't sit around for the turns to end.
-            # TODO: We probably don't want to call this here.
-            # We want to call it when negotiations end,
-            try:
-                self.client.game.no_wait()
-            except Exception as no_wait_error:
-                logger.warning(f"Failed to call no_wait: {no_wait_error}")
-
-        except Exception as e:
-            logger.error(f"Failed to submit orders: {e}", exc_info=True)
-            # Mark as submitted to avoid infinite retry loops
-            self.orders_submitted = True
-            self.waiting_for_orders = False
+        # Call the no wait so we don't sit around for the turns to end.
+        # TODO: We probably don't want to call this here.
+        # We want to call it when negotiations end,
+        self.client.game.no_wait()
 
     async def _analyze_phase_results(self):
         """Analyze the results of the previous phase."""
@@ -563,119 +538,111 @@ class SingleBotPlayer:
 
     async def _consider_message_response(self, message: Message):
         """Consider whether to respond to a diplomatic message."""
-        try:
-            # Only respond to messages directed at us specifically
-            if message.recipient != self.power_name:
-                return
+        # Only respond to messages directed at us specifically
+        if message.recipient != self.power_name:
+            return
 
-            # Don't respond to our own messages
-            if message.sender == self.power_name:
-                return
+        # Don't respond to our own messages
+        if message.sender == self.power_name:
+            return
 
-            logger.info(f"Considering response to message from {message.sender}: {message.message[:50]}...")
+        logger.info(f"Considering response to message from {message.sender}: {message.message[:50]}...")
 
-            # Enhanced heuristic: respond to direct questions, proposals, and strategic keywords
-            message_lower = message.message.lower()
-            strategic_keywords = [
-                "alliance",
-                "deal",
-                "propose",
-                "agreement",
-                "support",
-                "attack",
-                "coordinate",
-                "move",
-                "order",
-                "help",
-                "work together",
-                "partner",
-                "enemy",
-                "threat",
-                "negotiate",
-                "discuss",
-                "plan",
-                "strategy",
-                "bounce",
-                "convoy",
-                "retreat",
+        # Enhanced heuristic: respond to direct questions, proposals, and strategic keywords
+        message_lower = message.message.lower()
+        strategic_keywords = [
+            "alliance",
+            "deal",
+            "propose",
+            "agreement",
+            "support",
+            "attack",
+            "coordinate",
+            "move",
+            "order",
+            "help",
+            "work together",
+            "partner",
+            "enemy",
+            "threat",
+            "negotiate",
+            "discuss",
+            "plan",
+            "strategy",
+            "bounce",
+            "convoy",
+            "retreat",
+        ]
+
+        should_respond = any(
+            [
+                "?" in message.message,  # Questions
+                any(word in message_lower for word in ["hello", "hi", "greetings"]),  # Greetings
+                any(keyword in message_lower for keyword in strategic_keywords),  # Strategic content
+                len(message.message.split()) > 15,  # Longer messages suggest they want engagement
+                message.sender in self.priority_contacts,  # Priority contacts
             ]
+        )
 
-            should_respond = any(
-                [
-                    "?" in message.message,  # Questions
-                    any(word in message_lower for word in ["hello", "hi", "greetings"]),  # Greetings
-                    any(keyword in message_lower for keyword in strategic_keywords),  # Strategic content
-                    len(message.message.split()) > 15,  # Longer messages suggest they want engagement
-                    message.sender in self.priority_contacts,  # Priority contacts
-                ]
+        if should_respond:
+            # Generate a contextual response using AI
+            # Get current game state for context
+            board_state = self.client.get_state()
+            possible_orders = gather_possible_orders(self.client.game, self.power_name)
+
+            # Create a simple conversation context
+            active_powers = [p_name for p_name, p_obj in self.client.powers.items() if not p_obj.is_eliminated()]
+
+            # Generate response using the agent's conversation capabilities
+            responses = await self.agent.client.get_conversation_reply(
+                game=self.client.game,
+                board_state=board_state,
+                power_name=self.power_name,
+                possible_orders=possible_orders,
+                game_history=self.game_history,
+                game_phase=self.client.get_current_short_phase(),
+                log_file_path=self.config.log_file_path,
+                active_powers=active_powers,
+                agent_goals=self.agent.goals,
+                agent_relationships=self.agent.relationships,
+                agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
             )
 
-            if should_respond:
-                # Generate a contextual response using AI
-                # Get current game state for context
-                board_state = self.client.get_state()
-                possible_orders = gather_possible_orders(self.client.game, self.power_name)
+            # Send the first response if any were generated
+            if responses and len(responses) > 0:
+                response_content = responses[0].get("content", "").strip()
+                if response_content:
+                    await self._retry_with_backoff(
+                        self.client.send_message,
+                        sender=self.power_name,
+                        recipient=message.sender,
+                        message=response_content,
+                        phase=self.client.get_current_short_phase(),
+                    )
 
-                # Create a simple conversation context
-                active_powers = [p_name for p_name, p_obj in self.client.powers.items() if not p_obj.is_eliminated()]
+                    # Add to game history
+                    self.game_history.add_message(
+                        phase_name=self.client.get_current_short_phase(),
+                        sender=self.power_name,
+                        recipient=message.sender,
+                        message_content=response_content,
+                    )
 
-                # Generate response using the agent's conversation capabilities
-                responses = await self.agent.client.get_conversation_reply(
-                    game=self.client.game,
-                    board_state=board_state,
-                    power_name=self.power_name,
-                    possible_orders=possible_orders,
-                    game_history=self.game_history,
-                    game_phase=self.client.get_current_short_phase(),
-                    log_file_path=self.config.log_file_path,
-                    active_powers=active_powers,
-                    agent_goals=self.agent.goals,
-                    agent_relationships=self.agent.relationships,
-                    agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
-                )
+                    # Track response patterns
+                    self.response_counts[message.sender] = self.response_counts.get(message.sender, 0) + 1
 
-                # Send the first response if any were generated
-                if responses and len(responses) > 0:
-                    response_content = responses[0].get("content", "").strip()
-                    if response_content:
-                        try:
-                            await self._retry_with_backoff(
-                                self.client.send_message,
-                                sender=self.power_name,
-                                recipient=message.sender,
-                                message=response_content,
-                                phase=self.client.get_current_short_phase(),
-                            )
-                        except Exception as send_error:
-                            logger.warning(f"Failed to send message response: {send_error}")
-                            return  # Don't record the message if sending failed
+                    # Add to agent's journal
+                    self.agent.add_journal_entry(
+                        f"Responded to {message.sender} in {self.client.get_current_short_phase()}: {response_content[:100]}..."
+                    )
 
-                        # Add to game history
-                        self.game_history.add_message(
-                            phase_name=self.client.get_current_short_phase(),
-                            sender=self.power_name,
-                            recipient=message.sender,
-                            message_content=response_content,
-                        )
-
-                        # Track response patterns
-                        self.response_counts[message.sender] = self.response_counts.get(message.sender, 0) + 1
-
-                        # Add to agent's journal
-                        self.agent.add_journal_entry(
-                            f"Responded to {message.sender} in {self.client.get_current_short_phase()}: {response_content[:100]}..."
-                        )
-
-                        logger.info(f"Sent AI response to {message.sender}: {response_content[:50]}...")
-                    else:
-                        logger.debug(f"AI generated empty response to {message.sender}")
+                    logger.info(f"Sent AI response to {message.sender}: {response_content[:50]}...")
                 else:
-                    logger.debug(f"AI generated no responses to {message.sender}")
+                    logger.debug(f"AI generated empty response to {message.sender}")
             else:
-                logger.debug(f"Decided not to respond to message from {message.sender}")
-
-        except Exception as e:
-            logger.error(f"Error responding to message: {e}", exc_info=True)
+                logger.debug(f"AI generated no responses to {message.sender}")
+        else:
+            logger.debug(f"Decided not to respond to message from {message.sender}")
 
     def _update_priority_contacts(self) -> None:
         """Update the list of priority contacts based on messaging patterns."""
@@ -768,8 +735,6 @@ class SingleBotPlayer:
             logger.error(f"Game with id {self.game_id} does not exist on the server. Exiting...")
         except (asyncio.CancelledError, KeyboardInterrupt):
             logger.info("Bot cancelled or interrupted")
-        except Exception as e:
-            logger.error(f"Fatal error in bot: {e}", exc_info=True)
         finally:
             await self.cleanup()
 
@@ -784,8 +749,6 @@ class SingleBotPlayer:
             logger.info("Cleanup completed successfully")
         except asyncio.TimeoutError:
             logger.warning(f"Cleanup timed out after {cleanup_timeout} seconds")
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
 
     async def _perform_cleanup(self):
         """Perform the actual cleanup operations."""
@@ -794,21 +757,15 @@ class SingleBotPlayer:
         # Game cleanup
         if hasattr(self, "client") and self.client and hasattr(self.client, "game") and self.client.game:
             logger.debug("Cleaning up game connection...")
-            try:
-                # Use asyncio.create_task to make game.leave() non-blocking
-                leave_task = asyncio.create_task(self._safe_game_leave())
-                cleanup_tasks.append(leave_task)
-            except Exception as e:
-                logger.warning(f"Error creating game leave task: {e}")
+            # Use asyncio.create_task to make game.leave() non-blocking
+            leave_task = asyncio.create_task(self._safe_game_leave())
+            cleanup_tasks.append(leave_task)
 
         # Client cleanup
         if hasattr(self, "client") and self.client:
             logger.debug("Cleaning up client connection...")
-            try:
-                close_task = asyncio.create_task(self._safe_client_close())
-                cleanup_tasks.append(close_task)
-            except Exception as e:
-                logger.warning(f"Error creating client close task: {e}")
+            close_task = asyncio.create_task(self._safe_client_close())
+            cleanup_tasks.append(close_task)
 
         # Wait for all cleanup tasks with individual timeouts
         if cleanup_tasks:
@@ -824,25 +781,17 @@ class SingleBotPlayer:
                 task.cancel()
                 try:
                     await task
-                except asyncio.CancelledError:
-                    pass
-                except Exception as e:
-                    logger.warning(f"Error cancelling cleanup task: {e}")
+                except asyncio.CancelledError as e:
+                    logger.warning(f"Task was cancelled, rasied {e}", exc_info=True)
 
     async def _safe_game_leave(self):
         """Safely leave the game with timeout."""
         try:
             # Some diplomacy client implementations have async leave, others are sync
-            if asyncio.iscoroutinefunction(self.client.game.leave):
-                await asyncio.wait_for(self.client.game.leave(), timeout=5.0)
-            else:
-                # Run synchronous leave in a thread to avoid blocking
-                await asyncio.get_event_loop().run_in_executor(None, self.client.game.leave)
+            await self.client.game.leave()
             logger.debug("Successfully left game")
         except asyncio.TimeoutError:
             logger.warning("Game leave operation timed out")
-        except Exception as e:
-            logger.warning(f"Error leaving game: {e}")
 
     async def _safe_client_close(self):
         """Safely close the client with timeout."""
@@ -851,86 +800,3 @@ class SingleBotPlayer:
             logger.debug("Successfully closed client")
         except asyncio.TimeoutError:
             logger.warning("Client close operation timed out")
-        except Exception as e:
-            logger.warning(f"Error closing client: {e}")
-
-
-def parse_arguments():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Single bot player for Diplomacy")
-
-    parser.add_argument("--hostname", default="localhost", help="Server hostname")
-    parser.add_argument("--port", type=int, default=8432, help="Server port")
-    parser.add_argument("--username", help="Bot username")
-    parser.add_argument("--password", default="password", help="Bot password")
-    parser.add_argument("--power", default="FRANCE", help="Power to control")
-    parser.add_argument("--model", default="gpt-3.5-turbo", help="AI model to use")
-    parser.add_argument("--game-id", help="Game ID to join (creates new if not specified)")
-    parser.add_argument("--log-level", default="INFO", help="Logging level")
-    parser.add_argument(
-        "--negotiation-rounds",
-        type=int,
-        default=3,
-        help="Number of negotiation rounds per movement phase (default: 3)",
-    )
-    parser.add_argument(
-        "--connection-timeout",
-        type=float,
-        default=30.0,
-        help="Timeout for network operations in seconds (default: 30.0)",
-    )
-    parser.add_argument(
-        "--max-retries",
-        type=int,
-        default=3,
-        help="Maximum number of retries for failed operations (default: 3)",
-    )
-    parser.add_argument(
-        "--retry-delay",
-        type=float,
-        default=2.0,
-        help="Base delay between retries in seconds (default: 2.0)",
-    )
-
-    return parser.parse_args()
-
-
-async def main():
-    """Main entry point with comprehensive error handling."""
-    bot = None
-    try:
-        args = parse_arguments()
-        if not args.username:
-            args.username = f"bot_{args.power}"
-
-        bot = SingleBotPlayer(
-            hostname=args.hostname,
-            port=args.port,
-            username=args.username,
-            password=args.password,
-            power_name=args.power,
-            model_name=args.model,
-            game_id=args.game_id,
-            negotiation_rounds=args.negotiation_rounds,
-            connection_timeout=args.connection_timeout,
-            max_retries=args.max_retries,
-            retry_delay=args.retry_delay,
-        )
-
-        await bot.run()
-
-    except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt")
-    except Exception as e:
-        logger.error(f"Fatal error in main: {e}", exc_info=True)
-    finally:
-        if bot:
-            # Ensure cleanup happens even if there was an error
-            try:
-                await bot.cleanup()
-            except Exception as cleanup_error:
-                logger.error(f"Error during final cleanup: {cleanup_error}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

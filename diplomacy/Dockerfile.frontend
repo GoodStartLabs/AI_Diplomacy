@@ -1,0 +1,12 @@
+FROM node:lts-bullseye
+
+WORKDIR /app/web
+
+COPY web/package*.json ./
+RUN npm install
+
+COPY . /app/
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

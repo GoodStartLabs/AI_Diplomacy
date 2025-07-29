@@ -12,7 +12,7 @@ services:
     shm_size: "2gb"
 
   diplomacy:
-    build: 
+    build:
       context: ai_animation
       args:
         - VITE_ELEVENLABS_API_KEY=${VITE_ELEVENLABS_API_KEY}
@@ -32,3 +32,19 @@ services:
     command: ["npm", "run", "dev-all"]
     volumes:
       - "./ai_animation/:/app/"
+
+  old-diplomacy-fe:
+    build:
+      context: diplomacy
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+
+  old-diplomacy-be:
+    build:
+      context: diplomacy
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8432:8432"
+    volumes:
+      - "./data/:/app/data"
