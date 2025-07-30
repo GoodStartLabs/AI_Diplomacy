@@ -1,9 +1,9 @@
-from single_bot_player import SingleBotPlayer
+from src import SingleBotPlayer
 import asyncio
 import argparse
 from loguru import logger
-from config import config
-from utils import create_game
+from src.config import config
+from src.utils import create_game
 
 
 def parse_arguments():
@@ -55,11 +55,21 @@ async def main():
         args.game_id = await create_game()
 
     if args.fill_game:
-        for power_str, model_str in config.DEFAULT_POWER_MODELS_MAP:
-            bots[power_str] = SingleBotPlayer(power_name=power_str, model_name=model_str)
+        logger.info(f"Filling game {args.game_id} with bots")
+        for power_str, model_str in config.DEFAULT_POWER_MODELS_MAP.items():
+            bots[power_str] = SingleBotPlayer(
+                hostname=args.hostname,
+                port=args.port,
+                power_name=power_str,
+                model_name=model_str,
+                game_id=args.game_id,
+                negotiation_rounds=args.negotiation_rounds,
+            )
+
         for power, bot in bots.items():
             try:
                 await bot.run()
+                logger.info(f"Bot {bot.power} started")
             finally:
                 await bot.cleanup()
 
@@ -71,9 +81,6 @@ async def main():
             model_name=args.model,
             game_id=args.game_id,
             negotiation_rounds=args.negotiation_rounds,
-            connection_timeout=args.connection_timeout,
-            max_retries=args.max_retries,
-            retry_delay=args.retry_delay,
         )
 
         try:

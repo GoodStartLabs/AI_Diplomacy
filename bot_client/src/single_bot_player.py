@@ -9,17 +9,18 @@ as a separate process for each bot in a multi-player game.
 import sys
 import os
 
+from bot_client.src.utils import CircuitBreaker
+
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-import argparse
 import asyncio
 import signal
 import time
-from typing import Optional, Dict, List
+from typing import Any, Optional, Dict, List
 import dotenv
 from loguru import logger
 
 
-from websocket_diplomacy_client import WebSocketDiplomacyClient, connect_to_diplomacy_server
+from .websocket_diplomacy_client import WebSocketDiplomacyClient, connect_to_diplomacy_server
 
 
 from diplomacy.utils.exceptions import GameIdException, DiplomacyException
@@ -31,12 +32,12 @@ from ai_diplomacy.utils import get_valid_orders, gather_possible_orders
 from ai_diplomacy.game_history import GameHistory
 from ai_diplomacy.agent import DiplomacyAgent
 from ai_diplomacy.initialization import initialize_agent_state_ext
-from config import Configuration
-from websocket_negotiations import (
+from .websocket_negotiations import (
     conduct_strategic_negotiation_round,
     should_participate_in_negotiations,
     get_negotiation_delay,
 )
+from .config import config
 
 dotenv.load_dotenv()
 
@@ -59,9 +60,6 @@ class SingleBotPlayer:
         port: int = 8432,
         game_id: Optional[str] = None,
         negotiation_rounds: int = 3,
-        connection_timeout: float = 30.0,
-        max_retries: int = 3,
-        retry_delay: float = 2.0,
     ):
         assert power_name is not None
         assert model_name is not None
@@ -73,7 +71,6 @@ class SingleBotPlayer:
         self.power_name = power_name
         self.model_name = model_name
         self.game_id = game_id
-        self.config = Configuration()
 
         # Bot state
         self.client: WebSocketDiplomacyClient
@@ -97,20 +94,9 @@ class SingleBotPlayer:
         self.response_counts: Dict[str, int] = {}  # Responses sent to each power
         self.priority_contacts: List[str] = []  # Powers to prioritize for communication
 
-        # Connection health and fault tolerance (configurable)
-        self.connection_timeout = connection_timeout
-        self.retry_delay = retry_delay
-        self.max_retries = max_retries
-        self.last_successful_operation = time.time()
-        self.connection_failures = 0
-        self.circuit_breaker_open = False
-        self.circuit_breaker_last_failure = 0
-        self.circuit_breaker_timeout = 60.0  # 1 minute before trying again
-
         # Add graceful shutdown flag
         self.shutdown_requested = False
-
-        logger.info(f"Fault tolerance config: timeout={connection_timeout}s, max_retries={max_retries}, retry_delay={retry_delay}s")
+        self.circuit_breaker = CircuitBreaker()
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -119,81 +105,19 @@ class SingleBotPlayer:
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals gracefully."""
         logger.info(f"Received signal {signum}, shutting down...")
+        if self.shutdown_requested:
+            asyncio.run(self.cleanup)
+        if not self.running:
+            logger.info("Already shutting down, send signal again for immediate shutdown")
+            self.shutdown_requested = True
         self.running = False
-
-    def _is_circuit_breaker_open(self) -> bool:
-        """Check if circuit breaker is open (preventing operations due to failures)."""
-        if not self.circuit_breaker_open:
-            return False
-
-        # Check if timeout has passed and we should try again
-        if time.time() - self.circuit_breaker_last_failure > self.circuit_breaker_timeout:
-            logger.info("Circuit breaker timeout expired, allowing operations")
-            self.circuit_breaker_open = False
-            return False
-
-        return True
-
-    def _record_operation_success(self):
-        """Record a successful operation."""
-        self.last_successful_operation = time.time()
-        self.connection_failures = 0
-        if self.circuit_breaker_open:
-            logger.info("Operation successful, closing circuit breaker")
-            self.circuit_breaker_open = False
-
-    def _record_operation_failure(self):
-        """Record a failed operation and potentially open circuit breaker."""
-        self.connection_failures += 1
-        logger.warning(f"Operation failed, failure count: {self.connection_failures}")
-
-        if self.connection_failures >= 5:  # Open circuit after 5 consecutive failures
-            logger.error("Opening circuit breaker due to repeated failures")
-            self.circuit_breaker_open = True
-            self.circuit_breaker_last_failure = time.time()
-
-    async def _retry_with_backoff(self, operation, *args, **kwargs):
-        """Execute an operation with exponential backoff retry logic."""
-        if self._is_circuit_breaker_open():
-            raise DiplomacyException("Circuit breaker is open, operation not allowed")
-
-        last_exception = None
-
-        for attempt in range(self.max_retries + 1):
-            try:
-                result = await asyncio.wait_for(operation(*args, **kwargs), timeout=self.connection_timeout)
-                self._record_operation_success()
-                return result
-
-            except (TimeoutError, asyncio.TimeoutError) as e:
-                last_exception = e
-                logger.warning(f"Operation timeout on attempt {attempt + 1}/{self.max_retries + 1}: {e}")
-
-            except (ConnectionError, DiplomacyException) as e:
-                last_exception = e
-                logger.warning(f"Connection error on attempt {attempt + 1}/{self.max_retries + 1}: {e}")
-
-            except Exception as e:
-                last_exception = e
-                logger.error(f"Unexpected error on attempt {attempt + 1}/{self.max_retries + 1}: {e}")
-
-            # Don't delay after the last attempt
-            if attempt < self.max_retries:
-                delay = self.retry_delay * (2**attempt)  # Exponential backoff
-                logger.info(f"Retrying in {delay:.1f} seconds...")
-                await asyncio.sleep(delay)
-
-        # All retries failed
-        self._record_operation_failure()
-        logger.error(f"Operation failed after {self.max_retries + 1} attempts")
-        raise last_exception or Exception("Operation failed with unknown error")
 
     async def connect_and_initialize(self):
         """Connect to the server and initialize the bot."""
         logger.info(f"Connecting to {self.hostname}:{self.port} as {self.username}")
 
         # Connect to server with retry logic
-        self.client = await self._retry_with_backoff(
+        self.client = await self.circuit_breaker._retry_with_backoff(
             connect_to_diplomacy_server,
             hostname=self.hostname,
             port=self.port,
@@ -222,7 +146,7 @@ class SingleBotPlayer:
         self.agent = DiplomacyAgent(power_name=self.power_name, client=model_client)
 
         # Initialize agent state
-        await initialize_agent_state_ext(self.agent, self.client.game, self.game_history, self.config.log_file_path)
+        await initialize_agent_state_ext(self.agent, self.client.game, self.game_history, config.log_file_path)
 
         # Setup game event callbacks
         await self._setup_event_callbacks()
@@ -234,9 +158,6 @@ class SingleBotPlayer:
 
         logger.info(f"Bot initialized. Current phase: {self.current_phase}")
         logger.info(f"Game status: {self.client.game.status}")
-
-        # Check if we need to submit orders immediately
-        await self._check_if_orders_needed()
 
     async def _setup_event_callbacks(self):
         """Setup callbacks for game events from the server."""
@@ -269,7 +190,7 @@ class SingleBotPlayer:
         """Async handler for phase updates."""
         try:
             # Update our game state with retry logic
-            await self._retry_with_backoff(self.client.game.synchronize)
+            await self.circuit_breaker._retry_with_backoff(self.client.game.synchronize)
         except Exception as e:
             # This is a critical error. If we cannot synchronize the game, even with backoffs, we shouldn't continue.
             logger.critical(f"Failed to synchronize game state during phase update: {e}")
@@ -306,7 +227,7 @@ class SingleBotPlayer:
     async def _handle_game_processed_async(self):
         """Async handler for game processing."""
         # Synchronize to get the results with retry logic
-        await self._retry_with_backoff(self.client.game.synchronize)
+        await self.circuit_breaker._retry_with_backoff(self.client.game.synchronize)
 
         # Analyze the results
         await self._analyze_phase_results()
@@ -432,7 +353,7 @@ class SingleBotPlayer:
 
         if not possible_orders:
             logger.info(f"No possible orders for {self.power_name}, submitting empty order set")
-            await self._retry_with_backoff(self.client.set_orders, self.power_name, [])
+            await self.circuit_breaker._retry_with_backoff(self.client.set_orders, self.power_name, [])
             self.orders_submitted = True
             return
 
@@ -454,17 +375,17 @@ class SingleBotPlayer:
         # Submit orders with retry logic
         if orders:
             logger.info(f"Submitting orders: {orders}")
-            await self._retry_with_backoff(self.client.set_orders, self.power_name, orders)
+            await self.client.set_orders(self.power_name, orders["valid"])
 
             # Generate order diary entry (don't retry this if it fails)
             await self.agent.generate_order_diary_entry(
                 self.client.game,
-                orders,
-                self.config.log_file_path,
+                orders["valid"],
+                config.log_file_path,
             )
         else:
             logger.info("No valid orders generated, submitting empty order set")
-            await self._retry_with_backoff(self.client.set_orders, self.power_name, [])
+            await self.circuit_breaker._retry_with_backoff(self.client.set_orders, self.power_name, [])
 
         self.orders_submitted = True
         self.waiting_for_orders = False
@@ -491,7 +412,7 @@ class SingleBotPlayer:
             board_state=board_state,
             phase_summary=phase_summary,
             game_history=self.game_history,
-            log_file_path=self.config.log_file_path,
+            log_file_path=config.log_file_path,
         )
 
         logger.info("Phase analysis complete")
@@ -519,7 +440,7 @@ class SingleBotPlayer:
                 agent=self.agent,
                 game_history=self.game_history,
                 model_error_stats=self.error_stats,
-                log_file_path=self.config.log_file_path,
+                log_file_path=config.log_file_path,
                 round_number=round_num,
                 max_rounds=self.negotiation_rounds,
             )
@@ -548,101 +469,60 @@ class SingleBotPlayer:
 
         logger.info(f"Considering response to message from {message.sender}: {message.message[:50]}...")
 
-        # Enhanced heuristic: respond to direct questions, proposals, and strategic keywords
-        message_lower = message.message.lower()
-        strategic_keywords = [
-            "alliance",
-            "deal",
-            "propose",
-            "agreement",
-            "support",
-            "attack",
-            "coordinate",
-            "move",
-            "order",
-            "help",
-            "work together",
-            "partner",
-            "enemy",
-            "threat",
-            "negotiate",
-            "discuss",
-            "plan",
-            "strategy",
-            "bounce",
-            "convoy",
-            "retreat",
-        ]
+        # Generate a contextual response using AI
+        # Get current game state for context
+        board_state = self.client.get_state()
+        possible_orders = gather_possible_orders(self.client.game, self.power_name)
 
-        should_respond = any(
-            [
-                "?" in message.message,  # Questions
-                any(word in message_lower for word in ["hello", "hi", "greetings"]),  # Greetings
-                any(keyword in message_lower for keyword in strategic_keywords),  # Strategic content
-                len(message.message.split()) > 15,  # Longer messages suggest they want engagement
-                message.sender in self.priority_contacts,  # Priority contacts
-            ]
+        # Create a simple conversation context
+        active_powers = [p_name for p_name, p_obj in self.client.powers.items() if not p_obj.is_eliminated()]
+
+        # Generate response using the agent's conversation capabilities
+        responses = await self.agent.client.get_conversation_reply(
+            game=self.client.game,
+            board_state=board_state,
+            power_name=self.power_name,
+            possible_orders=possible_orders,
+            game_history=self.game_history,
+            game_phase=self.client.get_current_short_phase(),
+            log_file_path=config.log_file_path,
+            active_powers=active_powers,
+            agent_goals=self.agent.goals,
+            agent_relationships=self.agent.relationships,
+            agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
         )
 
-        if should_respond:
-            # Generate a contextual response using AI
-            # Get current game state for context
-            board_state = self.client.get_state()
-            possible_orders = gather_possible_orders(self.client.game, self.power_name)
+        # Send the first response if any were generated
+        if responses and len(responses) > 0:
+            response_content = responses[0].get("content", "").strip()
+            if response_content:
+                await self.circuit_breaker._retry_with_backoff(
+                    self.client.send_message,
+                    sender=self.power_name,
+                    recipient=message.sender,
+                    message=response_content,
+                    phase=self.client.get_current_short_phase(),
+                )
 
-            # Create a simple conversation context
-            active_powers = [p_name for p_name, p_obj in self.client.powers.items() if not p_obj.is_eliminated()]
+                # Add to game history
+                self.game_history.add_message(
+                    phase_name=self.client.get_current_short_phase(),
+                    sender=self.power_name,
+                    recipient=message.sender,
+                    message_content=response_content,
+                )
 
-            # Generate response using the agent's conversation capabilities
-            responses = await self.agent.client.get_conversation_reply(
-                game=self.client.game,
-                board_state=board_state,
-                power_name=self.power_name,
-                possible_orders=possible_orders,
-                game_history=self.game_history,
-                game_phase=self.client.get_current_short_phase(),
-                log_file_path=self.config.log_file_path,
-                active_powers=active_powers,
-                agent_goals=self.agent.goals,
-                agent_relationships=self.agent.relationships,
-                agent_private_diary_str=self.agent.format_private_diary_for_prompt(),
-            )
+                # Track response patterns
+                self.response_counts[message.sender] = self.response_counts.get(message.sender, 0) + 1
 
-            # Send the first response if any were generated
-            if responses and len(responses) > 0:
-                response_content = responses[0].get("content", "").strip()
-                if response_content:
-                    await self._retry_with_backoff(
-                        self.client.send_message,
-                        sender=self.power_name,
-                        recipient=message.sender,
-                        message=response_content,
-                        phase=self.client.get_current_short_phase(),
-                    )
+                # Add to agent's journal
+                self.agent.add_journal_entry(f"Responded to {message.sender} in {self.client.get_current_short_phase()}: {response_content[:100]}...")
 
-                    # Add to game history
-                    self.game_history.add_message(
-                        phase_name=self.client.get_current_short_phase(),
-                        sender=self.power_name,
-                        recipient=message.sender,
-                        message_content=response_content,
-                    )
-
-                    # Track response patterns
-                    self.response_counts[message.sender] = self.response_counts.get(message.sender, 0) + 1
-
-                    # Add to agent's journal
-                    self.agent.add_journal_entry(
-                        f"Responded to {message.sender} in {self.client.get_current_short_phase()}: {response_content[:100]}..."
-                    )
-
-                    logger.info(f"Sent AI response to {message.sender}: {response_content[:50]}...")
-                else:
-                    logger.debug(f"AI generated empty response to {message.sender}")
+                logger.info(f"Sent AI response to {message.sender}: {response_content[:50]}...")
             else:
-                logger.debug(f"AI generated no responses to {message.sender}")
+                logger.debug(f"AI generated empty response to {message.sender}")
         else:
-            logger.debug(f"Decided not to respond to message from {message.sender}")
+            logger.debug(f"AI generated no responses to {message.sender}")
 
     def _update_priority_contacts(self) -> None:
         """Update the list of priority contacts based on messaging patterns."""
@@ -654,7 +534,7 @@ class SingleBotPlayer:
 
         logger.debug(f"Updated priority contacts for {self.power_name}: {self.priority_contacts}")
 
-    def get_message_statistics(self) -> Dict[str, any]:
+    def get_message_statistics(self) -> Dict[str, Any]:
         """Get comprehensive statistics about messaging patterns."""
         active_powers = [p_name for p_name, p_obj in self.client.powers.items() if not p_obj.is_eliminated() and p_name != self.power_name]
 
@@ -703,7 +583,7 @@ class SingleBotPlayer:
             while self.running and not self.client.game.is_game_done:
                 try:
                     # Synchronize with server periodically with retry logic
-                    await self._retry_with_backoff(self.client.game.synchronize)
+                    await self.circuit_breaker._retry_with_backoff(self.client.game.synchronize)
 
                     # Check if we need to submit orders
                     await self._check_if_orders_needed()
@@ -718,14 +598,6 @@ class SingleBotPlayer:
                     logger.warning(f"Timeout in main loop: {e}")
                     # Continue loop but with a longer sleep
                     await asyncio.sleep(10)
-                except Exception as e:
-                    logger.error(f"Error in main loop: {e}", exc_info=True)
-                    # Continue running unless it's a critical error
-                    if "circuit breaker" in str(e).lower():
-                        logger.error("Circuit breaker opened, waiting before retry")
-                        await asyncio.sleep(30)
-                    else:
-                        await asyncio.sleep(5)
 
             if self.client.game.is_game_done:
                 logger.info("Game has finished")

@@ -1,30 +1,102 @@
-"""
-@deprecated
-
-
-Multi-Bot Launcher
-
-A launcher script that starts multiple bot players for a full Diplomacy game.
-This script can create a game and launch bots for all powers, or join bots
-to an existing game.
-"""
-
 import argparse
 import asyncio
 from loguru import logger
 import subprocess
-import sys
 import time
-import select
+import sys
 import os
 from typing import List, Dict, Optional
 
 # Add parent directory to path for ai_diplomacy imports (runtime only)
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from websocket_diplomacy_client import connect_to_diplomacy_server
+from .websocket_diplomacy_client import connect_to_diplomacy_server
 from diplomacy.engine.game import Game
-from config import config
+from .config import config
+
+
+class CircuitBreaker:
+    def __init__(
+        self,
+        connection_timeout: float = 30.0,
+        max_retries: int = 3,
+        retry_delay: float = 2.0,
+    ):
+        self.connection_timeout = connection_timeout
+        self.retry_delay = retry_delay
+        self.max_retries = max_retries
+        self.last_successful_operation = time.time()
+        self.connection_failures = 0
+        self.open = False
+        self.last_failure = 0
+        self.timeout = 60.0  # 1 minute before trying again
+
+    def _is_open(self) -> bool:
+        """Check if circuit breaker is open (preventing operations due to failures)."""
+        if not self.open:
+            return False
+
+        # Check if timeout has passed and we should try again
+        if time.time() - self.last_failure > self.timeout:
+            logger.info("Circuit breaker timeout expired, allowing operations")
+            self.open = False
+            return False
+
+        return True
+
+    def _record_operation_success(self):
+        """Record a successful operation."""
+        self.last_successful_operation = time.time()
+        self.connection_failures = 0
+        if self.open:
+            logger.info("Operation successful, closing circuit breaker")
+            self.open = False
+
+    def _record_operation_failure(self):
+        """Record a failed operation and potentially open circuit breaker."""
+        self.connection_failures += 1
+        logger.warning(f"Operation failed, failure count: {self.connection_failures}")
+
+        if self.connection_failures >= 5:  # Open circuit after 5 consecutive failures
+            logger.error("Opening circuit breaker due to repeated failures")
+            self.open = True
+            self.last_failure = time.time()
+
+    async def _retry_with_backoff(self, operation, *args, **kwargs):
+        """Execute an operation with exponential backoff retry logic."""
+        if self._is_open():
+            raise Exception("Circuit breaker is open, operation not allowed")
+
+        last_exception = None
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                result = await asyncio.wait_for(operation(*args, **kwargs), timeout=self.connection_timeout)
+                self._record_operation_success()
+                return result
+
+            except (TimeoutError, asyncio.TimeoutError) as e:
+                last_exception = e
+                logger.warning(f"Operation timeout on attempt {attempt + 1}/{self.max_retries + 1}: {e}")
+
+            except ConnectionError as e:
+                last_exception = e
+                logger.warning(f"Connection error on attempt {attempt + 1}/{self.max_retries + 1}: {e}")
+
+            except Exception as e:
+                last_exception = e
+                logger.error(f"Unexpected error on attempt {attempt + 1}/{self.max_retries + 1}: {e}")
+
+            # Don't delay after the last attempt
+            if attempt < self.max_retries:
+                delay = self.retry_delay * (2**attempt)  # Exponential backoff
+                logger.info(f"Retrying in {delay:.1f} seconds...")
+                await asyncio.sleep(delay)
+
+        # All retries failed
+        self._record_operation_failure()
+        logger.error(f"Operation failed after {self.max_retries + 1} attempts")
+        raise last_exception or Exception("Operation failed with unknown error")
 
 
 async def create_game(hostname="localhost", port=8432, password="password", creator_power: str = "FRANCE") -> str:

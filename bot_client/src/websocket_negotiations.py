@@ -15,7 +15,7 @@ from ai_diplomacy.utils import gather_possible_orders
 
 from ai_diplomacy.agent import DiplomacyAgent
 from ai_diplomacy.game_history import GameHistory
-from websocket_diplomacy_client import WebSocketDiplomacyClient
+from .websocket_diplomacy_client import WebSocketDiplomacyClient
 
 
 async def conduct_single_bot_negotiation(
