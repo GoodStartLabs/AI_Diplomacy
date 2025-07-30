@@ -49,6 +49,7 @@ async def main():
     """Main entry point with comprehensive error handling."""
     bots = {}
     args = parse_arguments()
+    bot_tasks = set()
 
     if not args.game_id:
         # No game id, lets create a new game.
@@ -67,11 +68,10 @@ async def main():
             )
 
         for power, bot in bots.items():
-            try:
-                await bot.run()
-                logger.info(f"Bot {bot.power} started")
-            finally:
-                await bot.cleanup()
+            task = asyncio.create_task(bot.run())
+            bot_tasks.add(task)
+            logger.info(f"Bot_{bot.power_name} started")
+        await asyncio.gather(*bot_tasks)
 
     else:
         bot = SingleBotPlayer(

@@ -105,12 +105,13 @@ class SingleBotPlayer:
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals gracefully."""
         logger.info(f"Received signal {signum}, shutting down...")
+        self.running = False
         if self.shutdown_requested:
-            asyncio.run(self.cleanup)
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.cleanup())
         if not self.running:
             logger.info("Already shutting down, send signal again for immediate shutdown")
             self.shutdown_requested = True
-        self.running = False
 
     async def connect_and_initialize(self):
         """Connect to the server and initialize the bot."""
@@ -581,94 +582,57 @@ class SingleBotPlayer:
 
             # Main event loop
             while self.running and not self.client.game.is_game_done:
-                try:
-                    # Synchronize with server periodically with retry logic
-                    await self.circuit_breaker._retry_with_backoff(self.client.game.synchronize)
+                # Synchronize with server periodically with retry logic
+                await self.circuit_breaker._retry_with_backoff(self.client.game.synchronize)
 
-                    # Check if we need to submit orders
-                    await self._check_if_orders_needed()
+                # Check if we need to submit orders
+                await self._check_if_orders_needed()
 
-                    # Sleep for a bit before next iteration
-                    await asyncio.sleep(5)
-
-                except (asyncio.CancelledError, KeyboardInterrupt):
-                    logger.info("Bot operation cancelled, shutting down")
-                    break
-                except (TimeoutError, asyncio.TimeoutError) as e:
-                    logger.warning(f"Timeout in main loop: {e}")
-                    # Continue loop but with a longer sleep
-                    await asyncio.sleep(10)
+                # Sleep for a bit before next iteration
+                await asyncio.sleep(5)
 
             if self.client.game.is_game_done:
                 logger.info("Game has finished")
             else:
                 logger.info("Bot shutting down")
-        except GameIdException:
+        except GameIdException as e:
             logger.error(f"Game with id {self.game_id} does not exist on the server. Exiting...")
-        except (asyncio.CancelledError, KeyboardInterrupt):
+            raise e
+        except (asyncio.CancelledError, KeyboardInterrupt) as e:
             logger.info("Bot cancelled or interrupted")
+            raise e
         finally:
             await self.cleanup()
 
     async def cleanup(self):
         """Clean up resources with timeout protection."""
+        # Prevent multiple cleanup calls
+        if hasattr(self, "_cleanup_done") and self._cleanup_done:
+            return
+        self._cleanup_done = True
+
         logger.info("Starting cleanup process...")
-        cleanup_timeout = 15.0  # Maximum time to spend on cleanup
+        cleanup_timeout = 5.0  # Maximum time to spend on cleanup
 
         try:
             # Use asyncio.wait_for to prevent hanging during cleanup
             await asyncio.wait_for(self._perform_cleanup(), timeout=cleanup_timeout)
-            logger.info("Cleanup completed successfully")
         except asyncio.TimeoutError:
-            logger.warning(f"Cleanup timed out after {cleanup_timeout} seconds")
+            logger.warning("Cleanup timed out")
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+        finally:
+            logger.info(f"Cleanup finished for bot_{self.power_name}")
 
     async def _perform_cleanup(self):
         """Perform the actual cleanup operations."""
-        cleanup_tasks = []
 
         # Game cleanup
         if hasattr(self, "client") and self.client and hasattr(self.client, "game") and self.client.game:
             logger.debug("Cleaning up game connection...")
-            # Use asyncio.create_task to make game.leave() non-blocking
-            leave_task = asyncio.create_task(self._safe_game_leave())
-            cleanup_tasks.append(leave_task)
+            await self.client.game.leave()
 
         # Client cleanup
         if hasattr(self, "client") and self.client:
             logger.debug("Cleaning up client connection...")
-            close_task = asyncio.create_task(self._safe_client_close())
-            cleanup_tasks.append(close_task)
-
-        # Wait for all cleanup tasks with individual timeouts
-        if cleanup_tasks:
-            done, pending = await asyncio.wait(
-                cleanup_tasks,
-                timeout=10.0,  # 10 second timeout for all cleanup tasks
-                return_when=asyncio.ALL_COMPLETED,
-            )
-
-            # Cancel any pending tasks
-            for task in pending:
-                logger.warning(f"Cancelling pending cleanup task: {task}")
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError as e:
-                    logger.warning(f"Task was cancelled, rasied {e}", exc_info=True)
-
-    async def _safe_game_leave(self):
-        """Safely leave the game with timeout."""
-        try:
-            # Some diplomacy client implementations have async leave, others are sync
-            await self.client.game.leave()
-            logger.debug("Successfully left game")
-        except asyncio.TimeoutError:
-            logger.warning("Game leave operation timed out")
-
-    async def _safe_client_close(self):
-        """Safely close the client with timeout."""
-        try:
-            await asyncio.wait_for(self.client.close(), timeout=5.0)
-            logger.debug("Successfully closed client")
-        except asyncio.TimeoutError:
-            logger.warning("Client close operation timed out")
+            await self.client.close()
