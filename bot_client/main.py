@@ -50,6 +50,7 @@ async def main():
     bots = {}
     args = parse_arguments()
     bot_tasks = set()
+    shutdown_event = asyncio.Event()
 
     if not args.game_id:
         # No game id, lets create a new game.
@@ -67,11 +68,38 @@ async def main():
                 negotiation_rounds=args.negotiation_rounds,
             )
 
+        # Set shutdown event on all bots
+        for bot in bots.values():
+            bot.shutdown_event = shutdown_event
+            
         for power, bot in bots.items():
             task = asyncio.create_task(bot.run())
             bot_tasks.add(task)
             logger.info(f"Bot_{bot.power_name} started")
-        await asyncio.gather(*bot_tasks)
+            
+        try:
+            await asyncio.gather(*bot_tasks)
+        except KeyboardInterrupt:
+            logger.info("Received keyboard interrupt, shutting down all bots...")
+            shutdown_event.set()
+            
+            # Cancel all tasks
+            for task in bot_tasks:
+                if not task.done():
+                    task.cancel()
+                    
+            # Wait for tasks to complete with timeout
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*bot_tasks, return_exceptions=True),
+                    timeout=10.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Some tasks did not complete within timeout")
+        finally:
+            # Cleanup all bots
+            for bot in bots.values():
+                await bot.cleanup()
 
     else:
         bot = SingleBotPlayer(
@@ -82,11 +110,13 @@ async def main():
             game_id=args.game_id,
             negotiation_rounds=args.negotiation_rounds,
         )
+        bot.shutdown_event = shutdown_event
 
         try:
             await bot.run()
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt")
+            shutdown_event.set()
         finally:
             if bot:
                 # Ensure cleanup happens even if there was an error
@@ -94,4 +124,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Program interrupted")

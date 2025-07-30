@@ -97,21 +97,15 @@ class SingleBotPlayer:
         # Add graceful shutdown flag
         self.shutdown_requested = False
         self.circuit_breaker = CircuitBreaker()
-
-        # Setup signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        self.shutdown_event = None  # Will be set by main.py
 
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals gracefully."""
         logger.info(f"Received signal {signum}, shutting down...")
         self.running = False
-        if self.shutdown_requested:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.cleanup())
-        if not self.running:
-            logger.info("Already shutting down, send signal again for immediate shutdown")
-            self.shutdown_requested = True
+        self.shutdown_requested = True
+        if self.shutdown_event:
+            self.shutdown_event.set()
 
     async def connect_and_initialize(self):
         """Connect to the server and initialize the bot."""
@@ -185,7 +179,13 @@ class SingleBotPlayer:
         logger.info(f"Phase update received: {notification.phase_data}")
 
         # Schedule the async processing in the event loop
-        asyncio.create_task(self._handle_phase_update_async(notification))
+        # Create task with proper reference to avoid garbage collection
+        task = asyncio.create_task(self._handle_phase_update_async(notification))
+        # Store task reference to prevent premature cleanup
+        if not hasattr(self, "_background_tasks"):
+            self._background_tasks = set()
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _handle_phase_update_async(self, notification):
         """Async handler for phase updates."""
@@ -223,7 +223,12 @@ class SingleBotPlayer:
         logger.info("Game processed - orders have been executed")
 
         # Schedule the async processing in the event loop
-        asyncio.create_task(self._handle_game_processed_async())
+        # Create task with proper reference
+        task = asyncio.create_task(self._handle_game_processed_async())
+        if not hasattr(self, "_background_tasks"):
+            self._background_tasks = set()
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _handle_game_processed_async(self):
         """Async handler for game processing."""
@@ -257,7 +262,12 @@ class SingleBotPlayer:
         # If it's a private message to us, consider responding
         if message.recipient == self.power_name and message.sender != self.power_name:
             # Schedule the async processing in the event loop
-            asyncio.create_task(self._consider_message_response(message))
+            # Create task with proper reference
+            task = asyncio.create_task(self._consider_message_response(message))
+            if not hasattr(self, "_background_tasks"):
+                self._background_tasks = set()
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
     def _on_status_update(self, game, notification: GameStatusUpdate):
         """Handle game status changes."""
@@ -582,14 +592,18 @@ class SingleBotPlayer:
 
             # Main event loop
             while self.running and not self.client.game.is_game_done:
+                # Check for shutdown event
+                if self.shutdown_event and self.shutdown_event.is_set():
+                    logger.info("Shutdown event received, exiting main loop")
+                    break
+
                 # Synchronize with server periodically with retry logic
                 await self.circuit_breaker._retry_with_backoff(self.client.game.synchronize)
 
                 # Check if we need to submit orders
                 await self._check_if_orders_needed()
 
-                # Sleep for a bit before next iteration
-                await asyncio.sleep(5)
+                await asyncio.sleep(2)
 
             if self.client.game.is_game_done:
                 logger.info("Game has finished")
@@ -626,6 +640,17 @@ class SingleBotPlayer:
 
     async def _perform_cleanup(self):
         """Perform the actual cleanup operations."""
+        # Cancel any background tasks
+        if hasattr(self, "_background_tasks"):
+            for task in list(self._background_tasks):
+                if not task.done():
+                    task.cancel()
+            # Wait for cancellation with timeout
+            if self._background_tasks:
+                try:
+                    await asyncio.wait_for(asyncio.gather(*self._background_tasks, return_exceptions=True), timeout=2.0)
+                except asyncio.TimeoutError:
+                    logger.warning("Some background tasks did not complete")
 
         # Game cleanup
         if hasattr(self, "client") and self.client and hasattr(self.client, "game") and self.client.game:
