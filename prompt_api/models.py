@@ -58,4 +58,3 @@ class Prompt(Base):
 
     # Composite indexes for efficient queries
     __table_args__ = {"schema": None}
-

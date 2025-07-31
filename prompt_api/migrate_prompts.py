@@ -67,7 +67,7 @@ def migrate_prompts():
 
     try:
         # Create default user and game
-        default_user, default_game = create_default_game_and_user(db)
+        _, default_game = create_default_game_and_user(db)
 
         # Base path for prompts (mounted from host)
         base_path = Path("./prompts")
@@ -110,7 +110,7 @@ def migrate_prompts():
                             Prompt.game_id == default_game.id,
                             Prompt.user_id.is_(None),
                             Prompt.prompt_type == prompt_type,
-                            Prompt.is_default == True,
+                            Prompt.is_default is True,
                         )
                         .first()
                     )
@@ -144,7 +144,7 @@ def migrate_prompts():
         print("\nMigration completed successfully!")
 
         # Print summary
-        prompt_count = db.query(Prompt).filter(Prompt.is_default == True).count()
+        prompt_count = db.query(Prompt).filter(Prompt.is_default is True).count()
         print(f"Total default prompts in database: {prompt_count}")
 
     except Exception as e:

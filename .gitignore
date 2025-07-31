@@ -161,3 +161,9 @@ model_power_statistics.csv
 bct.txt
 analysis_summary.txt
 analysis_summary_debug.txt
+
+# LLM Helper stuff
+**/.claude/
+
+# Local volume for postgresql
+prompt-data/
