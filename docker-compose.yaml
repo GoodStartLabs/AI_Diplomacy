@@ -12,7 +12,7 @@ services:
     shm_size: "2gb"
 
   diplomacy:
-    build: 
+    build:
       context: ai_animation
       args:
         - VITE_ELEVENLABS_API_KEY=${VITE_ELEVENLABS_API_KEY}
@@ -32,3 +32,55 @@ services:
     command: ["npm", "run", "dev-all"]
     volumes:
       - "./ai_animation/:/app/"
+
+  old-diplomacy-fe:
+    build:
+      context: diplomacy
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+
+  old-diplomacy-be:
+    build:
+      context: diplomacy
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8432:8432"
+    volumes:
+      - "./data/:/app/data"
+
+  # Prompt API Services
+  prompt-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: prompt_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./prompt-data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prompt-api:
+    build:
+      context: prompt_api
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST: prompt-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: prompt_db
+      SECRET_KEY: your-secret-key-change-this-in-production
+    ports:
+      - "8000:8000"
+    depends_on:
+      prompt-db:
+        condition: service_healthy
+    volumes:
+      - "./prompt_api:/app"
+      - "./ai_diplomacy:/ai_diplomacy"
