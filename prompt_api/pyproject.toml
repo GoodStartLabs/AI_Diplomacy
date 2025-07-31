@@ -1,0 +1,44 @@
+[project]
+name = "prompt-api"
+version = "0.1.0"
+description = "FastAPI-based prompt management system for Diplomacy AI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116.1",
+  "passlib[bcrypt]>=1.7.4",
+  "psycopg2-binary>=2.9.10",
+  "pydantic[email]>=2.11.7",
+  "python-jose[cryptography]>=3.5.0",
+  "python-multipart>=0.0.20",
+  "sqlalchemy>=2.0.42",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest==7.4.3",
+  "pytest-asyncio==0.21.1",
+  "httpx==0.25.2",
+  "pytest-cov==4.1.0",
+]
+dev = ["ruff==0.1.6", "types-passlib==1.7.7.13", "types-python-jose==3.3.4.8"]
+
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.isort]
+known-third-party = ["fastapi", "pydantic", "sqlalchemy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "integration: marks tests as integration tests",
+]
