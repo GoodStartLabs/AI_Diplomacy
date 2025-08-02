@@ -175,16 +175,31 @@ def construct_order_generation_prompt(
     _ = load_prompt("few_shot_example.txt", prompts_dir=prompts_dir)  # Loaded but not used, as per original logic
     # Pick the phase-specific instruction file (using unformatted versions)
     phase_code = board_state["phase"][-1]  # 'M' (movement), 'R', or 'A' / 'B'
+    
+    # Determine base instruction file name
     if phase_code == "M":
-        instructions_file = get_prompt_path("order_instructions_movement_phase.txt")
+        base_instruction_file = "order_instructions_movement_phase"
     elif phase_code in ("A", "B"):  # builds / adjustments
-        instructions_file = get_prompt_path("order_instructions_adjustment_phase.txt")
+        base_instruction_file = "order_instructions_adjustment_phase"
     elif phase_code == "R":  # retreats
-        instructions_file = get_prompt_path("order_instructions_retreat_phase.txt")
+        base_instruction_file = "order_instructions_retreat_phase"
     else:  # unexpected – default to movement rules
-        instructions_file = get_prompt_path("order_instructions_movement_phase.txt")
-
-    instructions = load_prompt(instructions_file, prompts_dir=prompts_dir)
+        base_instruction_file = "order_instructions_movement_phase"
+    
+    # Check if country-specific prompts are enabled
+    if config.COUNTRY_SPECIFIC_PROMPTS:
+        # Try to load country-specific version first
+        country_specific_file = get_prompt_path(f"{base_instruction_file}_{power_name.lower()}.txt")
+        instructions = load_prompt(country_specific_file, prompts_dir=prompts_dir)
+        
+        # Fall back to generic if country-specific not found
+        if not instructions:
+            instructions_file = get_prompt_path(f"{base_instruction_file}.txt")
+            instructions = load_prompt(instructions_file, prompts_dir=prompts_dir)
+    else:
+        # Load generic instruction file
+        instructions_file = get_prompt_path(f"{base_instruction_file}.txt")
+        instructions = load_prompt(instructions_file, prompts_dir=prompts_dir)
     _use_simple = config.SIMPLE_PROMPTS
 
     include_order_history = False # defaulting to not include order history in order generation prompt for now

@@ -35,19 +35,23 @@ def serialize_agent(agent: DiplomacyAgent) -> dict:
     }
 
 
-def deserialize_agent(agent_data: dict, prompts_dir: Optional[str] = None, *, override_model_id: Optional[str] = None) -> DiplomacyAgent:
+def deserialize_agent(agent_data: dict, prompts_dir: Optional[str] = None, *, override_model_id: Optional[str] = None, override_max_tokens: Optional[int] = None) -> DiplomacyAgent:
     """
     Recreates an agent object from a dictionary.
 
     If *override_model_id* is provided (e.g. because the CLI argument
     ``--models`` was used when resuming a game), that model is loaded
     instead of the one stored in the save file.
+    
+    If *override_max_tokens* is provided (e.g. because the CLI argument
+    ``--max_tokens`` was used when resuming a game), that value is used
+    instead of the one stored in the save file.
     """
     model_id = override_model_id or agent_data["model_id"]
     client = load_model_client(model_id, prompts_dir=prompts_dir)
 
-    # Keep the original or fallback token limit exactly as before.
-    client.max_tokens = agent_data.get("max_tokens", 16000)
+    # Use override if provided, otherwise use saved value, otherwise default to 16000
+    client.max_tokens = override_max_tokens or agent_data.get("max_tokens", 16000)
 
     agent = DiplomacyAgent(
         power_name=agent_data["power_name"],
@@ -208,9 +212,22 @@ def load_game_state(
     # --- Rebuild agents -------------------------------------------------------
     agents: Dict[str, "DiplomacyAgent"] = {}
     power_model_map: Dict[str, str] = {}
+    powers_order = sorted(list(ALL_POWERS))
+    
+    # Parse token limits from run_config
+    default_max_tokens = run_config.max_tokens if run_config and hasattr(run_config, 'max_tokens') else 16000
+    model_max_tokens = {p: default_max_tokens for p in powers_order}
+    
+    if run_config and hasattr(run_config, 'max_tokens_per_model') and run_config.max_tokens_per_model:
+        per_model_values = [s.strip() for s in run_config.max_tokens_per_model.split(",")]
+        if len(per_model_values) == 7:
+            for power, token_val_str in zip(powers_order, per_model_values):
+                model_max_tokens[power] = int(token_val_str)
+        else:
+            logger.warning("Expected 7 values for --max_tokens_per_model, using default.")
+    
     if run_config and getattr(run_config, "models", None):
         provided = [m.strip() for m in run_config.models.split(",")]
-        powers_order = sorted(list(ALL_POWERS))
         if len(provided) == len(powers_order):
             power_model_map = dict(zip(powers_order, provided))
         elif len(provided) == 1:
@@ -234,6 +251,7 @@ def load_game_state(
                 agent_data,
                 prompts_dir=prompts_dir_from_config,
                 override_model_id=override_id,
+                override_max_tokens=model_max_tokens.get(power_name),
             )
 
     # --- Rebuild GameHistory --------------------------------------------------

@@ -173,6 +173,18 @@ def parse_arguments():
             "Set to false (0 / false / no) to use original single-step formatted prompts."
         ),
     )
+    parser.add_argument(
+        "--country_specific_prompts",
+        type=_str2bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help=(
+            "When true (1 / true / yes) enables country-specific order and conversation prompts. "
+            "Each power will use their own custom prompts if available (e.g., order_instructions_movement_phase_france.txt). "
+            "Falls back to generic prompts if country-specific not found."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -223,6 +235,14 @@ async def main():
     else:
         config.USE_UNFORMATTED_PROMPTS = False
         logger.info("Using original single-step formatted prompts")
+    
+    # Handle country-specific prompts flag
+    if args.country_specific_prompts:
+        config.COUNTRY_SPECIFIC_PROMPTS = True
+        logger.info("Country-specific prompts enabled - powers will use their custom prompts when available")
+    else:
+        config.COUNTRY_SPECIFIC_PROMPTS = False
+        logger.info("Using generic prompts for all powers")
 
     if args.max_year == None:
         if args.end_at_phase:
