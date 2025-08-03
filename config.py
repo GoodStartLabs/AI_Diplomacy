@@ -9,6 +9,7 @@ from models import PowerEnum
 class Configuration(BaseSettings):
     DEBUG: bool = False
     log_file_path: Path | None = None
+    max_year: int = 1930
     USE_UNFORMATTED_PROMPTS: bool = False
     SIMPLE_PROMPTS: bool = True
 
@@ -22,7 +23,7 @@ class Configuration(BaseSettings):
     ANTHROPIC_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
-    TOGETHER_API_KEY: str | None = None
+    TOGETHER_API_KEY: str | None = None    
 
     def __init__(self, power_name: Optional[PowerEnum] = None, **kwargs):
         super().__init__(**kwargs)

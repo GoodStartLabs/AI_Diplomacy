@@ -215,6 +215,7 @@ async def main():
             args.max_year = int(args.end_at_phase[1:5])
         else:
             raise Exception("--max_year is required.")
+    config.max_year = args.max_year
 
     # --- Determine Run Directory and Mode (New vs. Resume) ---
     run_dir = args.run_dir

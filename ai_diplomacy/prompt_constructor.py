@@ -150,6 +150,7 @@ def build_context_prompt(
         agent_goals="\n".join(f"- {g}" for g in agent_goals) if agent_goals else "None specified",
         agent_relationships="\n".join(f"- {p}: {s}" for p, s in agent_relationships.items()) if agent_relationships else "None specified",
         agent_private_diary=agent_private_diary if agent_private_diary else "(No diary entries yet)",
+        max_year=config.max_year,
     )
 
     return context
