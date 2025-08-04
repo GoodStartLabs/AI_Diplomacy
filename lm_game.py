@@ -369,7 +369,9 @@ async def main():
             if neg_diary_tasks:
                 await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
 
-        # Diary Consolidation
+        # --- 4c. Parallel Order Generation and Diary Consolidation ---
+        # Start diary consolidation in parallel with order generation
+        consolidation_future = None
         if current_short_phase.startswith("S") and current_short_phase.endswith("M"):
             consolidation_tasks = [
                 run_diary_consolidation(agent, game, llm_log_file_path,
@@ -378,9 +380,10 @@ async def main():
                 if not game.powers[agent.power_name].is_eliminated()
             ]
             if consolidation_tasks:
-                await asyncio.gather(*consolidation_tasks, return_exceptions=True)
+                # Start consolidation tasks but don't await yet
+                consolidation_future = asyncio.gather(*consolidation_tasks, return_exceptions=True)
 
-        # --- 4c. Order Generation ---
+        # Order Generation (proceeds with current diary state)
         logger.info("Getting orders from agents...")
         board_state = game.get_state()
         order_tasks = []
@@ -402,6 +405,10 @@ async def main():
                 )
         
         order_results = await asyncio.gather(*order_tasks, return_exceptions=True)
+        
+        # Ensure consolidation completes before proceeding to diary entries
+        if consolidation_future:
+            await consolidation_future
         
         active_powers = [p for p, a in agents.items() if not game.powers[p].is_eliminated()]
         order_power_names = [p for p in active_powers if gather_possible_orders(game, p)]

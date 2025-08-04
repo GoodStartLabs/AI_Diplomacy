@@ -15,6 +15,7 @@ import requests
 from pathlib import Path
 from config import config
 from models import POWERS_ORDER
+from datetime import datetime
 
 # Avoid circular import for type hinting
 if TYPE_CHECKING:
@@ -369,8 +370,8 @@ def log_llm_response(
         file_exists = os.path.isfile(log_file_path) and os.path.getsize(log_file_path) > 0
 
         with open(log_file_path, "a", newline="", encoding="utf-8") as csvfile:
-            # Added "raw_input" to fieldnames
-            fieldnames = ["model", "power", "phase", "response_type", "raw_input", "raw_response", "success"]
+            # Added "raw_input" and "timestamp" to fieldnames
+            fieldnames = ["timestamp", "model", "power", "phase", "response_type", "raw_input", "raw_response", "success"]
             writer = csv.DictWriter(
                 csvfile,
                 fieldnames=fieldnames,
@@ -383,6 +384,7 @@ def log_llm_response(
 
             writer.writerow(
                 {
+                    "timestamp": datetime.now().isoformat(),  # Add current timestamp in ISO format
                     "model": model_name,
                     "power": power_name if power_name else "game",  # Use 'game' if no specific power
                     "phase": phase,

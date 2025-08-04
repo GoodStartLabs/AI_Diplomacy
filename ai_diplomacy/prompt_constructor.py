@@ -127,6 +127,13 @@ def build_context_prompt(
     if display_phase is None:
         display_phase = year_phase
 
+    # Check if max_year is in the template and handle it
+    if "{max_year}" in context_template:
+        # For now, we'll use a default value or extract from game if available
+        # This could be passed as a parameter or extracted from game settings
+        max_year = getattr(game, 'max_year', 1935)  # Default to 1935 if not available
+        context_template = context_template.replace("{max_year}", str(max_year))
+
     context = context_template.format(
         power_name=power_name,
         current_phase=display_phase,
