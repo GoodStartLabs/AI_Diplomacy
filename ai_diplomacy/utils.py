@@ -224,11 +224,6 @@ async def get_valid_orders(
     else:
         logger.debug("[%s] All orders valid: %s", power_name, valid)
 
-    # ── 5. Fallback when nothing survives ─────────────────────
-    if not valid:
-        fallback = client.fallback_orders(possible_orders)
-        return {"valid": fallback, "invalid": invalid}
-
     return {"valid": valid, "invalid": invalid}
 
 
