@@ -50,7 +50,7 @@
     - the Python client returned values (important)
 
     All requests classes inherit from :class:`._AbstractRequest` which require parameters
-    ``name`` (from parant class :class:`.NetworkData`), ``request_id`` and ``re_sent``.
+    ``name`` (from parent class :class:`.NetworkData`), ``request_id`` and ``re_sent``.
     These parameters are automatically filled by the client.
 
     From parent class :class:`._AbstractRequest`, we get 3 types of requests:
@@ -61,7 +61,7 @@
       connection request :class:`.SignIn`, and is then used to create a :class:`.Channel` object.
       Channel object will be responsible for sending all other channel requests, automatically
       filling token field for these requests.
-    - game requests, intherited from :class:`._AbstractGameRequest`, which itself inherit from
+    - game requests, inherited from :class:`._AbstractGameRequest`, which itself inherit from
       :class:`._AbstractChannelRequest`, and requires additional parameters ``game_id``, ``game_role``
       and ``phase`` (game short phase name). Game ID, role and phase are retrieved for a specific game
       by the client when he joined a game through one of featured :class:`.Channel` methods which return
@@ -423,7 +423,7 @@ class JoinPowers(_AbstractChannelRequest):
         :param registration_password: password to join the game
         :type game_id: str
         :type power_names: list, optional
-        :type registration_password: str, optionl
+        :type registration_password: str, optional
         :return: None. If request succeeds, then the user is registered as player for all
             given power names. The user can then simply join game to one of these powers (by sending
             a :class:`.JoinGame` request), and he will be able to manage all the powers through

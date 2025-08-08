@@ -28,7 +28,7 @@ export const config = {
   // Webhook URL for phase change notifications (optional)
   webhookUrl: import.meta.env.VITE_WEBHOOK_URL || '',
   get isTestingMode(): boolean {
-    // have playwrite inject a marker saying that it's testing to brower
+    // have Playwright inject a marker saying that it's testing to browser
     return import.meta.env.VITE_TESTING_MODE === 'True' || import.meta.env.VITE_TESTING_MODE === 'true' || window.isUnderTest;
   },
   _isTestingMode: false,

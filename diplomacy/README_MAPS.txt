@@ -73,7 +73,7 @@ the equals-sign in each placename line).
 
 Specifying Army and Fleet Restrictions
 ===========================
-This directive is case-sensitive. Army and fleet restrictions are specifyied by use of upper- and
+This directive is case-sensitive. Army and fleet restrictions are specified by use of upper- and
 lower-case as described below. Everything must be in upper-case except the following:
 
 The abbreviation for any COAST location that a fleet cannot occupy must be listed entirely in

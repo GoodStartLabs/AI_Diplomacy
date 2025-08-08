@@ -75,7 +75,7 @@ class HelloNotification(DaideNotification):
             MTL seconds     # Movement time limit
             RTL seconds     # Retreat time limit
             BTL seconds     # Build time limit
-            DSD             # Disables the time limit when a client disconects
+            DSD             # Disables the time limit when a client disconnects
             AOA             # Any orders accepted
 
         LVL 10:

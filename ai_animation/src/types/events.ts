@@ -79,7 +79,7 @@ export class EventQueue {
 
           event.callback();
         } catch (err) {
-          // TODO: Need some system here to catch and report errors, but we mark them as resolved now so that we don't call an erroring fucntion repeatedly.
+          // TODO: Need some system here to catch and report errors, but we mark them as resolved now so that we don't call an erroring function repeatedly.
           this.events.slice(this.events.indexOf(event), 1)
           if (err instanceof Error) {
             event.error = err

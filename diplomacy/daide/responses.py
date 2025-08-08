@@ -371,7 +371,7 @@ class HelloResponse(DaideResponse):
             MTL seconds     # Movement time limit
             RTL seconds     # Retreat time limit
             BTL seconds     # Build time limit
-            DSD             # Disables the time limit when a client disconects
+            DSD             # Disables the time limit when a client disconnects
             AOA             # Any orders accepted
 
         LVL 10:
@@ -700,7 +700,7 @@ class AcceptResponse(DaideResponse):
 
             YES (DRW (power power ...))                         # Accepts a partial draw
             YES (NOT (DRW (power power ...)))                   # Accepts to cancel a partial draw request
-                                                                  (? not mentinned in the DAIDE doc)
+                                                                  (? not mentioned in the DAIDE doc)
             YES (SND (power power ...) (press_message))         # Accepts a press message
             YES (SND (turn) (power power ...) (press_message))  # Accepts a press message
     """
@@ -722,8 +722,8 @@ class RejectResponse(DaideResponse):
             REJ (HLO)                                           # Rejects to send the HLO message
             REJ (HST (turn))                                    # Rejects to send a copy of a previous
                                                                   ORD, SCO and NOW messages
-            REJ (SUB (order) (order))                           # Rejects a submition of orders
-            REJ (SUB (turn) (order) (order))                    # Rejects a submition of orders
+            REJ (SUB (order) (order))                           # Rejects a submission of orders
+            REJ (SUB (turn) (order) (order))                    # Rejects a submission of orders
             REJ (NOT (SUB (order)))                             # Rejects a cancellation of a submitted order
             REJ (MIS)                                           # Rejects to send a copy of the current MIS message
             REJ (GOF)                                           # Rejects to wait until the deadline before processing

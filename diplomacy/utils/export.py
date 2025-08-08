@@ -94,7 +94,7 @@ def from_saved_game_format(saved_game):
     return game
 
 def load_saved_games_from_disk(input_path, on_error='raise'):
-    """ Rebuids multiple :class:`diplomacy.engine.game.Game` from each line in a .jsonl file
+    """ Rebuilds multiple :class:`diplomacy.engine.game.Game` from each line in a .jsonl file
 
         :param input_path: The path to the input file. Expected content is one saved_game json per line.
         :param on_error: Optional. What to do if a game conversion fails. Either 'raise', 'warn', 'ignore'

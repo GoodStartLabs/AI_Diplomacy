@@ -129,7 +129,7 @@
     <!-- 'stroke-dasharray' property/attribute value (e.g., 'none', list of <number>s) -->
 
 <!ENTITY % StrokeDashOffsetValue "CDATA">
-    <!-- 'stroke-dashoffset' property/attribute value (e.g., 'none', <legnth>) -->
+    <!-- 'stroke-dashoffset' property/attribute value (e.g., 'none', <length>) -->
 
 <!ENTITY % StrokeMiterLimitValue "CDATA">
     <!-- 'stroke-miterlimit' property/attribute value (e.g., <number>) -->

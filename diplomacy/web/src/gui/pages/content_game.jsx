@@ -76,7 +76,7 @@ const TABLE_POWER_VIEW = {
 };
 
 const PRETTY_ROLES = {
-    [STRINGS.OMNISCIENT_TYPE]: 'Omnicient',
+    [STRINGS.OMNISCIENT_TYPE]: 'Omniscient',
     [STRINGS.OBSERVER_TYPE]: 'Observer'
 };
 

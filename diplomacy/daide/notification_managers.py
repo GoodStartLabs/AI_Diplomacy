@@ -132,7 +132,7 @@ def on_processed_notification(server, notification, connection_handler, game):
     return notifs
 
 def on_status_update_notification(server, notification, connection_handler, game):
-    """ Build the list of notificaitons for a status update event
+    """ Build the list of notifications for a status update event
 
         :param server: server which receives the request
         :param notification: internal notification
@@ -162,7 +162,7 @@ def on_status_update_notification(server, notification, connection_handler, game
     return notifs
 
 def on_message_received_notification(server, notification, connection_handler, game):
-    """ Build the list of notificaitons for a message received event
+    """ Build the list of notifications for a message received event
 
         :param server: server which receives the request
         :param notification: internal notification

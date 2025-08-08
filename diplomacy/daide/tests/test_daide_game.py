@@ -86,7 +86,7 @@ class ClientCommsSimulator:
 
     @property
     def is_game_joined(self):
-        """ Returns if the client has joinded the game """
+        """ Returns if the client has joined the game """
         return self._is_game_joined
 
     def set_comms(self, comms):
@@ -103,7 +103,7 @@ class ClientCommsSimulator:
         while comm_idx < len(self._comms):
             comm = self._comms[comm_idx]
 
-            # Find the request being right after a synchonization point (TME notification)
+            # Find the request being right after a synchronization point (TME notification)
             if not comm.request:
                 comm_idx += 1
                 continue
@@ -299,7 +299,7 @@ class ClientsCommsSimulator:
 
     @gen.coroutine
     def retrieve_game_port(self, host, port):
-        """ Retreive and store the game's port
+        """ Retrieve and store the game's port
 
             :param host: the host
             :param port: the port

@@ -385,7 +385,7 @@ def to_json_string(dictionary):
 
 
 def minify(code):
-    """ Minifyies a Javascript / CSS file """
+    """ Minifies a Javascript / CSS file """
     code = LINES_REGEX.sub(' ', code)
     code = SPACES_REGEX.sub(' ', code)
     code = STRING_REGEX.sub(' ', code)
@@ -438,7 +438,7 @@ export const Colors = %(colors)s;
        'symbol_sizes': to_json_string(data.get_symbol_sizes()),
        'colors': to_json_string(data.get_colors())})
 
-    # Map javacript
+    # Map javascript
     map_js_code = ("""
 import React from 'react';
 import PropTypes from 'prop-types';
@@ -770,7 +770,7 @@ export class %(classname)s extends React.Component {
                         throw new Error('Unknown neighbor province ' + neighbor);
                     const neighborID = neighborProvince.getID(classes);
                     if (!neighborID)
-                        throw new Error(`Unknown neoghbor path (${neighborID}) for province (${neighbor}).`);
+                        throw new Error(`Unknown neighbor path (${neighborID}) for province (${neighbor}).`);
                     classes[neighborID] = neighborProvince.isWater() ? 'provinceBlue' : 'provinceGreen';
                 }
             }

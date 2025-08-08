@@ -2125,7 +2125,7 @@ class Game(Jsonable):
         if not homes:
             return 99999
 
-        # Modified Djikstra
+        # Modified Dijkstra
         to_check = PriorityDict()
         to_check[start] = 0
         while to_check:
@@ -3096,7 +3096,7 @@ class Game(Jsonable):
     def _transfer_center(self, from_power, to_power, center):
         """ Transfers a supply center from a power to another
 
-            :param from_power: The power instance from whom the supply center is transfered
+            :param from_power: The power instance from whom the supply center is transferred
             :param to_power: The power instance to whom the supply center is transferred
             :param center: The supply center location (e.g. 'PAR')
             :return: Nothing

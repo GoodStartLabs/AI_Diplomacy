@@ -29,7 +29,7 @@ function initScene() {
 
 
   // Initialize standings board
-  // TODO: Re-add standinds board when it has an actual use, and not stale data
+  // TODO: Re-add standings board when it has an actual use, and not stale data
   //
   //initStandingsBoard();
 
@@ -163,7 +163,7 @@ function animate() {
   if (hasPanicked) return; // Stop the loop if we've panicked
   
   try {
-    // All things that aren't ThreeJS items happen in the eventQueue. The queue if filled with the first phase before the animate is kicked off, then all subsequent events are updated when other events finish. F
+    // All things that aren't ThreeJS items happen in the eventQueue. The queue is filled with the first phase before the animate is kicked off, then all subsequent events are updated when other events finish.
     // For instance, when the messages finish playing, they should kick off the check to see if we should advance turns.
     gameState.eventQueue.update();
   } catch (error) {
@@ -176,7 +176,7 @@ function animate() {
 
   if (gameState.isPlaying) {
     // Update the camera angle
-    // FIXME: This has to call the update functino twice inorder to avoid a bug in Tween.js, see here  https://github.com/tweenjs/tween.js/issues/677
+    // FIXME: This has to call the update function twice in order to avoid a bug in Tween.js, see here  https://github.com/tweenjs/tween.js/issues/677
     gameState.cameraPanAnim.update();
     gameState.cameraPanAnim.update();
 

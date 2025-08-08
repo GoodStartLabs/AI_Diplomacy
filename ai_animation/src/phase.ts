@@ -150,7 +150,7 @@ export function scheduleSummarySpeech() {
   }, `speech-delay-${Date.now()}`);
 }
 
-/** Handels all the end-of-phase items before calling _setPhase().
+/** Handles all the end-of-phase items before calling _setPhase().
  *
  */
 export function nextPhase() {

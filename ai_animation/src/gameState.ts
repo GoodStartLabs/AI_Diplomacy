@@ -296,7 +296,7 @@ class GameState {
   }
 
   /*
-   * Loads the next game in the order, reseting the board and gameState
+   * Loads the next game in the order, resetting the board and gameState
    */
   loadNextGame = (setPlayback: boolean = false) => {
     // Ensure any open overlays are cleaned up before loading next game

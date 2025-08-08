@@ -81,7 +81,7 @@ def on_observer_request(server, request, connection_handler, game):
         :return: the list of responses
     """
     del server, connection_handler, game            # Unused args
-    return [responses.REJ(bytes(request))]          # No DAIDE observeres allowed
+    return [responses.REJ(bytes(request))]          # No DAIDE observers allowed
 
 @gen.coroutine
 def on_i_am_request(server, request, connection_handler, game):
