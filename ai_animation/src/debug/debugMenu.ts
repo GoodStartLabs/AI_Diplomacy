@@ -9,6 +9,7 @@ import { initInstantChatTool as initInstantModeTool } from "./instantMode";
 import { initSpeechToggleTool } from "./speechToggle";
 import { initShowRandomMomentTool, updateMomentStatus } from "./showRandomMoment";
 import { initPhaseJumpTool, updatePhaseJumpOptions } from "./phaseJump";
+import { initEventQueueDisplayTool, toggleEventQueueDisplayState, updateEventQueueDebugDisplay } from "./eventQueueDisplay";
 
 export class DebugMenu {
   private toggleBtn: HTMLButtonElement;
@@ -175,6 +176,7 @@ export class DebugMenu {
   }
 
   private initTools(): void {
+    initEventQueueDisplayTool(this);
     initSpeechToggleTool(this);
     initInstantModeTool(this);
     initPhaseJumpTool(this);
@@ -187,6 +189,7 @@ export class DebugMenu {
     updateNextMomentDisplay();
     updateMomentStatus();
     updatePhaseJumpOptions();
+    updateEventQueueDebugDisplay();
   }
 }
 

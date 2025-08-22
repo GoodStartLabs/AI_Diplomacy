@@ -21,9 +21,33 @@ import {STRINGS} from "../../diplomacy/utils/strings";
 import PropTypes from "prop-types";
 import {Power} from "../../diplomacy/engine/power";
 
-const HotKey = require('react-shortcut');
 
 export class PowerOrderCreationForm extends React.Component {
+    componentDidMount() {
+        document.addEventListener('keydown', this.handleKeyDown);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener('keydown', this.handleKeyDown);
+    }
+
+    handleKeyDown = (event) => {
+        const key = event.key.toLowerCase();
+        if (key === 'escape') {
+            event.preventDefault();
+            this.setState(this.initState(), () => {
+                if (this.props.onChange)
+                    this.props.onChange(this.state);
+            });
+        } else if (this.props.orderTypes.includes(key.toUpperCase())) {
+            event.preventDefault();
+            this.setState({order_type: key.toUpperCase()}, () => {
+                if (this.props.onChange)
+                    this.props.onChange(this.state);
+            });
+        }
+    };
+
     constructor(props) {
         super(props);
         this.state = this.initState();
@@ -36,12 +60,6 @@ export class PowerOrderCreationForm extends React.Component {
     render() {
         const onChange = Forms.createOnChangeCallback(this, this.props.onChange);
         const onReset = Forms.createOnResetCallback(this, this.props.onChange, this.initState());
-        const onSetOrderType = (letter) => {
-            this.setState({order_type: letter}, () => {
-                if (this.props.onChange)
-                    this.props.onChange(this.state);
-            });
-        };
         let title = '';
         let titleClass = 'mr-4';
         const header = [];
@@ -97,11 +115,6 @@ export class PowerOrderCreationForm extends React.Component {
                         (this.props.power.wait ? 'success' : 'danger')
                     )}
                     {votes}
-                    <HotKey keys={['escape']} onKeysCoincide={onReset}/>
-                    {this.props.orderTypes.map((letter, index) => (
-                        <HotKey key={index} keys={[letter.toLowerCase()]}
-                                onKeysCoincide={() => onSetOrderType(letter)}/>
-                    ))}
                 </form>
             </div>
         );

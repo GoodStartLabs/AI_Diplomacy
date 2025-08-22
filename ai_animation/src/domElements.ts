@@ -1,5 +1,7 @@
+import { ScheduledEvent } from "./events";
 import { gameState } from "./gameState";
 import { logger } from "./logger";
+import { GamePhase } from "./types/gameState";
 
 /**
  * Helper function to get a DOM element by ID and throw an error if not found
@@ -29,20 +31,21 @@ function getRequiredTypedElement<T extends HTMLElement>(id: string): T {
   return element;
 }
 
-export function updatePhaseDisplay() {
-  const currentPhase = gameState.gameData.phases[gameState.phaseIndex];
+export function createUpdateUIEvent(phase: GamePhase): ScheduledEvent {
 
   // Add fade-out effect
   phaseDisplay.style.transition = 'opacity 0.3s ease-out';
   phaseDisplay.style.opacity = '0';
 
   // Update text after fade-out
-  gameState.eventQueue.scheduleDelay(300, () => {
-    phaseDisplay.textContent = `Era: ${currentPhase.name || 'Unknown Era'}`;
+  let callback = () => {
+    phaseDisplay.textContent = `Era: ${phase.name || 'Unknown Era'}`;
     // Fade back in
     phaseDisplay.style.opacity = '1';
-  }, `phase-display-update-${Date.now()}`);
+  }
+  return new ScheduledEvent(`updateUI-${phase.name}`, callback)
 }
+
 
 export function updateGameIdDisplay() {
   // Add fade-out effect
@@ -50,11 +53,9 @@ export function updateGameIdDisplay() {
   gameIdDisplay.style.opacity = '0';
 
   // Update text after fade-out
-  gameState.eventQueue.scheduleDelay(300, () => {
-    gameIdDisplay.textContent = `Game: ${gameState.gameId}`;
-    // Fade back in
-    gameIdDisplay.style.opacity = '1';
-  }, `game-id-display-update-${Date.now()}`);
+  gameIdDisplay.textContent = `Game: ${gameState.gameId}`;
+  // Fade back in
+  gameIdDisplay.style.opacity = '1';
 }
 
 export function loadGameBtnFunction(file: File) {

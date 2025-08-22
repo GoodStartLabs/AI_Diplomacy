@@ -32,7 +32,7 @@ vi.mock('../gameState', () => {
     start: vi.fn(),
     stop: vi.fn()
   };
-  
+
   return {
     gameState: {
       isPlaying: false,
@@ -91,7 +91,7 @@ Object.defineProperty(global, 'document', {
 });
 
 // Import after all mocking
-import { showTwoPowerConversation, closeTwoPowerConversation } from './twoPowerConversation';
+import { showMomentModal, closeMomentModal } from './momentModal';
 
 // Get direct reference to the mocked gameState
 let gameState: any;
@@ -101,13 +101,13 @@ describe('twoPowerConversation', () => {
     // Get the mocked gameState
     const gameStateModule = await import('../gameState');
     gameState = gameStateModule.gameState;
-    
+
     // Reset mocked game state
     gameState.isPlaying = false;
     gameState.isDisplayingMoment = false;
     gameState.phaseIndex = 0;
     gameState.gameData.phases[0].messages = [];
-    
+
     // Reset all mocks
     vi.clearAllMocks();
     gameState.eventQueue.pendingEvents = [];
@@ -116,9 +116,9 @@ describe('twoPowerConversation', () => {
   describe('showTwoPowerConversation', () => {
     it('should throw error when no messages found (indicates data quality issue)', () => {
       gameState.isPlaying = true;
-      
+
       expect(() => {
-        showTwoPowerConversation({
+        showMomentModal({
           power1: 'FRANCE',
           power2: 'GERMANY'
         });
@@ -127,10 +127,10 @@ describe('twoPowerConversation', () => {
 
     it('should throw error when empty messages array provided', () => {
       gameState.isPlaying = false;
-      
+
       expect(() => {
-        showTwoPowerConversation({
-          power1: 'FRANCE', 
+        showMomentModal({
+          power1: 'FRANCE',
           power2: 'GERMANY',
           messages: []
         });
@@ -143,14 +143,14 @@ describe('twoPowerConversation', () => {
         { sender: 'FRANCE', recipient: 'GERMANY', message: 'Hello', time_sent: '1' }
       ];
 
-      showTwoPowerConversation({
+      showMomentModal({
         power1: 'FRANCE',
         power2: 'GERMANY'
       });
 
       // Should have scheduled events in the queue
       expect(gameState.eventQueue.scheduleDelay).toHaveBeenCalled();
-      
+
       // Should have marked as displaying moment
       expect(gameState.isDisplayingMoment).toBe(true);
     });
@@ -163,24 +163,24 @@ describe('twoPowerConversation', () => {
         { sender: 'FRANCE', recipient: 'GERMANY', message: 'Test', time_sent: '1' }
       ];
 
-      showTwoPowerConversation({
+      showMomentModal({
         power1: 'FRANCE',
         power2: 'GERMANY'
       });
 
       // Should have scheduled events in the queue
       expect(gameState.eventQueue.scheduleDelay).toHaveBeenCalled();
-      
+
       // Should have marked as displaying moment
       expect(gameState.isDisplayingMoment).toBe(true);
     });
 
     it('should throw error for empty message arrays as they indicate data quality issues', () => {
       gameState.isPlaying = true;
-      
+
       // Test with empty messages - should throw error
       expect(() => {
-        showTwoPowerConversation({
+        showMomentModal({
           power1: 'FRANCE',
           power2: 'GERMANY',
           messages: []

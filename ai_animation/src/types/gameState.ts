@@ -68,4 +68,4 @@ export const GameSchema = z.object({
 
 export type GamePhase = z.infer<typeof PhaseSchema>;
 export type GameSchemaType = z.infer<typeof GameSchema>;
-export type Message = z.infer<typeof MessageSchema>
+export type MessageSchemaType = z.infer<typeof MessageSchema>

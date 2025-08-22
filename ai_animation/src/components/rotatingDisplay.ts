@@ -1,6 +1,7 @@
 import { gameState } from "../gameState";
 import { PowerENUM } from "../types/map";
 import { GameSchemaType } from "../types/gameState";
+import { ScheduledEvent } from "../events";
 
 // Enum for the different display types
 export enum DisplayType {
@@ -104,15 +105,14 @@ function rotateToNextDisplay(): void {
  * @param currentPlayerPower The power the current player is controlling
  * @param forceUpdate Whether to force a full update even if the display type hasn't changed
  */
-export function updateRotatingDisplay(
+export function createUpdateRotatingDisplayEvent(
   gameData: GameSchemaType,
   currentPhaseIndex: number,
   currentPlayerPower: PowerENUM,
   forceUpdate: boolean = false
-): void {
+): ScheduledEvent {
   if (!isInitialized || !containerElement) {
-    console.warn("Rotating display not initialized");
-    return;
+    throw Error("Rotating display is not initialized and cannot have an event created")
   }
 
   // Check if we need to do a full re-render

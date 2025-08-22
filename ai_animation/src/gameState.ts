@@ -1,11 +1,12 @@
 import * as THREE from "three"
 import { type CoordinateData, CoordinateDataSchema, PowerENUM } from "./types/map"
-import type { GameSchemaType, Message } from "./types/gameState";
+import type { GamePhase, GameSchemaType, MessageSchemaType } from "./types/gameState";
+import { GameSchema } from "./types/gameState";
 import { debugMenuInstance } from "./debug/debugMenu.ts"
 import { config } from "./config.ts"
-import { GameSchema, type MessageSchema } from "./types/gameState";
-import { prevBtn, nextBtn, playBtn, speedSelector, mapView, updateGameIdDisplay, updatePhaseDisplay } from "./domElements";
-import { createChatWindows } from "./domElements/chatWindows";
+import { createNarratorAudioEvent } from "./speech";
+import { prevBtn, nextBtn, playBtn, speedSelector, mapView, updateGameIdDisplay, createUpdateUIEvent } from "./domElements";
+import { createChatWindows, createMessageEvents } from "./domElements/chatWindows";
 import { logger } from "./logger";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import { displayInitialPhase, togglePlayback } from "./phase";
@@ -13,7 +14,11 @@ import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { MomentsDataSchema, Moment, NormalizedMomentsData } from "./types/moments";
 import { updateLeaderboard } from "./components/leaderboard";
 import { closeVictoryModal } from "./components/victoryModal.ts";
-import { EventQueue } from "./types/events";
+import { EventQueue, ScheduledEvent } from "./events.ts";
+import { createAnimateUnitsEvent, createAnimationsForNextPhase } from "./units/animate.ts";
+import { createUpdateNewsBannerEvent } from "./components/newsBanner.ts";
+import { createMomentEvent } from "./components/momentModal.ts";
+import { updateMapOwnership } from "./map/state.ts";
 
 //FIXME: This whole file is a mess. Need to organize and format
 
@@ -81,6 +86,68 @@ function loadFileFromServer(filePath: string): Promise<string> {
   })
 }
 
+function initializeBackgroundAudio(): Audio {
+
+  // Create audio element
+  let backgroundAudio = new Audio();
+  backgroundAudio.loop = true;
+  backgroundAudio.volume = 0.4; // 40% volume as requested
+
+  // For now, we'll use a placeholder - you should download and convert the wave file
+  // to a smaller MP3 format (aim for < 10MB) and place it in public/sounds/
+  backgroundAudio.src = './sounds/background_ambience.mp3';
+
+  // Handle audio loading
+  backgroundAudio.addEventListener('canplaythrough', () => {
+    console.log('Background audio loaded and ready to play');
+  });
+
+  backgroundAudio.addEventListener('error', (e) => {
+    console.error('Failed to load background audio:', e);
+  });
+  return backgroundAudio
+}
+
+class GameAudio {
+  players: { Name: String, track: Audio }[]
+
+  constructor() {
+    this.players = [{ Name: "background_music", track: initializeBackgroundAudio() }]
+  }
+  getNarratorPlayer = (): Audio | null => {
+    let player = this.players.filter((player) => player.Name.includes("Narrator"))
+    if (player.length === 0) {
+      return null
+    } else {
+      return player[0].track
+    }
+
+
+  }
+  pause = (track_idx?: number | undefined) => {
+    if (!track_idx) {
+      // Pause all songs
+      for (let player of this.players) {
+        player.track.pause()
+      }
+    } else {
+      this.players[track_idx].track.pause()
+    }
+
+  }
+
+  play = (track_idx?: number | undefined) => {
+    if (!track_idx) {
+      // Play all songs
+      for (let player of this.players) {
+        player.track.play()
+      }
+    } else {
+      this.players[track_idx].track.pause()
+    }
+
+  }
+}
 
 class GameState {
   boardState!: CoordinateData
@@ -91,6 +158,8 @@ class GameState {
   boardName: string
   currentPower!: PowerENUM
   isPlaying: boolean
+  isSpeaking: boolean
+  audio: GameAudio
 
 
   //Scene for three.js
@@ -121,6 +190,8 @@ class GameState {
     this.boardName = boardName
     this.gameId = 0
     this.isPlaying = false
+    this.isSpeaking = false
+    this.audio = new GameAudio()
 
     this.scene = new THREE.Scene()
     this.unitMeshes = []
@@ -132,11 +203,63 @@ class GameState {
   }
   set phaseIndex(val: number) {
     this._phaseIndex = val
-    updatePhaseDisplay()
   }
   get phaseIndex() {
     return this._phaseIndex
   }
+
+  _fillEventQueue = (gameData: GameSchemaType) => {
+    for (let [phaseIdx, phase] of gameData.phases.entries()) {
+      // Update Phase Display 
+      let updateUIEvent = createUpdateUIEvent(phase)
+      this.eventQueue.schedule(updateUIEvent)
+
+
+
+      // News Banner Text
+      this.eventQueue.schedule(createUpdateNewsBannerEvent(phase))
+      // Narrator Audio
+      this.eventQueue.schedule(createNarratorAudioEvent(phase))
+      // Messages play first
+      let messageEvents = createMessageEvents(phase)
+      this.eventQueue.scheduleMany(messageEvents)
+
+      // Check if there is a moment to display
+      let phaseMoment = this.checkPhaseHasMoment(phase.name)
+      if (phaseMoment) {
+        this.eventQueue.schedule(createMomentEvent(phaseMoment))
+      }
+      if (!(phaseIdx === 0)) {
+
+        let animationEvents = createAnimateUnitsEvent(phase, phaseIdx)
+        this.eventQueue.schedule(animationEvents)
+      }
+
+      // Lastly, update the gamePhase id
+      this.eventQueue.schedule(this.createNextPhaseEvent(phase, phaseIdx))
+    }
+  }
+  createNextPhaseEvent = (phase: GamePhase, phaseIdx: number): ScheduledEvent => {
+    return new ScheduledEvent(
+      `movePhase-${phase.name}`,
+      async () => {
+        while (true) {
+          let narrator = this.audio.getNarratorPlayer()
+
+          let narratorFinished = (narrator === null) || narrator.ended || !this.isSpeaking
+          if (this.unitAnimations.length === 0 && narratorFinished) {
+            this.phaseIndex = phaseIdx
+            updateMapOwnership()
+            break;
+          }
+
+          // Wait 500ms before checking again
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+      })
+  }
+
 
   /**
    * Load game data from a JSON string and initialize the game state
@@ -223,6 +346,11 @@ class GameState {
               // Update game ID display
               updateGameIdDisplay();
 
+              this._fillEventQueue(this.gameData)
+              // Start the game
+              togglePlayback(true)
+
+
             })
           resolve()
         } else {
@@ -299,13 +427,6 @@ class GameState {
    * Loads the next game in the order, reseting the board and gameState
    */
   loadNextGame = (setPlayback: boolean = false) => {
-    // Ensure any open overlays are cleaned up before loading next game
-    if (this.isDisplayingMoment) {
-      // Import at runtime to avoid circular dependency
-      import('./components/twoPowerConversation').then(({ closeTwoPowerConversation }) => {
-        closeTwoPowerConversation(true);
-      });
-    }
 
     let gameId = this.gameId + 1
     let contPlaying = false
@@ -314,11 +435,6 @@ class GameState {
     }
     this.loadGameFile(gameId).then(() => {
       gameState.gameId = gameId
-      if (contPlaying) {
-        this.eventQueue.scheduleDelay(config.victoryModalDisplayMs, () => {
-          togglePlayback(true)
-        }, `load-next-game-playback-${Date.now()}`)
-      }
     }).catch(() => {
       console.warn("caught error trying to advance game. Setting gameId to 0 and restarting...")
       this.loadGameFile(0)

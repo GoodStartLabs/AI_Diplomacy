@@ -19,9 +19,27 @@ import PropTypes from "prop-types";
 import {Button} from "../components/button";
 import {FancyBox} from "../components/fancyBox";
 
-const HotKey = require('react-shortcut');
 
 export class SelectViaForm extends React.Component {
+    componentDidMount() {
+        document.addEventListener('keydown', this.handleKeyDown);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener('keydown', this.handleKeyDown);
+    }
+
+    handleKeyDown = (event) => {
+        const key = event.key.toLowerCase();
+        if (key === 'm') {
+            event.preventDefault();
+            this.props.onSelect('M');
+        } else if (key === 'v') {
+            event.preventDefault();
+            this.props.onSelect('V');
+        }
+    };
+
     render() {
         return (
             <FancyBox title={`Select move type for move order: ${this.props.path.join(' ')}`}
@@ -29,8 +47,6 @@ export class SelectViaForm extends React.Component {
                 <div>
                     <Button title={'regular move (M)'} large={true} onClick={() => this.props.onSelect('M')}/>
                     <Button title={'move via (V)'} large={true} onClick={() => this.props.onSelect('V')}/>
-                    <HotKey keys={['m']} onKeysCoincide={() => this.props.onSelect('M')}/>
-                    <HotKey keys={['v']} onKeysCoincide={() => this.props.onSelect('V')}/>
                 </div>
             </FancyBox>
         );

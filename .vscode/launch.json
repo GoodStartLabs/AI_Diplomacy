@@ -4,11 +4,11 @@
     {
       "type": "pwa-chrome",
       "request": "launch",
-      "name": "Chrome Debug 5179",
-      "url": "http://localhost:5179",
+      "name": "Chrome Debug 5173",
+      "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/ai_animation/",
       "sourceMapPathOverrides": {
-        "http://localhost:5179/*": "${webRoot}/*"
+        "http://localhost:5173/*": "${webRoot}/*"
       },
       "runtimeArgs": [
         "--remote-debugging-port=9223"

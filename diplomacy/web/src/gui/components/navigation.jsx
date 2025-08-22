@@ -15,7 +15,7 @@
 //  with this program.  If not, see <https://www.gnu.org/licenses/>.
 // ==============================================================================
 import React from "react";
-import Octicon, {Person} from "@primer/octicons-react";
+import {PersonIcon} from "@primer/octicons-react";
 import PropTypes from "prop-types";
 
 export class Navigation extends React.Component {
@@ -33,7 +33,7 @@ export class Navigation extends React.Component {
                             <div className={'float-right'}>
                                 <strong>
                                     <u className={'mr-2'}>{this.props.username}</u>
-                                    <Octicon icon={Person}/>
+                                    <PersonIcon/>
                                 </strong>
                             </div>
                         )) || (
@@ -44,7 +44,7 @@ export class Navigation extends React.Component {
                                     {(this.props.username && (
                                         <span>
                                                 <u className={'mr-2'}>{this.props.username}</u>
-                                                <Octicon icon={Person}/>
+                                                <PersonIcon/>
                                             </span>
                                     )) || 'Menu'}
                                 </button>

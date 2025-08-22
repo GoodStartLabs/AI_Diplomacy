@@ -117,6 +117,7 @@ export const config = {
   get conversationModalDelay(): number {
     return this.isInstantMode ? 50 : 500; // Initial delay before showing messages
   },
+  convertsationModalMaxMessages: 20,
 
   /**
    * Phase and moment timing

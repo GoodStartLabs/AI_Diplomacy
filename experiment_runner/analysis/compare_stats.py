@@ -1,3 +1,20 @@
+"""
+experiment_runner.analysis.compare_stats
+----------------------------------------
+
+Compares two completed Diplomacy experiments, printing every metric
+whose confidence interval (1 – α) excludes 0.
+
+Derived “maximum‐ever” metrics
+• max_supply_centers_owned       – per-power max across phases
+• max_territories_controlled     – per-power max across phases
+• max_military_units             – per-power max across phases
+• max_game_score                 – *game-level* max across powers
+  (only used in the aggregated-across-powers comparison)
+
+All CLI semantics, CSV outputs, significance tests, etc., remain intact.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path

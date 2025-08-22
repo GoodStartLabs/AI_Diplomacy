@@ -51,7 +51,6 @@ import {MapData} from "../utils/map_data";
 import {Queue} from "../../diplomacy/utils/queue";
 import {PhaseSummaryBottomSheet} from "../components/PhaseSummaryBottomSheet";
 
-const HotKey = require('react-shortcut');
 
 /* Order management in game page.
  * When editing orders locally, we have to compare it to server orders
@@ -1151,10 +1150,6 @@ export class ContentGame extends React.Component {
                     </div>
                     <div className={'col-xl'}>{orderView}</div>
                 </Row>
-                {toDisplay && <HotKey keys={['arrowleft']} onKeysCoincide={this.onDecrementPastPhase}/>}
-                {toDisplay && <HotKey keys={['arrowright']} onKeysCoincide={this.onIncrementPastPhase}/>}
-                {toDisplay && <HotKey keys={['home']} onKeysCoincide={this.displayFirstPastPhase}/>}
-                {toDisplay && <HotKey keys={['end']} onKeysCoincide={this.displayLastPastPhase}/>}
             </Tab>
         );
     }
@@ -1193,10 +1188,6 @@ export class ContentGame extends React.Component {
                         )}
                     </div>
                 </Row>
-                {toDisplay && <HotKey keys={['arrowleft']} onKeysCoincide={this.onDecrementPastPhase}/>}
-                {toDisplay && <HotKey keys={['arrowright']} onKeysCoincide={this.onIncrementPastPhase}/>}
-                {toDisplay && <HotKey keys={['home']} onKeysCoincide={this.displayFirstPastPhase}/>}
-                {toDisplay && <HotKey keys={['end']} onKeysCoincide={this.displayLastPastPhase}/>}
             </Tab>
         );
     }
@@ -1452,9 +1443,10 @@ export class ContentGame extends React.Component {
             });
         }
         this.props.data.displayed = true;
-        // Try to prevent scrolling when pressing keys Home and End.
+        // Handle keyboard shortcuts for navigation and prevent scrolling when pressing keys Home and End.
         document.onkeydown = (event) => {
-            if (['home', 'end'].includes(event.key.toLowerCase())) {
+            const key = event.key.toLowerCase();
+            if (['home', 'end', 'arrowleft', 'arrowright'].includes(key)) {
                 // Try to prevent scrolling.
                 if (event.hasOwnProperty('cancelBubble'))
                     event.cancelBubble = true;
@@ -1462,6 +1454,25 @@ export class ContentGame extends React.Component {
                     event.stopPropagation();
                 if (event.preventDefault)
                     event.preventDefault();
+                
+                // Handle navigation shortcuts only when toDisplay is true
+                const toDisplay = this.props.data.game && this.props.data.game.phase_abbr !== 'COMPLETED';
+                if (toDisplay) {
+                    switch(key) {
+                        case 'arrowleft':
+                            this.onDecrementPastPhase();
+                            break;
+                        case 'arrowright':
+                            this.onIncrementPastPhase();
+                            break;
+                        case 'home':
+                            this.displayFirstPastPhase();
+                            break;
+                        case 'end':
+                            this.displayLastPastPhase();
+                            break;
+                    }
+                }
             }
         };
     }

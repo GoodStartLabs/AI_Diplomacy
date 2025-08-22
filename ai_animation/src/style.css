@@ -903,3 +903,39 @@
       margin-bottom: 5px;
     }
   }
+
+/* -----------------
+    Moment Model
+    ----------------- */
+#dialogue-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+}
+.dialogue-container {
+background: radial-gradient(ellipse at center, #f7ecd1 0%, #dbc08c 100%);
+        border: 3px solid #4f3b16;
+        border-radius: 8px;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        width: 90%;
+        height: 85%;
+        position: relative;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+}
+#dialogue-header {
+
+        margin-bottom: 15px;
+        text-align: center;
+}

@@ -4,27 +4,26 @@
   "homepage": ".",
   "private": true,
   "dependencies": {
-    "@primer/octicons-react": "^9.1.1",
-    "bootstrap": "^4.3.1",
-    "jquery": "^3.4.1",
-    "popper.js": "^1.15.0",
-    "prop-types": "^15.7.2",
-    "react": "^16.8.6",
-    "react-confirm-alert": "^2.4.1",
-    "react-dom": "^16.8.6",
-    "react-helmet": "^5.2.1",
-    "react-scripts": "3.0.1",
-    "react-scrollchor": "^6.0.0",
-    "react-shortcut": "^1.0.6"
+    "@primer/octicons-react": "^19.11.0",
+    "bootstrap": "^5.3.3",
+    "jquery": "^3.7.1",
+    "popper.js": "^1.16.1",
+    "prop-types": "^15.8.1",
+    "react": "^19.1.0",
+    "react-confirm-alert": "^3.0.6",
+    "react-dom": "^19.1.0",
+    "react-helmet": "^6.1.0",
+    "react-scripts": "5.0.1",
+    "react-scrollchor": "^6.0.0"
   },
   "scripts": {
-    "start": "react-scripts --openssl-legacy-provider start",
-    "build": "react-scripts --openssl-legacy-provider build",
-    "test": "react-scripts test --env=jsdom",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "devDependencies": {
-    "eslint-plugin-react": "^7.14.2"
+    "eslint-plugin-react": "^7.35.0"
   },
   "browserslist": {
     "production": [

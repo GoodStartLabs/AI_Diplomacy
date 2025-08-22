@@ -4,7 +4,7 @@
  */
 
 import { gameState } from '../gameState';
-import { showTwoPowerConversation } from '../components/twoPowerConversation';
+import { showMomentModal } from '../components/momentModal';
 import { Moment } from '../types/moments';
 import { _setPhase } from '../phase';
 import { config } from '../config';
@@ -33,11 +33,11 @@ export function initShowRandomMomentTool(debugMenu: any) {
   // Add button functionality
   const showBtn = document.getElementById('debug-show-random-moment');
   const refreshBtn = document.getElementById('debug-refresh-moment-list');
-  
+
   if (showBtn) {
     showBtn.addEventListener('click', showRandomMoment);
   }
-  
+
   if (refreshBtn) {
     refreshBtn.addEventListener('click', updateMomentStatus);
   }
@@ -89,21 +89,21 @@ function getEligibleMoments(): Moment[] {
       for (let j = i + 1; j < moment.powers_involved.length; j++) {
         const power1 = moment.powers_involved[i].toUpperCase();
         const power2 = moment.powers_involved[j].toUpperCase();
-        
+
         const hasConversation = phase.messages.some(msg => {
           const sender = msg.sender?.toUpperCase();
           const recipient = msg.recipient?.toUpperCase();
-          
+
           return (sender === power1 && recipient === power2) ||
-                 (sender === power2 && recipient === power1);
+            (sender === power2 && recipient === power1);
         });
-        
+
         if (hasConversation) {
           return true;
         }
       }
     }
-    
+
     return false;
   });
 }
@@ -126,21 +126,21 @@ function findBestPowerPairForMoment(moment: Moment): { power1: string; power2: s
     for (let j = i + 1; j < moment.powers_involved.length; j++) {
       const power1 = moment.powers_involved[i].toUpperCase();
       const power2 = moment.powers_involved[j].toUpperCase();
-      
+
       const messageCount = phase.messages.filter(msg => {
         const sender = msg.sender?.toUpperCase();
         const recipient = msg.recipient?.toUpperCase();
-        
+
         return (sender === power1 && recipient === power2) ||
-               (sender === power2 && recipient === power1);
+          (sender === power2 && recipient === power1);
       }).length;
-      
+
       if (messageCount > 0 && (!bestPair || messageCount > bestPair.messageCount)) {
         bestPair = { power1, power2, messageCount };
       }
     }
   }
-  
+
   return bestPair;
 }
 
@@ -149,7 +149,7 @@ function findBestPowerPairForMoment(moment: Moment): { power1: string; power2: s
  */
 function showRandomMoment() {
   const eligibleMoments = getEligibleMoments();
-  
+
   if (eligibleMoments.length === 0) {
     console.warn('No eligible moments found for conversation display');
     const statusElement = document.getElementById('debug-moment-status');
@@ -166,10 +166,10 @@ function showRandomMoment() {
 
   // Pick a random moment
   const randomMoment = eligibleMoments[Math.floor(Math.random() * eligibleMoments.length)];
-  
+
   // Find the best power pair for this moment
   const powerPair = findBestPowerPairForMoment(randomMoment);
-  
+
   if (!powerPair) {
     console.warn('No valid power pair found for selected moment');
     return;
@@ -181,15 +181,15 @@ function showRandomMoment() {
 
   // Find the phase index for this moment
   const phaseIndex = gameState.gameData.phases.findIndex(p => p.name === randomMoment.phase);
-  
+
   if (phaseIndex === -1) {
     const errorMsg = `CRITICAL ERROR: Phase ${randomMoment.phase} from moment data not found in game data! This indicates a serious data integrity issue.`;
     console.error(errorMsg);
-    
+
     if (config.isDebugMode) {
       alert(errorMsg + '\n\nAvailable phases: ' + gameState.gameData.phases.map(p => p.name).join(', '));
     }
-    
+
     throw new Error(errorMsg);
   }
 
@@ -198,7 +198,7 @@ function showRandomMoment() {
   _setPhase(phaseIndex);
 
   // Show the moment using the two-power conversation display
-  showTwoPowerConversation({
+  showMomentModal({
     power1: powerPair.power1,
     power2: powerPair.power2,
     moment: randomMoment,

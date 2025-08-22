@@ -1,23 +1,22 @@
 import * as THREE from "three";
 import { gameState } from "../gameState";
 import { config } from "../config";
-import { GamePhase, Message } from "../types/gameState";
+import { GamePhase, MessageSchemaType } from "../types/gameState";
 import { getPowerDisplayName } from '../utils/powerNames';
 import { PowerENUM } from '../types/map';
+import { ScheduledEvent } from "../events";
+import { createChatBubble, animateMessageWords } from "../components/chatBubble";
 
 
 //TODO: Sometimes the LLMs use lists, and they don't work in the chats. The just appear as bullets within a single line.
-//
-//TODO: We are getting a mixing of chats from different phases. In game 0, F1902M starts using chat before S1902M finishes
 let faceIconCache = {}; // Cache for generated face icons
 
 // Add a message counter to track sound effect frequency
-let messageCounter = 0;
 type chatWindowMap = { [key in PowerENUM]: {
   element: HTMLHtmlElement,
   messagesContainer: HTMLHtmlElement,
   isGlobal: boolean,
-  seenMessages: Set<Message>
+  seenMessages: Set<MessageSchemaType>
 } }
 
 
@@ -145,7 +144,7 @@ function createChatWindow(power, isGlobal = false) {
   };
 }
 
-function fiterAndSortChatMessagesForPhase(phase: GamePhase): Message[] {
+function fiterAndSortChatMessagesForPhase(phase: GamePhase): MessageSchemaType[] {
 
   let relevantMessages = phase.messages.filter(msg => {
     return (
@@ -158,88 +157,27 @@ function fiterAndSortChatMessagesForPhase(phase: GamePhase): Message[] {
   return relevantMessages
 }
 
-// Modified to accumulate messages instead of resetting and only animate for new messages
-/**
- * Updates chat windows with messages for the current phase
- * @param phase The current game phase containing messages
- * @param stepMessages Whether to animate messages one-by-word (true) or show all at once (false)
- */
-export function updateChatWindows(stepMessages = false, callback?: () => void) {
-  // Exit early if no messages
-  if (!gameState.currentPhase.messages || !gameState.currentPhase.messages.length) {
-    console.log("No messages to display for this phase");
-    return;
-  }
+export function createMessageEvents(phase: GamePhase): ScheduledEvent[] {
+  let messageEvents: ScheduledEvent[] = []
 
   // Only show messages relevant to the current player (sent by them, to them, or global)
-  const relevantMessages = gameState.currentPhase.messages.filter(msg => {
-    return (
-      msg.sender === gameState.currentPower ||
-      msg.recipient === gameState.currentPower ||
-      msg.recipient === 'GLOBAL'
-    );
-  });
+  const relevantMessages = fiterAndSortChatMessagesForPhase(phase)
+  for (let [idx, msg] of relevantMessages.entries()) {
+    messageEvents.push(new ScheduledEvent(
+      `message-${phase.name}-${msg.sender}`,
+      () => new Promise<void>((resolve) => {
+        addMessageToChat(msg, !config.isInstantMode, () => resolve());
+        animateHeadNod(msg, (idx % config.soundEffectFrequency === 0));
+      })
+    ))
 
-  // Sort messages by time sent
-  relevantMessages.sort((a, b) => a.time_sent - b.time_sent);
-
-  // Log message count but only in debug mode to reduce noise
-  if (config.isDebugMode) {
-    console.log(`Found ${relevantMessages.length} messages for player ${gameState.currentPower} in phase ${gameState.currentPhase.name}`);
   }
-
-  // Stepwise mode: show one message at a time, animating word-by-word
-  let index = 0;
-
-  // Store the start time for debugging
-  const messageStartTime = Date.now();
-
-  // Function to process the next message
-  const showNext = () => {
-    // If we're not playing or user has manually advanced, stop message animation
-    if (!gameState.isPlaying && !config.isDebugMode) {
-      console.log("Playback stopped, halting message animations");
-      return;
-    }
-
-    // All messages have been displayed
-    if (index >= relevantMessages.length) {
-      if (config.isDebugMode) {
-        console.log(`All messages displayed in ${Date.now() - messageStartTime}ms`);
-      }
-      console.log("Messages complete, triggering next phase");
-      if (callback) callback();
-      return;
-    }
-
-    // Get the next message
-    const msg = relevantMessages[index];
-
-    // Only log in debug mode to reduce console noise
-    if (config.isDebugMode) {
-      console.log(`Displaying message ${index + 1}/${relevantMessages.length}: ${msg.sender} to ${msg.recipient}`);
-    }
-
-    // Function to call after message animation completes
-    const onMessageComplete = () => {
-      index++; // Only increment after animation completes
-      showNext()
-    };
-
-    // Add the message with word animation
-    addMessageToChat(msg, true, onMessageComplete);
-
-    // Animate head and play sound for new messages (not just when not in debug mode)
-    messageCounter++;
-    animateHeadNod(msg, (messageCounter % config.soundEffectFrequency === 0));
-  };
-
-  // Start the message sequence with initial delay
-  gameState.eventQueue.scheduleDelay(50, showNext, `start-message-sequence-${Date.now()}`);
+  return messageEvents
 }
 
+
 // Modified to support word-by-word animation and callback
-function addMessageToChat(msg: Message, animateWords: boolean = false, onComplete: Function | null = null) {
+function addMessageToChat(msg: MessageSchemaType, animateWords: boolean = false, onComplete: Function | null = null) {
   // Determine which chat window to use
   let targetPower;
   if (msg.recipient === 'GLOBAL') {
@@ -252,70 +190,52 @@ function addMessageToChat(msg: Message, animateWords: boolean = false, onComplet
   // Create a unique ID for this message to avoid duplication
   const msgId = `${msg.sender}-${msg.recipient}-${msg.time_sent}-${msg.message}`;
 
-  // Skip if we've already shown this message
-  if (chatWindows[targetPower].seenMessages.has(msgId)) {
-    return false; // Not a new message
-  }
-
-  // Mark as seen
-  chatWindows[targetPower].seenMessages.add(msgId);
 
   const messagesContainer = chatWindows[targetPower].messagesContainer;
-  const messageElement = document.createElement('div');
+  const chatBubble = createChatBubble(msg)
 
   // Style based on sender/recipient
   if (targetPower === 'GLOBAL') {
     // Global chat shows sender info
     const senderColor = msg.sender.toLowerCase();
-    messageElement.className = 'chat-message message-incoming';
+    chatBubble.className = 'chat-message message-incoming';
 
     // Add the header with the sender name immediately
     const headerSpan = document.createElement('span');
     headerSpan.style.fontWeight = 'bold';
     headerSpan.className = `power-${senderColor}`;
     headerSpan.textContent = `${getPowerDisplayName(msg.sender as PowerENUM)}: `;
-    messageElement.appendChild(headerSpan);
+    chatBubble.appendChild(headerSpan);
 
-    // Create a span for the message content that will be filled word by word
-    const contentSpan = document.createElement('span');
-    contentSpan.id = `msg-content-${msgId.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    messageElement.appendChild(contentSpan);
 
-    // Add timestamp
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-time';
-    timeDiv.textContent = gameState.currentPhase.name;
-    messageElement.appendChild(timeDiv);
   } else {
     // Private chat - outgoing or incoming style
     const isOutgoing = msg.sender === gameState.currentPower;
-    messageElement.className = `chat-message ${isOutgoing ? 'message-outgoing' : 'message-incoming'}`;
+    chatBubble.className = `chat-message ${isOutgoing ? 'message-outgoing' : 'message-incoming'}`;
 
-    // Create content span
-    const contentSpan = document.createElement('span');
-    contentSpan.id = `msg-content-${msgId.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    messageElement.appendChild(contentSpan);
-
-    // Add timestamp
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-time';
-    timeDiv.textContent = gameState.currentPhase.name;
-    messageElement.appendChild(timeDiv);
   }
+  const contentSpan = document.createElement('span');
+  contentSpan.id = `msg-content-${msgId.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
+  chatBubble.appendChild(contentSpan);
+
+  // Add timestamp
+  const timeDiv = document.createElement('div');
+  timeDiv.className = 'message-time';
+  timeDiv.textContent = gameState.currentPhase.name;
+  chatBubble.appendChild(timeDiv);
   // Add to container
-  messagesContainer.appendChild(messageElement);
+  messagesContainer.appendChild(chatBubble);
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
   if (animateWords) {
     // Start word-by-word animation
-    const contentSpanId = `msg-content-${msgId.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    animateMessageWords(msg.message, contentSpanId, targetPower, messagesContainer, onComplete);
+    animateMessageWords(msg.message, contentSpan, messagesContainer, onComplete);
   } else {
     // Show entire message at once
-    const contentSpan = messageElement.querySelector(`#msg-content-${msgId.replace(/[^a-zA-Z0-9]/g, '-')}`);
+    const contentSpan = chatBubble.querySelector(`#msg-content-${msgId.replace(/[^a-zA-Z0-9]/g, '-')}`);
     if (contentSpan) {
       contentSpan.textContent = msg.message;
     }
@@ -329,76 +249,6 @@ function addMessageToChat(msg: Message, animateWords: boolean = false, onComplet
   return true; // This was a new message
 }
 
-// New function to animate message words one at a time
-/**
- * Animates message text one word at a time
- * @param message The full message text to animate
- * @param contentSpanId The ID of the span element to animate within
- * @param targetPower The power the message is displayed for
- * @param messagesContainer The container holding the messages
- * @param onComplete Callback function to run when animation completes
- */
-function animateMessageWords(message: string, contentSpanId: string, targetPower: string,
-  messagesContainer: HTMLElement, onComplete: (() => void) | null) {
-  const words = message.split(/\s+/);
-  const contentSpan = document.getElementById(contentSpanId);
-  if (!contentSpan) {
-    // If span not found, still call onComplete to avoid breaking the game flow
-    if (onComplete) onComplete();
-    return;
-  }
-
-  // Clear any existing content
-  contentSpan.textContent = '';
-  let wordIndex = 0;
-
-  // Function to add the next word
-  const addNextWord = () => {
-    if (wordIndex >= words.length) {
-      // All words added - message is complete
-      console.log(`Finished animating message with ${words.length} words in ${targetPower} chat`);
-
-      // Add a slight delay after the last word for readability
-      gameState.eventQueue.scheduleDelay(config.messageCompletionDelay, () => {
-        if (onComplete) {
-          onComplete(); // Call the completion callback
-        }
-      }, `message-complete-${Date.now()}`);
-
-      return;
-    }
-
-    // Add space if not the first word
-    if (wordIndex > 0) {
-      contentSpan.textContent += ' ';
-    }
-
-    // Add the next word
-    contentSpan.textContent += words[wordIndex];
-    wordIndex++;
-
-    // Calculate delay based on word length and playback speed
-    // Longer words get slightly longer display time
-    const wordLength = words[wordIndex - 1].length;
-    // Use consistent word delay from config
-    const delay = Math.max(config.messageWordDelay, Math.min(200, config.messageWordDelay * (wordLength / 4)));
-    gameState.eventQueue.scheduleDelay(delay, addNextWord, `add-word-${wordIndex}-${Date.now()}`);
-
-    // Scroll to ensure newest content is visible
-    // Use requestAnimationFrame to batch DOM updates in streaming mode
-    const isStreamingModeForScroll = import.meta.env.MODE === 'production' || import.meta.env.VITE_STREAMING_MODE === 'true';
-    if (isStreamingModeForScroll) {
-      requestAnimationFrame(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      });
-    } else {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-  };
-
-  // Start animation
-  addNextWord();
-}
 
 // Modified to support conditional sound effects
 function animateHeadNod(msg, playSoundEffect = true) {
@@ -674,43 +524,4 @@ function playRandomSoundEffect() {
         console.log('This might be due to browser autoplay policies. User interaction may be required.');
       });
   }
-}
-
-/**
- * Appends text to the scrolling news banner.
- * If the banner is at its default text or empty, replace it entirely.
- * Otherwise, just append " | " + newText.
- * @param newText Text to add to the news banner
- */
-export function addToNewsBanner(newText: string): void {
-  const bannerEl = document.getElementById('news-banner-content');
-  if (!bannerEl) {
-    console.warn("News banner element not found");
-    return;
-  }
-
-  if (config.isDebugMode) {
-    console.log(`Adding to news banner: "${newText}"`);
-  }
-
-  // Add a fade-out transition
-  const transitionDuration = config.uiTransitionDuration;
-  bannerEl.style.transition = `opacity ${transitionDuration}s ease-out`;
-  bannerEl.style.opacity = '0';
-
-  gameState.eventQueue.scheduleDelay(config.uiFadeDelay, () => {
-    // If the banner only has the default text or is empty, replace it
-    if (
-      bannerEl.textContent?.trim() === 'Diplomatic actions unfolding...' ||
-      bannerEl.textContent?.trim() === ''
-    ) {
-      bannerEl.textContent = newText;
-    } else {
-      // Otherwise append with a separator
-      bannerEl.textContent += '  |  ' + newText;
-    }
-
-    // Fade back in
-    bannerEl.style.opacity = '1';
-  }, `banner-fade-in-${Date.now()}`);
 }

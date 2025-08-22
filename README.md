@@ -769,6 +769,7 @@ async def launch(game_id):
 
 if __name__ == '__main__':
     asyncio.run(launch(game_id=str(random.randint(1, 1000))))
+```
 
 ## License
 

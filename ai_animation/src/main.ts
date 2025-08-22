@@ -7,7 +7,6 @@ import { config } from "./config";
 import { Tween, Group, Easing } from "@tweenjs/tween.js";
 import { initRotatingDisplay, } from "./components/rotatingDisplay";
 import { debugMenuInstance } from "./debug/debugMenu";
-import { initializeBackgroundAudio, startBackgroundAudio } from "./backgroundAudio";
 import { updateLeaderboard } from "./components/leaderboard";
 import { _setPhase, nextPhase, previousPhase } from "./phase";
 import { togglePlayback } from "./phase";
@@ -25,7 +24,6 @@ let hasPanicked = false;
 function initScene() {
   gameState.createThreeScene()
 
-  initializeBackgroundAudio()
 
 
   // Initialize standings board
@@ -38,8 +36,10 @@ function initScene() {
   gameState.loadBoardState().then(() => {
     initMap(gameState.scene).then(() => {
 
+      // TODO: Re-add the rotating display
+      //
       // Initialize rotating display
-      initRotatingDisplay();
+      //initRotatingDisplay();
 
       gameState.cameraPanAnim = createCameraPan()
 
@@ -48,33 +48,12 @@ function initScene() {
         // Update info panel with initial power information
         updateLeaderboard();
 
-        if (phaseStartIdx !== undefined) {
-          gameState.eventQueue.start();
-          gameState.eventQueue.scheduleDelay(500, () => {
-            _setPhase(phaseStartIdx)
-          }, `phase-start-delay-${Date.now()}`)
-        } else if (!isStreamingMode && !config.isTestingMode) {
-          // Auto-start playback for normal mode (not streaming, no specific phase, not testing)
-          // Note: Background audio will start when togglePlayback is called (which provides user interaction context)
-          gameState.eventQueue.start();
-          gameState.eventQueue.scheduleDelay(1000, () => {
-            console.log("Auto-starting playback after game load");
-            togglePlayback(true); // true = explicitly set to playing
-          }, `auto-start-playback-${Date.now()}`);
-        }
-      })
+      });
 
 
       // Initialize debug menu if in debug mode
       if (config.isDebugMode) {
         debugMenuInstance.show();
-      }
-      if (isStreamingMode) {
-        startBackgroundAudio()
-        gameState.eventQueue.start();
-        gameState.eventQueue.scheduleDelay(2000, () => {
-          togglePlayback()
-        }, `streaming-mode-start-${Date.now()}`)
       }
     })
   }).catch(err => {
@@ -161,7 +140,7 @@ function updateAnimations() {
  */
 function animate() {
   if (hasPanicked) return; // Stop the loop if we've panicked
-  
+
   try {
     // All things that aren't ThreeJS items happen in the eventQueue. The queue if filled with the first phase before the animate is kicked off, then all subsequent events are updated when other events finish. F
     // For instance, when the messages finish playing, they should kick off the check to see if we should advance turns.
@@ -171,7 +150,7 @@ function animate() {
     hasPanicked = true;
     return; // Exit without scheduling next frame
   }
-  
+
   requestAnimationFrame(animate);
 
   if (gameState.isPlaying) {
@@ -219,8 +198,6 @@ nextBtn.addEventListener('click', () => {
 });
 
 playBtn.addEventListener('click', () => {
-  // Ensure background audio is ready when user manually clicks play
-  startBackgroundAudio();
   togglePlayback();
 });
 

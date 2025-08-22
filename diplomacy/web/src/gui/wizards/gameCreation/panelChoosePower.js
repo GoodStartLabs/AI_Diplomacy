@@ -17,7 +17,7 @@
 import React from "react";
 import {FancyBox} from "../../components/fancyBox";
 import PropTypes from "prop-types";
-import Octicon, {ArrowLeft} from "@primer/octicons-react";
+import {ArrowLeftIcon} from "@primer/octicons-react";
 
 export class PanelChoosePower extends React.Component {
     render() {
@@ -67,7 +67,7 @@ export class PanelChoosePower extends React.Component {
                     <div className="col">
                         <button type="button" className="btn btn-secondary btn-sm px-3"
                                 onClick={() => this.props.backward()}>
-                            <Octicon icon={ArrowLeft}/>
+                            <ArrowLeftIcon/>
                         </button>
                     </div>
                 </div>

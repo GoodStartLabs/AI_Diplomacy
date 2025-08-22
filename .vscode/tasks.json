@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Run Game",
+        "type": "shell",
+        "command": "npm start",
+        "presentation": {
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      }
+    ]
+  }

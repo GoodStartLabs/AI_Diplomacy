@@ -18,7 +18,7 @@ import React from "react";
 import {FancyBox} from "../../components/fancyBox";
 import PropTypes from "prop-types";
 import {UTILS} from "../../../diplomacy/utils/utils";
-import Octicon, {ArrowLeft} from "@primer/octicons-react";
+import {ArrowLeftIcon} from "@primer/octicons-react";
 
 const DEADLINES = [
     [0, '(no deadline)'],
@@ -104,7 +104,7 @@ export class PanelChooseSettings extends React.Component {
                     <div className="col-sm">
                         <button type="button" className="btn btn-secondary btn-sm btn-block"
                                 onClick={() => this.props.backward()}>
-                            <Octicon icon={ArrowLeft}/>
+                            <ArrowLeftIcon/>
                         </button>
                     </div>
                     <div className="col-sm">
