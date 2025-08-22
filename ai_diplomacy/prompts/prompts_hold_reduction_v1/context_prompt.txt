@@ -1,0 +1,32 @@
+You are playing the board game Diplomacy. Your power is {power_name}. The {current_phase} phase. 
+Your primary goal is to control 18 supply centers.
+Use the information below to inform your approach.
+
+
+Power: {power_name}
+Phase: {current_phase}
+
+PLAYER STATUS
+Current Goals: {agent_goals}
+Relationships: {agent_relationships}
+
+RECENT PRIVATE DIARY ENTRIES (Your inner thoughts and plans):
+{agent_private_diary}
+
+ORDER HISTORY
+{order_history}
+
+GAME MAP
+Unit Locations:
+{all_unit_locations}
+
+Supply Centers:
+{all_supply_centers}
+
+POSSIBLE ORDERS FOR {current_phase}
+{possible_orders}
+END POSSIBLE ORDERS
+
+MESSAGES THIS ROUND
+{messages_this_round}
+END MESSAGES

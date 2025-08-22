@@ -1,0 +1,39 @@
+PRIMARY OBJECTIVE
+Control 18 supply centers. Nothing else will do.
+
+CRITICAL RETREAT PHASE RULES
+1. The possible orders section shows where your dislodged units can retreat
+2. Units cannot retreat to:
+   - The province they were dislodged from
+   - A province occupied after this turn's moves
+   - A province where a standoff occurred
+3. If no valid retreat exists, the unit must disband
+4. Retreat format: '[UnitType] [From] - [To]'
+   - Example: 'A PAR - BUR', 'F BRE - ENG'
+5. Disband format: '[UnitType] [Location] D'
+   - Example: 'A PAR D', 'F BRE D'
+6. Dual-coast provinces require coast specification for fleet retreats:
+   - Format: 'F [PROVINCE]/[COAST] - [DESTINATION]'
+   - Example: 'F SPA/SC - MAO', 'F BUL/EC - BLA'
+   - Coast codes: NC (North), SC (South), EC (East), WC (West)
+
+RETREAT DECISION PROCESS
+1. ASSESS
+   - Which of your units are dislodged
+   - What retreat options are available
+   - Strategic value of each dislodged unit
+
+2. PRIORITIZE
+   - Retreat units that can still contribute to your strategy
+   - Disband units that have no good retreat options
+   - Consider future positioning for retreated units
+
+3. EXECUTE
+   - Choose optimal retreat destinations
+   - Accept disbands when necessary
+
+Please respond in two parts:
+
+1. REASONING: First, explain your retreat decisions. Which units are dislodged? What are their retreat options? Why are you choosing to retreat or disband each unit?
+
+2. RETREAT ORDERS: Then, provide a retreat or disband order for each dislodged unit. Be precise with unit types (A/F) and locations.

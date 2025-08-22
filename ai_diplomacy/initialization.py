@@ -37,10 +37,16 @@ async def initialize_agent_state_ext(
     try:
         # Load the prompt template
         allowed_labels_str = ", ".join(ALLOWED_RELATIONSHIPS)
-        initial_prompt_template = load_prompt(get_prompt_path("initial_state_prompt.txt"), prompts_dir=prompts_dir)
+        prompt_file = get_prompt_path("initial_state_prompt.txt")
+        # Use agent's prompts_dir if the parameter prompts_dir is not provided
+        effective_prompts_dir = prompts_dir if prompts_dir is not None else agent.prompts_dir
+        logger.info(f"[{power_name}] Loading initial state prompt: {prompt_file} from dir: {effective_prompts_dir}")
+        initial_prompt_template = load_prompt(prompt_file, prompts_dir=effective_prompts_dir)
 
         # Format the prompt with variables
         initial_prompt = initial_prompt_template.format(power_name=power_name, allowed_labels_str=allowed_labels_str)
+        logger.debug(f"[{power_name}] Initial prompt length: {len(initial_prompt)}")
+        logger.info(f"[{power_name}] Initial state prompt loaded, length: {len(initial_prompt)}, starts with: {initial_prompt[:50]}...")
 
         board_state = game.get_state() if game else {}
         possible_orders = game.get_all_possible_orders() if game else {}
@@ -57,14 +63,18 @@ async def initialize_agent_state_ext(
             game=game,
             board_state=board_state,
             power_name=power_name,
-            possible_orders=possible_orders,
+            possible_orders=None,  # Don't include orders for initial state setup
             game_history=game_history,
             agent_goals=None,
             agent_relationships=None,
             agent_private_diary=formatted_diary,
-            prompts_dir=prompts_dir,
+            prompts_dir=effective_prompts_dir,
         )
         full_prompt = initial_prompt + "\n\n" + context
+        logger.info(f"[{power_name}] Full prompt constructed. Total length: {len(full_prompt)}, initial_prompt length: {len(initial_prompt)}, context length: {len(context)}")
+        logger.info(f"[{power_name}] Full prompt starts with: {full_prompt[:100]}...")
+        # Log the end of the prompt to see if JSON format instructions are included
+        logger.info(f"[{power_name}] Full prompt ends with: ...{full_prompt[-500:]}")
 
         response = await run_llm_and_log(
             client=agent.client,
@@ -73,7 +83,8 @@ async def initialize_agent_state_ext(
             phase=current_phase,
             response_type="initialization",  # Context for run_llm_and_log internal error logging
         )
-        logger.debug(f"[{power_name}] LLM response for initial state: {response[:300]}...")  # Log a snippet
+        logger.info(f"[{power_name}] LLM response length: {len(response)}")
+        logger.info(f"[{power_name}] LLM response for initial state: {response[:500] if response else 'EMPTY RESPONSE'}...")  # Log a snippet
 
         parsed_successfully = False
         try:
@@ -158,7 +169,7 @@ async def initialize_agent_state_ext(
         # Fallback if LLM data was not applied or parsing failed
         if not initial_goals_applied:
             if not agent.goals:  # Only set defaults if no goals were set during agent construction or by LLM
-                agent.goals = ["Survive and expand", "Form beneficial alliances", "Secure key territories"]
+                agent.goals = []
                 agent.add_journal_entry(f"[{current_phase}] Set default initial goals as LLM provided none or parse failed.")
                 logger.info(f"[{power_name}] Default goals set.")
 
@@ -180,7 +191,7 @@ async def initialize_agent_state_ext(
         success_status = f"Failure: Exception ({type(e).__name__})"
         # Fallback logic for goals/relationships if not already set by earlier fallbacks
         if not agent.goals:
-            agent.goals = ["Survive and expand", "Form beneficial alliances", "Secure key territories"]
+            agent.goals = []
             logger.info(f"[{power_name}] Set fallback goals after top-level error: {agent.goals}")
         if not agent.relationships or all(r == "Neutral" for r in agent.relationships.values()):
             agent.relationships = {p: "Neutral" for p in ALL_POWERS if p != power_name}

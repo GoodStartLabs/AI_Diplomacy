@@ -15,6 +15,7 @@ import requests
 from pathlib import Path
 from config import config
 from models import POWERS_ORDER
+from datetime import datetime
 
 # Avoid circular import for type hinting
 if TYPE_CHECKING:
@@ -69,19 +70,19 @@ def assign_models_to_powers() -> Dict[str, str]:
     """
 
     # POWER MODELS
-    """
+    
     return {
-        "AUSTRIA": "openrouter-google/gemini-2.5-flash-preview-05-20",
-        "ENGLAND": "openrouter-moonshotai/kimi-dev-72b:free",
-        "FRANCE": "together-arcee-ai/AFM-4.5B-Preview",
-        "GERMANY": "openrouter-google/gemini-2.5-flash-lite-preview-06-17",
-        "ITALY": "together-lgai/exaone-deep-32b",
-        "RUSSIA": "deepseek-reasoner",
-        "TURKEY": "openrouter-cohere/command-a",
+        "AUSTRIA": "o4-mini",
+        "ENGLAND": "o3",
+        "FRANCE": "gpt-5-reasoning-alpha-2025-07-19",
+        "GERMANY": "gpt-4.1",
+        "ITALY": "o4-mini",
+        "RUSSIA": "gpt-5-reasoning-alpha-2025-07-19",
+        "TURKEY": "o4-mini",
     }
-    """
+    
     # TEST MODELS
-
+    """
     return {
         "AUSTRIA": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
         "ENGLAND": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
@@ -91,6 +92,7 @@ def assign_models_to_powers() -> Dict[str, str]:
         "RUSSIA": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
         "TURKEY": "openrouter-mistralai/mistral-small-3.2-24b-instruct",
     }
+    """
 
 
 def get_special_models() -> Dict[str, str]:
@@ -222,11 +224,6 @@ async def get_valid_orders(
     else:
         logger.debug("[%s] All orders valid: %s", power_name, valid)
 
-    # ── 5. Fallback when nothing survives ─────────────────────
-    if not valid:
-        fallback = client.fallback_orders(possible_orders)
-        return {"valid": fallback, "invalid": invalid}
-
     return {"valid": valid, "invalid": invalid}
 
 
@@ -337,10 +334,12 @@ def load_prompt(fname: str | Path, prompts_dir: str | Path | None = None) -> str
             prompt_path = package_root / "prompts" / fname
 
     try:
-        return prompt_path.read_text(encoding="utf-8").strip()
+        content = prompt_path.read_text(encoding="utf-8").strip()
+        logger.debug(f"Loaded prompt from {prompt_path}, length: {len(content)}")
+        return content
     except FileNotFoundError:
         logger.error("Prompt file not found: %s", prompt_path)
-        raise Exception("Prompt file not found: " + prompt_path)
+        raise Exception("Prompt file not found: " + str(prompt_path))
 
 
 
@@ -366,8 +365,8 @@ def log_llm_response(
         file_exists = os.path.isfile(log_file_path) and os.path.getsize(log_file_path) > 0
 
         with open(log_file_path, "a", newline="", encoding="utf-8") as csvfile:
-            # Added "raw_input" to fieldnames
-            fieldnames = ["model", "power", "phase", "response_type", "raw_input", "raw_response", "success"]
+            # Added "raw_input" and "timestamp" to fieldnames
+            fieldnames = ["timestamp", "model", "power", "phase", "response_type", "raw_input", "raw_response", "success"]
             writer = csv.DictWriter(
                 csvfile,
                 fieldnames=fieldnames,
@@ -380,6 +379,7 @@ def log_llm_response(
 
             writer.writerow(
                 {
+                    "timestamp": datetime.now().isoformat(),  # Add current timestamp in ISO format
                     "model": model_name,
                     "power": power_name if power_name else "game",  # Use 'game' if no specific power
                     "phase": phase,
@@ -579,3 +579,61 @@ def parse_prompts_dir_arg(raw: str | None) -> Dict[str, Path]:
 
     paths = [_norm(p) for p in parts]
     return dict(zip(POWERS_ORDER, paths))
+
+async def atomic_write_json_async(data: dict, filepath: str):
+    """Writes a dictionary to a JSON file atomically using async I/O."""
+    # Use asyncio.to_thread to run the synchronous atomic_write_json in a thread pool
+    # This prevents blocking the event loop while maintaining all the safety guarantees
+    await asyncio.to_thread(atomic_write_json, data, filepath)
+
+
+async def log_llm_response_async(
+    log_file_path: str,
+    model_name: str,
+    power_name: Optional[str],  
+    phase: str,
+    response_type: str,
+    raw_input_prompt: str,  
+    raw_response: str,
+    success: str,  
+):
+    """Async version of log_llm_response that runs in a thread pool."""
+    await asyncio.to_thread(
+        log_llm_response,
+        log_file_path,
+        model_name,
+        power_name,
+        phase,
+        response_type,
+        raw_input_prompt,
+        raw_response,
+        success
+    )
+
+
+
+
+def get_board_state(board_state: dict, game: Game) -> Tuple[str, str]:
+    # Build units representation with power status and counts
+    units_lines = []
+    for p, units in board_state["units"].items():
+        units_str   = ", ".join(units)
+        units_count = len(units)
+        line = f"  {p}: {units_count} unit{'s' if units_count != 1 else ''} – {units_str}"
+        if game.powers[p].is_eliminated():
+            line += " [ELIMINATED]"
+        units_lines.append(line)
+    units_repr = "\n".join(units_lines)
+
+    # Build centers representation with power status and counts
+    centers_lines = []
+    for p, centers in board_state["centers"].items():
+        centers_str   = ", ".join(centers)
+        centers_count = len(centers)
+        line = f"  {p}: {centers_count} supply center{'s' if centers_count != 1 else ''} – {centers_str}"
+        if game.powers[p].is_eliminated():
+            line += " [ELIMINATED]"
+        centers_lines.append(line)
+    centers_repr = "\n".join(centers_lines)
+
+    return (units_repr, centers_repr)

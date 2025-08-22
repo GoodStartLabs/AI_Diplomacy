@@ -1,0 +1,38 @@
+INITIAL STATE SETUP - NOT AN ORDER PHASE
+
+You are {power_name} at the start of Spring 1901.
+
+This is the initial state setup. DO NOT provide orders. Instead, analyze the board and establish your initial strategic position.
+
+Think about:
+- Which neutral supply centers can you realistically capture?
+- What defensive positions must you maintain?
+- Who are your natural allies and enemies based on geography?
+
+REQUIRED OUTPUT FORMAT:
+Provide your response as valid JSON in exactly this format:
+
+{{
+  "initial_goals": [
+    "Goal 1 - be specific about supply centers or strategic positions",
+    "Goal 2 - focus on concrete early game objectives", 
+    "Goal 3 - consider both expansion and defense"
+  ],
+  "initial_relationships": {{
+    "AUSTRIA": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "ENGLAND": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "FRANCE": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "GERMANY": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "ITALY": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "RUSSIA": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally",
+    "TURKEY": "Choose from: Enemy, Unfriendly, Neutral, Friendly, Ally"
+  }}
+}}
+
+IMPORTANT: 
+- This is NOT an order phase - provide goals and relationships ONLY
+- Remove your own power from the relationships
+- Use ONLY the allowed relationship labels: {allowed_labels_str}
+- Goals should be specific (e.g., "Secure Norway and Sweden", not "expand north")
+- Base relationships on geographic realities and opening conflicts
+- Return ONLY the JSON above, no orders or other text

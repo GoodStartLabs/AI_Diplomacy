@@ -827,33 +827,155 @@ def _generate_rich_order_context_adjustment(
 
 
 # ---------------------------------------------------------------------------
-# Phase-dispatch wrapper (public entry point)
+# Condensed summary builder – now groups friendly supports under *their* move
 # ---------------------------------------------------------------------------
-
-
-def generate_rich_order_context(
+def _generate_condensed_move_summary(
     game: Any,
     power_name: str,
     possible_orders_for_power: Dict[str, List[str]],
 ) -> str:
     """
-    Call the correct phase-specific builder.
+    Compact, human-readable list of every legal order for *our* units,
+    grouping each friendly support beneath the move / hold it aids.
 
-    * Movement phase output is IDENTICAL to the previous implementation.
-    * Retreat and Adjustment phases use the streamlined builders introduced
-      earlier.
+    Example:
+
+        ## F NAO possible orders:
+        F NAO - CLY
+        F NAO - LVP
+            A WAL S F NAO - LVP
+        F NAO - NWG
+        F NAO H
+    """
+    board_state = game.get_state()
+
+    # ---- build a quick lookup of *our* unit descriptors -------------------
+    our_unit_descs: Set[str] = set()
+    for u in board_state.get("units", {}).get(power_name, []):
+        kind, loc_full = u.split(" ")
+        base = loc_full.split("/")[0]        # STP from STP/SC
+        our_unit_descs.update({f"{kind} {loc_full}", f"{kind} {base}"})
+
+    lines: List[str] = [
+        "# Summary of possible orders (not including supports of other powers' units):"
+    ]
+
+    # deterministic unit order
+    for loc in sorted(possible_orders_for_power.keys()):
+        unit_full = get_unit_at_location(board_state, loc)
+        if not unit_full:
+            continue
+        unit_desc = unit_full.split(" (")[0].strip()          # e.g. 'F BRE'
+        if unit_desc not in our_unit_descs:                   # safety guard
+            continue
+
+        orders = possible_orders_for_power[loc]
+        simple_moves = [o for o in orders if _is_simple_move(o)]
+        hold_orders  = [o for o in orders if _is_hold_order(o)]
+
+        lines.append(f"## {unit_desc} possible orders:")
+
+        # ---- helper: attach friendly supports to a reference order --------
+        def _friendly_supports_for(target_order: str) -> List[str]:
+            """Return supports (from any of our units) that aid <target_order>."""
+            if " - " in target_order:        # it's a MOVE
+                mover, dest = _split_move(target_order)
+                supps = _all_support_examples(mover, dest, possible_orders_for_power)
+            else:                            # it's a HOLD
+                holder = target_order.split(" H")[0]
+                supps = _all_support_hold_examples(holder, possible_orders_for_power)
+
+            # keep only supports whose *target* unit is ours
+            friendly: List[str] = []
+            for s in supps:
+                tgt = (
+                    s.split(" S ", 1)[1]           # chop before ' S '
+                      .split(" - ")[0]
+                      .split(" H")[0]
+                      .strip()
+                )
+                if tgt in our_unit_descs:
+                    friendly.append(s)
+            return friendly
+
+        # ---- emit moves (each followed by its friendly supports) ----------
+        for mv in simple_moves:
+            lines.append(mv)
+            for s in _friendly_supports_for(mv):
+                lines.append(f"    {s}")
+
+        # ---- emit holds ---------------------------------------------------
+        for hd in hold_orders:
+            lines.append(hd)
+            for s in _friendly_supports_for(hd):
+                lines.append(f"    {s}")
+
+    return "\n".join(lines)
+
+
+
+# ---------------------------------------------------------------------------
+# Public entry-point – unchanged behaviour except stricter unit filtering
+# ---------------------------------------------------------------------------
+def generate_rich_order_context(
+    game: Any,
+    power_name: str,
+    possible_orders_for_power: Dict[str, List[str]],
+    *,
+    include_full: bool = True,
+    include_summary: bool = False,
+) -> str:
+    """
+    Dispatch to phase-specific builders and (optionally) append the condensed
+    move summary.
+
+    Args:
+        include_full    – emit the full rich context (default True)
+        include_summary – emit the condensed per-unit order list (default False)
     """
 
+    #if power_name.lower() == 'france':
+    #    include_summary = True
+    #    include_full = True
+    
+
     phase_type = game.current_short_phase[-1]
+    sections: List[str] = []
 
-    if phase_type == "M":  # Movement
-        return _generate_rich_order_context_movement(game, power_name, possible_orders_for_power)
+    # --- full context ------------------------------------------------------
+    if include_full:
+        if phase_type == "M":
+            sections.append(
+                _generate_rich_order_context_movement(
+                    game, power_name, possible_orders_for_power
+                )
+            )
+        elif phase_type == "R":
+            sections.append(
+                _generate_rich_order_context_retreat(
+                    game, power_name, possible_orders_for_power
+                )
+            )
+        elif phase_type == "A":
+            sections.append(
+                _generate_rich_order_context_adjustment(
+                    game, power_name, possible_orders_for_power
+                )
+            )
+        else:
+            # unknown → treat as movement
+            sections.append(
+                _generate_rich_order_context_movement(
+                    game, power_name, possible_orders_for_power
+                )
+            )
 
-    if phase_type == "R":  # Retreat
-        return _generate_rich_order_context_retreat(game, power_name, possible_orders_for_power)
+    # --- condensed summary (movement only) --------------------------------
+    if include_summary and phase_type == "M":
+        sections.append(
+            _generate_condensed_move_summary(
+                game, power_name, possible_orders_for_power
+            )
+        )
 
-    if phase_type == "A":  # Adjustment (build / disband)
-        return _generate_rich_order_context_adjustment(game, power_name, possible_orders_for_power)
-
-    # Fallback – treat unknown formats as movement
-    return _generate_rich_order_context_movement(game, power_name, possible_orders_for_power)
+    return "\n\n".join(sections).strip()

@@ -161,3 +161,8 @@ model_power_statistics.csv
 bct.txt
 analysis_summary.txt
 analysis_summary_debug.txt
+/results_alpha
+
+./results_alpha
+/results_alpha/20250607_222757
+/ai_diplomacy/prompts/famous_leaders_prompts

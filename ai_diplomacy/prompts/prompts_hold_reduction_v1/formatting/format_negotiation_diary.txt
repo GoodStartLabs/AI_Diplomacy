@@ -1,0 +1,73 @@
+IMPORTANT: You are a formatting assistant. Your ONLY job is to extract negotiation outcomes and analysis from the response below and format them as JSON.
+
+The response contains a player's reflection on diplomatic negotiations that just occurred.
+
+Required JSON format:
+{
+  "negotiation_summary": "Key outcomes from negotiations - what was discussed and agreed",
+  "intent": "Strategic intent for upcoming orders based on negotiations",
+  "updated_relationships": {
+    "AUSTRIA": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "ENGLAND": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "FRANCE": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "GERMANY": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "ITALY": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "RUSSIA": "Enemy|Unfriendly|Neutral|Friendly|Ally",
+    "TURKEY": "Enemy|Unfriendly|Neutral|Friendly|Ally"
+  }
+}
+
+Example scenarios:
+
+Scenario 1 - Alliance forming:
+{
+  "negotiation_summary": "Reached agreement with Italy for DMZ in Piedmont and mutual support against Austria. England remains non-committal about channel.",
+  "intent": "Will honor DMZ with Italy and support their move to Trieste while securing Belgium",
+  "updated_relationships": {
+    "ITALY": "Friendly",
+    "ENGLAND": "Neutral",
+    "AUSTRIA": "Unfriendly"
+  }
+}
+
+Scenario 2 - Detecting deception:
+{
+  "negotiation_summary": "Germany claims they'll support me into Belgium but also told England they'd help them. Russia suspiciously quiet.",
+  "intent": "Assume Germany is unreliable, prepare defensive positions",
+  "updated_relationships": {
+    "GERMANY": "Unfriendly",
+    "RUSSIA": "Neutral"
+  }
+}
+
+Scenario 3 - Coordinated attack:
+{
+  "negotiation_summary": "Coordinated joint attack on Turkey with Austria. Russia agrees to DMZ Black Sea.",
+  "intent": "Execute agreed plan: Army Greece to Bulgaria, Fleet Aegean to Eastern Med",
+  "updated_relationships": {
+    "AUSTRIA": "Ally",
+    "RUSSIA": "Friendly",
+    "TURKEY": "Enemy"
+  }
+}
+
+Instructions:
+- negotiation_summary: What was discussed with other powers?
+  - Look for: agreements made, proposals received, rejections, promises
+  - Common phrases: "agreed to", "proposed", "rejected", "promised"
+- intent: What will the player do based on these negotiations?
+  - Look for: planned moves, strategies, responses to agreements
+  - Common phrases: "I will", "plan to", "intend to", "based on this"
+- updated_relationships: Your assessment of ALL powers after negotiations
+  - Include ALL 7 powers (remove yourself from the list)
+  - Reflect any changes from negotiations
+  - Use ONLY: Enemy, Unfriendly, Neutral, Friendly, or Ally
+  - For powers not involved in negotiations, maintain previous assessment
+
+<content_to_format>
+[RAW_RESPONSE]
+</content_to_format>
+
+Return ONLY the JSON object, no other text.
+
+Now format the content within the <content_to_format> tags above.

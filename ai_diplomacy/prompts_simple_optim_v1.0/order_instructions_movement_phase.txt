@@ -1,0 +1,107 @@
+# Primary Objective
+Control 18 supply centers. Nothing else will do.
+
+# Support Moves Explanation
+Supporting your orders is critical to avoid bounces, to win attacks and to defend! Support adds strength to attacks and holds.
+
+Example 1 - Supporting a move or attack:
+{{
+"orders": [
+"F HEL - DEN",  # This fleet attacks Denmark
+"F BAL S F HEL - DEN",  # BAL fleet supports the attack (strength = 2)
+"A KIE S F HEL - DEN",  # KIE army also supports (total strength = 3)
+]
+}}
+Result: F HEL moves to DEN with strength 3, defeating any defense with less support
+
+Example 2 - Supporting a Hold:
+{{
+"orders": [
+"A BER H",  # BER army holds position
+"A PRU S A BER H",  # PRU supports BER's hold
+"A SIL S A BER H",  # SIL also supports the hold
+]
+}}
+Result: A BER holds with strength 3, preventing any attacker with less than 3 support
+
+Example 3 - Multiple Supported Orders:
+{{
+"orders": [
+"F HEL - DEN",
+"F BAL S F HEL - DEN", # supports the F HEL - DEN move
+"A KIE S F HEL - DEN", # additional support means this move beats a unit supported by 1 or less
+"A MUN - BUR",
+"A RUH S A MUN - BUR", # supports the A MUN - BUR move
+"A BEL - HOL",
+"F NTH S A BEL - HOL", # supports the A BEL - HOL move
+"A BER H",
+"A PRU S A BER H" # supports the A BER H hold
+]
+}}
+
+# Example 4 – Italian attack
+{{
+"orders": [
+"F ION - GRE",              # ION fleet attacks GRE
+"F ADR S F ION - GRE",      # ADR supports ION → GRE
+"A VEN - TYR",              # VEN army advances to TYR
+"A PIE S A VEN - TYR",      # PIE supports VEN → TYR
+"A ROM - PIE"               # ROM slides into PIE
+]
+}}
+
+# Example 5 – Broad German–Nordic sweep
+{{
+"orders": [
+"F DEN - SWE",              # DEN fleet drives on SWE
+"F BAL S F DEN - SWE",      # BAL supports DEN → SWE
+"A KIE - DEN",              # KIE army marches to DEN
+"A BER S A KIE - DEN",      # BER supports KIE → DEN
+"F NTH - NWY",              # NTH fleet sails to NWY
+"F SKA S F NTH - NWY",      # SKA supports NTH → NWY
+"A MUN - KIE"               # MUN army moves into KIE
+]
+}}
+
+# Example 6 – Expansive English–Scandinavian orders
+{{
+"orders": [
+"F ENG - MAO", # ENG fleet to MAO
+"F IRI S F ENG - MAO", # IRI supports ENG → MAO
+"A BRE S F ENG - MAO", # BRE adds second support to ENG → MAO
+"A LVP - WAL", # LVP army to WAL
+"F LON S A LVP - WAL", # LON supports LVP → WAL
+"F NTH - ENG", # NTH fleet to ENG
+"A EDI S F NTH - ENG", # EDI supports NTH → ENG
+"F BAR - NTH", # BAR fleet to NTH
+"A NWY - SWE", # NWY army to SWE
+"F HEL S A NWY - SWE" # HEL supports NWY → SWE
+]
+}}
+
+Notice that each unit only has ONE order.
+
+
+# Critical Rules
+1. Use the "possible orders" sections as your guide!
+2. Do not move two of your units to the same territory. Only one unit can occupy a territory at a time. Instead, SUPPORT the move with a valid support.
+3. Dual-coast provinces (STP, SPA, BUL) require coast specification:
+  - Format: 'F [PROVINCE]/[COAST]' where [COAST] = NC (North), SC (South), EC (East), or WC (West)
+  - Example: 'F SPA/SC - MAO'
+  - Only fleets need coast specification.
+
+Your Task:
+1. Reason
+  - comprehensive reasoning about your move decisions
+2. Output Moves in JSON
+  - aim to return an order for each of your units.
+
+Respond with this exact format:
+
+Reasoning:
+(Your reasoning goes here)
+
+PARSABLE OUTPUT:
+{{
+  "orders": ["order1", "order2", ...]
+}}

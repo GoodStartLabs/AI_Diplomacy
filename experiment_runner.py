@@ -116,6 +116,15 @@ def _add_experiment_flags(p: argparse.ArgumentParser) -> None:
         default=0.05,
         help="α for hypothesis tests in comparison mode (default 0.05).",
     )
+    p.add_argument(
+        "--showall",
+        action="store_true",
+        help=(
+            "When used together with --compare_to, prints every metric in the "
+            "console output, not just significant results (confidence intervals still use --sig_level)."
+        ),
+    )
+
 
 
 def _add_lm_game_flags(p: argparse.ArgumentParser) -> None:
@@ -469,7 +478,13 @@ def main() -> None:
     if exp_args.compare_to is not None:
         from experiment_runner.analysis import compare_stats   # local import
 
-        compare_stats.run(exp_dir, exp_args.compare_to, alpha=exp_args.sig_level)
+        compare_stats.run(
+            exp_dir,
+            exp_args.compare_to,
+            alpha=exp_args.sig_level,
+            show_all=exp_args.showall,
+        )
+
         log.info("comparison complete; artefacts in %s/analysis/comparison", exp_dir)
         return
 

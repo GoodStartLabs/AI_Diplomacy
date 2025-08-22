@@ -3,6 +3,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+import re
 
 logger = logging.getLogger("utils")
 logger.setLevel(logging.INFO)
@@ -182,7 +183,7 @@ class GameHistory:
         eng2code = {"AUSTRIA": "AUT", "ENGLAND": "ENG", "FRANCE": "FRA", "GERMANY": "GER", "ITALY": "ITA", "RUSSIA": "RUS", "TURKEY": "TUR"}
         norm = game.map.norm
 
-        out_lines = ["**ORDER HISTORY (Recent Rounds)**"]
+        out_lines = []
 
         for ph in phases_to_report:
             if not (ph.orders_by_power or ph.submitted_orders_by_power):
@@ -234,8 +235,14 @@ class GameHistory:
                         tag = "bounce"
                     elif "void" == tag:
                         tag = "void: no effect"
-
-                    out_lines.append(f"    {order} ({tag})")
+                    
+                    # don't show (success) tag for hold moves, it might be causing convergence on
+                    # always-hold behaviour
+                    is_hold = re.search(r"\sH\s*$", order) or re.search(r"\sHOLD\s*$", order)
+                    if tag == "success" and is_hold:
+                        out_lines.append(f"    {order}")
+                    else:
+                        out_lines.append(f"    {order} ({tag})")
                     seen_ok.add(_norm_keep(order))
 
                 # 2️⃣ invalid submissions
@@ -245,6 +252,144 @@ class GameHistory:
         if len(out_lines) == 1:
             return "\n(No orders were issued in recent history)\n"
         return "\n".join(out_lines)
+
+    def get_orders_history_for_phase(
+            self,
+            game: "Game",
+            phase_name: str,                      # ← the single phase we want
+        ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
+        """
+        Return the orders for `phase_name` as:
+
+            {
+                "<POWER>": {
+                    "<order_type>": [
+                        {"order": "<order str>", "result": "<result str>"},
+                        ...
+                    ],
+                    ...
+                },
+                ...
+            }
+
+        Order types: move, hold, support, convoy, build, disband, waive, other.
+        """
+
+        # ── locate the requested phase ──────────────────────────────
+        target_phase = next((p for p in self.phases if p.name == phase_name), None)
+        if not target_phase or not (target_phase.orders_by_power or target_phase.submitted_orders_by_power):
+            return {}
+
+        # ── helpers ───────────────────────────────────────────────
+        def _scalar(res):
+            """Flatten lists/dicts to a single outcome token."""
+            tag = res
+            while isinstance(tag, list):
+                tag = tag[0] if tag else ""
+            if isinstance(tag, dict):
+                tag = tag.get("outcome") or tag.get("result") or ""
+            return str(tag).strip().lower()
+
+        def _order_type(order: str) -> str:
+            o = order.upper()
+
+            if o.strip() == "WAIVE":
+                return "waive"
+
+            # hold: ends with “ H” or “ HOLD”            
+            if re.search(r"\sH\s*$", o) or re.search(r"\sHOLD\s*$", o):
+                return "hold"
+
+            if " S " in o:
+                return "support"
+            if " C " in o:
+                return "convoy"
+            if " R " in o:
+                return "retreat"
+            if " - " in o:
+                return "move"
+            if re.search(r"\sBUILD\s*$", o) or o.endswith(" B") or " B " in o:
+                return "build"
+            if re.search(r"\sDISBAND\s*$", o) or o.endswith(" D") or " D " in o:
+                return "disband"
+            return "other"
+
+
+        # engine fallback
+        engine_phases = {ph.name: ph for ph in getattr(game, "get_phase_history", lambda: [])()}
+        eng2code = {
+            "AUSTRIA": "AUT", "ENGLAND": "ENG", "FRANCE": "FRA",
+            "GERMANY": "GER", "ITALY": "ITA", "RUSSIA": "RUS", "TURKEY": "TUR",
+        }
+        norm = game.map.norm
+
+        orders_by_power = defaultdict(lambda: defaultdict(list))
+
+        # iterate powers present in this phase
+        for pwr in sorted(set(target_phase.orders_by_power) | set(target_phase.submitted_orders_by_power)):
+            submitted = target_phase.submitted_orders_by_power.get(pwr, [])
+            accepted  = target_phase.orders_by_power.get(pwr, [])
+
+            if isinstance(submitted, str):
+                submitted = [submitted]
+            if isinstance(accepted, str):
+                accepted = [accepted]
+
+            def _norm_keep(o):
+                return o if o.upper() == "WAIVE" else norm(o)
+
+            sub_norm = {_norm_keep(o): o for o in submitted}
+            acc_norm = {_norm_keep(o): o for o in accepted}
+
+            # outcome source
+            raw_res = target_phase.results_by_power.get(pwr) or target_phase.results_by_power or {}
+            if not raw_res:
+                eng = engine_phases.get(target_phase.name)
+                if eng and hasattr(eng, "order_results"):
+                    key = next((k for k, v in eng2code.items() if v == pwr), None)
+                    raw_res = (eng.order_results or {}).get(key, {})
+
+            seen_ok = set()
+
+            # accepted orders
+            for idx, order in enumerate(accepted):
+                if isinstance(raw_res, dict):
+                    res_raw = raw_res.get(order) or raw_res.get(" ".join(order.split()[:2]))
+                elif isinstance(raw_res, list) and idx < len(raw_res):
+                    res_raw = raw_res[idx]
+                else:
+                    res_raw = ""
+
+                tag = _scalar(res_raw)
+                if not tag or tag == "ok":
+                    tag = "success"
+                elif "bounce" in tag:
+                    tag = "bounce"
+                elif "void" == tag:
+                    tag = "void: no effect"
+
+                result_field = tag
+
+                orders_by_power[pwr][_order_type(order)].append(
+                    {"order": order, "result": result_field}
+                )
+                seen_ok.add(_norm_keep(order))
+
+            # invalid submissions
+            for k in sorted(set(sub_norm) - seen_ok):
+                order_str = sub_norm[k]
+                orders_by_power[pwr][_order_type(order_str)].append(
+                    {"order": order_str, "result": "invalid"}
+                )
+
+        # convert nested defaultdicts to regular dicts
+        return {
+            pwr: {otype: lst for otype, lst in type_map.items()}
+            for pwr, type_map in orders_by_power.items()
+        }
+
+
+
 
     def get_messages_this_round(self, power_name: str, current_phase_name: str) -> str:
         current_phase: Optional[Phase] = None

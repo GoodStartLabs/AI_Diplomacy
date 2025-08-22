@@ -30,18 +30,36 @@ from collections import defaultdict, Counter
 import re
 from typing import Dict, List, Tuple, Optional, Any
 import statistics
-try:
-    # Absolute import – works when the project root is on sys.path
-    from models import PowerEnum
-except ImportError:
+from pathlib import Path
+import importlib
+
+def _get_power_enum():
+    # 1. Absolute import used by existing code paths
     try:
-        # Relative import – works when file is executed as part of the ai_diplomacy package
-        from ..models import PowerEnum
-    except ImportError as exc:
-        # Re-raise with context so the root cause is visible
-        raise ImportError(
-            "models.PowerEnum not found via absolute or relative import. "
-        ) from exc
+        return importlib.import_module("models").PowerEnum
+    except (ModuleNotFoundError, AttributeError):
+        pass
+
+    # 2. Common package-style location
+    try:
+        return importlib.import_module("ai_diplomacy.models").PowerEnum
+    except (ModuleNotFoundError, AttributeError):
+        pass
+
+    # 3. Script run: ensure project root is on sys.path, then retry #1
+    if __package__ is None:  # executed directly, not as part of a package
+        project_root = Path(__file__).resolve().parent.parent
+        sys.path.insert(0, str(project_root))
+        try:
+            return importlib.import_module("models").PowerEnum
+        except (ModuleNotFoundError, AttributeError):
+            pass
+
+    raise ImportError(
+        "Unable to locate PowerEnum. Checked 'models' and 'ai_diplomacy.models'."
+    )
+
+PowerEnum = _get_power_enum()
 
 csv.field_size_limit(sys.maxsize)
 
@@ -68,6 +86,12 @@ class StatisticalGameAnalyzer:
         'negotiation_message', 'negotiation_diary', 'state_update', 'initial_state_setup',
         'order_generation', 'order_diary', 'state_update_parsing_empty_or_invalid_data',
         'diary_consolidation', 'state_update_partial_data', 'state_update_no_response'
+    ]
+
+    ORDER_TYPES = [
+        "move", "hold", "support", "convoy",
+        "build", "disband", "waive", "other",
+        "retreat"
     ]
     
     def __init__(self):
@@ -127,6 +151,10 @@ class StatisticalGameAnalyzer:
             
             with open(game_json_path, 'r', encoding='utf-8') as f:
                 game_data = json.load(f)
+
+            if "run_dir" not in game_data:
+                # the folder we’re analysing *is* the run directory
+                game_data["run_dir"] = str(folder_path.resolve())
             
             if not game_data.get('phases'):
                 raise ValueError("lmvsgame.json contains no phase data")
@@ -234,6 +262,103 @@ class StatisticalGameAnalyzer:
                 
         return responses
     
+    def _extract_order_results_features(self, power: str, phase_data: dict) -> dict:
+        """
+        Count orders and outcomes for a single power in one phase and add
+        a success-rate (0-1) for every order type.
+        """
+        features: dict[str, float | int] = {}
+        for ot in self.ORDER_TYPES:
+            plural = f"{ot}s" if not ot.endswith("s") else ot
+            for metric in ("total", "success", "bounce", "void", "invalid"):
+                features[f"orders_{plural}_{metric}"] = 0
+            features[f"orders_{plural}_success_rate"] = 0.0      # ← new
+
+        orders_by_type = phase_data.get("order_results", {}).get(power, {})
+        if not orders_by_type:
+            return features
+
+        for otype, order_list in orders_by_type.items():
+            otype = otype.lower()
+            if otype not in self.ORDER_TYPES:
+                otype = "other"
+            plural = f"{otype}s" if not otype.endswith("s") else otype
+
+            for entry in order_list:
+                result = str(entry.get("result", "")).lower().strip()
+                key_base = f"orders_{plural}"
+                features[f"{key_base}_total"] += 1
+                match result:
+                    case "success":
+                        features[f"{key_base}_success"] += 1
+                    case "bounce":
+                        features[f"{key_base}_bounce"] += 1
+                    case "invalid":
+                        features[f"{key_base}_invalid"] += 1
+                    case _ if result in ("void", "void: no effect", ""):
+                        features[f"{key_base}_void"] += 1
+
+        # ── derive success rates ──
+        for ot in self.ORDER_TYPES:
+            plural = f"{ot}s" if not ot.endswith("s") else ot
+            succ = features[f"orders_{plural}_success"]
+            tot  = features[f"orders_{plural}_total"]
+            features[f"orders_{plural}_success_rate"] = succ / tot if tot else 0.0
+
+        return features
+
+
+
+    # ────────────────── GAME-LEVEL ORDER TOTALS ──────────────────
+    def _aggregate_order_results(self, power: str, game_data: dict) -> dict:
+        """
+        Sum every order-type/result pair over *all* phases for one power
+        and add success-rate (0-1) columns.
+        """
+        totals: dict[str, float | int] = {}
+        for ot in self.ORDER_TYPES:
+            plural = f"{ot}s" if not ot.endswith("s") else ot
+            for metric in ("total", "success", "bounce", "void", "invalid"):
+                totals[f"orders_{plural}_{metric}"] = 0
+            totals[f"orders_{plural}_success_rate"] = 0.0          # ← new
+
+        for phase in game_data.get("phases", []):
+            orders_by_type = phase.get("order_results", {}).get(power, {})
+            if not orders_by_type:
+                continue
+
+            for otype, order_list in orders_by_type.items():
+                otype = otype.lower()
+                if otype not in self.ORDER_TYPES:
+                    otype = "other"
+                plural = f"{otype}s" if not otype.endswith("s") else otype
+
+                for entry in order_list:
+                    result = str(entry.get("result", "")).lower().strip()
+                    key_base = f"orders_{plural}"
+                    totals[f"{key_base}_total"] += 1
+                    match result:
+                        case "success":
+                            totals[f"{key_base}_success"] += 1
+                        case "bounce":
+                            totals[f"{key_base}_bounce"] += 1
+                        case "invalid":
+                            totals[f"{key_base}_invalid"] += 1
+                        case _ if result in ("void", "void: no effect", ""):
+                            totals[f"{key_base}_void"] += 1
+
+        # ── derive success rates ──
+        for ot in self.ORDER_TYPES:
+            plural = f"{ot}s" if not ot.endswith("s") else ot
+            succ = totals[f"orders_{plural}_success"]
+            tot  = totals[f"orders_{plural}_total"]
+            totals[f"orders_{plural}_success_rate"] = succ / tot if tot else 0.0
+
+        return totals
+
+
+
+
     def _extract_phase_features(self, llm_responses: List[dict], game_data: dict) -> List[dict]:
         """Extract phase-level features for all powers, phases, and response types."""
         phase_features = []
@@ -294,6 +419,10 @@ class StatisticalGameAnalyzer:
         # === FAILURE ANALYSIS (HARD MODE) ===
         failure_metrics = self._analyze_failures(power, phase, response_type, llm_responses)
         features.update(failure_metrics)
+
+        # === ORDER-RESULT METRICS ===
+        order_result_features = self._extract_order_results_features(power, phase_data)
+        features.update(order_result_features)
         
         
         # Add response-type specific features
@@ -794,7 +923,10 @@ class StatisticalGameAnalyzer:
         if total_calls > 0:
             features['overall_failure_rate_percentage'] = (total_failures / total_calls) * 100.0
             features['overall_success_rate_percentage'] = (total_successes / total_calls) * 100.0
-        
+
+        # === ORDER TOTALS (whole game) ===
+        order_totals = self._aggregate_order_results(power, game_data)
+        features.update(order_totals)
     
     # Helper methods
     
@@ -942,63 +1074,93 @@ class StatisticalGameAnalyzer:
 
     def _compute_game_scores(self, game_data: dict) -> dict[str, int]:
         """
-        Return {power → game_score} using the Diplobench scheme.
+        Return {power → game_score} using the revised Diplobench scheme.
 
-            max_turns = number of *years* actually played
-            solo winner   → max_turns + 17 + (max_turns − win_turn)
-            full-length survivor (no solo) → max_turns + final_SCs
-            everyone else → elimination_turn   (or win_turn if someone else solos)
+        Rules
+        -----
+        max_year   : taken from overview.jsonl (default 1930 → 30)
+        win_year   : year in which a power reached 18+ SCs (1900 subtracted)
+        score:
+            • solo winner   : max_year + (max_year - win_year) + 18
+            • survivor      : max_year + final_SCs
+            • eliminated    : elimination_year
         """
+        # ------------------------------------------------------------------
+        # 1. Determine max_year from overview.jsonl (or default 1930 → 30)
+        # ------------------------------------------------------------------
+        max_year = 30  # default
+        overview_path = Path(game_data.get("run_dir", "")) / "overview.jsonl"
+        if overview_path.exists():
+            with open(overview_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        obj = json.loads(line.strip())
+                        if isinstance(obj, dict) and "max_year" in obj:
+                            max_year = int(obj["max_year"]) - 1900
+                            break
+                    except Exception:
+                        continue
+        else:
+            print('! Warning: overview.jsonl not found. Defaulting to assumption of max year = 1930 (game score calcs may be wrong).')
+            print(overview_path)
+
+
+        # ------------------------------------------------------------------
+        # 2. Build helper: map phase index → turn number (year - 1900)
+        # ------------------------------------------------------------------
         phases = game_data.get("phases", [])
         if not phases:
             return {}
 
-        # years played
-        years = [self._year_from_phase(p["name"]) for p in phases if self._year_from_phase(p["name"]) is not None]
-        if not years:
-            return {}
-        start_year, last_year = years[0], years[-1]
-        max_turns = last_year - start_year + 1
+        def _turn_from_phase(idx: int) -> int | None:
+            """Return year-1900 for the given phase index, walking backward if needed."""
+            for j in range(idx, -1, -1):
+                m = re.search(r"(\d{4})", phases[j]["name"])
+                if m:
+                    return int(m.group(1)) - 1900
+            return None
 
-        # solo winner?
+        # ------------------------------------------------------------------
+        # 3. Determine solo winner and win_year
+        # ------------------------------------------------------------------
         solo_winner = None
-        win_turn = None
-        last_state = phases[-1]["state"]
-        for pwr, scs in last_state.get("centers", {}).items():
-            if len(scs) >= 18:
-                solo_winner = pwr
-                # first phase in which 18+ SCs were reached
-                for idx in range(len(phases) - 1, -1, -1):
-                    if len(phases[idx]["state"]["centers"].get(pwr, [])) >= 18:
-                        yr = self._phase_year(phases, idx)
-                        if yr is not None:
-                            win_turn = yr - start_year + 1
-                        break
+        win_year = None
+        for idx, ph in enumerate(phases):
+            for pwr, scs in ph.get("state", {}).get("centers", {}).items():
+                if len(scs) >= 18:
+                    solo_winner = pwr
+                    win_year = _turn_from_phase(idx)
+                    break
+            if solo_winner:
                 break
 
-        # elimination turn for every power
-        elim_turn: dict[str, int | None] = {p: None for p in [power.value for power in PowerEnum]}
+        # ------------------------------------------------------------------
+        # 4. Determine elimination year for every power
+        # ------------------------------------------------------------------
+        elim_year: dict[str, int | None] = {p.value: None for p in PowerEnum}
         for idx, ph in enumerate(phases):
-            yr = self._phase_year(phases, idx)
-            if yr is None:
+            turn = _turn_from_phase(idx)
+            if turn is None:
                 continue
-            turn = yr - start_year + 1
-            for pwr in elim_turn:
-                if elim_turn[pwr] is None and not ph["state"]["centers"].get(pwr):
-                    elim_turn[pwr] = turn
+            for pwr in elim_year:
+                if elim_year[pwr] is None and not ph["state"]["centers"].get(pwr):
+                    elim_year[pwr] = turn
 
+        # ------------------------------------------------------------------
+        # 5. Compute final scores
+        # ------------------------------------------------------------------
+        final_state = phases[-1]["state"]
         scores: dict[str, int] = {}
-        for pwr in elim_turn:
+
+        for pwr in elim_year:
             if pwr == solo_winner:
-                scores[pwr] = max_turns + 17 + (max_turns - (win_turn or max_turns))
-            elif solo_winner is not None:            # somebody else soloed
-                scores[pwr] = win_turn or max_turns
-            else:                                    # no solo
-                if elim_turn[pwr] is None:           # survived the distance
-                    final_scs = len(last_state.get("centers", {}).get(pwr, []))
-                    scores[pwr] = max_turns + final_scs
-                else:                                # eliminated earlier
-                    scores[pwr] = elim_turn[pwr]
+                scores[pwr] = max_year + (max_year - (win_year or max_year)) + 18
+            elif elim_year[pwr] is None:  # survived to max_year
+                final_scs = len(final_state.get("centers", {}).get(pwr, []))
+                scores[pwr] = max_year + final_scs
+            else:  # eliminated
+                scores[pwr] = elim_year[pwr]
+
         return scores
 
     
@@ -1067,6 +1229,15 @@ class StatisticalGameAnalyzer:
             'military_units_gained_vs_prev_phase',
             'relationships'
         ]
+
+        # ensure order columns
+        for ot in self.ORDER_TYPES:
+            plural = f"{ot}s" if not ot.endswith("s") else ot
+            for suffix in ("total", "success", "bounce", "void", "invalid", "success_rate"):
+                col = f"orders_{plural}_{suffix}"
+                if col not in fieldnames:
+                    fieldnames.append(col)
+
         
         # Ensure all actual fields are included (in case we missed any)
         actual_fields = set()
@@ -1140,6 +1311,17 @@ class StatisticalGameAnalyzer:
             # === Diplobench style single scalar game score ===
             'game_score',
         ]
+
+        # ensure order-total columns
+        for ot in self.ORDER_TYPES:
+            plural = f"{ot}s" if not ot.endswith("s") else ot
+            base = f"orders_{plural}_total"
+            for suffix in ("total", "success", "bounce", "void", "invalid", "success_rate"):
+                col = f"orders_{plural}_{suffix}"
+                if col not in fieldnames:
+                    fieldnames.append(col)
+
+
         
         # Ensure all actual fields are included
         actual_fields = set()

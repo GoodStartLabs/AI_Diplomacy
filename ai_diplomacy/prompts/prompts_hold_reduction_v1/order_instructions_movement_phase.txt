@@ -1,0 +1,136 @@
+PRIMARY OBJECTIVE
+Control 18 supply centers. Nothing else will do.
+
+CRITICAL RULES
+1. Only use orders from the provided possible_orders list
+2. Support orders must match actual moves (e.g., 'A PAR S F PIC - ENG' needs 'F PIC - ENG')
+3. Build orders (build phase only):
+   - Format: '[UnitType] [Location3LetterCode] B'
+   - UnitType: 'A' (Army) or 'F' (Fleet)
+   - Example: 'A PAR B', 'F LON B'
+   - NOTE YOU CAN ONLY BUILD UNITS IN YOUR HOME CENTER THAT ARE EMPTY, THE ONES YOU STARTED WITH, IF YOU LOSE THESE YOU CANNOT BUILD UNITS SO THEY ARE CRITICAL
+  Austria
+    - Budapest
+    - Trieste
+    - Vienna
+  England
+    - Edinburgh
+    - Liverpool
+    - London
+  France
+    - Brest
+    - Marseilles
+    - Paris
+  Germany
+    - Berlin
+    - Kiel
+    - Munich
+  Italy
+    - Naples
+    - Rome
+    - Venice
+  Russia
+    - Moscow
+    - Saint Petersburg
+    - Sevastopol
+    - Warsaw
+  Turkey
+    - Ankara
+    - Constantinople
+    - Smyrna
+
+ORDER SUBMISSION PROCESS
+1. ANALYZE
+   - Review game state, orders, messages, and other powers' motivations
+   - Focus on expansion and capturing supply centers
+   - Be aggressive, not passive
+   - Take calculated risks for significant gains
+   - Find alternative paths if blocked
+   - AVOID HOLDS (unless absolutely necessary): Holds waste opportunities to reach 18 centers. Instead:
+     * Support YOUR OWN attacks first (format: 'A PAR S A BUR - MUN') - ensures successful captures
+     * Support allies' moves second (format: 'A PAR S F BRE - ENG') - gains favor AND helps control board
+     * Attempt aggressive moves - forces enemies to waste supports defending
+     * Use convoys for surprise attacks (format: 'A LON - NWY', plus 'F NTH C A LON - NWY')
+     * Remember: You win by TAKING centers, not defending. Even "defensive" units should support attacks or other territories to defend instead of just holding
+
+2. REASON
+   - Write out your strategic thinking
+   - Explain goals and move choices
+   - Master supports to control the board:
+     * Support format: '[Unit] [Location] S [Unit] [From] - [To]'
+     * Supporting YOUR OWN units ensures successful attacks on centers
+     * Supporting allies gains diplomatic leverage for future coordination
+   - Use convoys for long-range strikes:
+     * Army order: 'A [From] - [To]'
+     * Fleet order: 'F [Sea] C A [From] - [To]'
+     * Chain multiple fleets for extended reach
+
+3. FORMAT
+   Return orders in this exact format:
+   PARSABLE OUTPUT:
+   {{
+     "orders": ["order1", "order2", ...]
+   }}
+
+
+4. Dual-coast provinces (STP, SPA, BUL):
+   - Specify coast when needed: 'F [PROVINCE]/[COAST_CODE]'
+   - Example: 'F STP/NC B', 'A MAR S F SPA/SC - WES'
+   - Coast codes: NC (North), SC (South), EC (East), WC (West)
+5. All orders resolve simultaneously
+6. Submit orders only, no messages
+
+EXAMPLES
+Reasoning:
+- Secure Burgundy against German threat while supporting own expansion
+- Mid-Atlantic move enables future convoys
+- Paris supports Marseilles to ensure Burgundy capture
+
+PARSABLE OUTPUT:
+{{
+  "orders": [
+    "A PAR S A MAR - BUR",
+    "A MAR - BUR",
+    "F BRE - MAO"
+  ]
+}}
+
+Example 2: As Germany, Spring 1901, aiming for a swift expansion into DEN and HOL, while also securing home centers.
+
+Reasoning:
+- Denmark (DEN) and Holland (HOL) are key neutral centers for early German expansion.
+- Berlin supports Kiel to ensure Denmark capture, Munich can support Ruhr or move to Tyrolia
+- Kiel (KIE) fleet takes DEN with Berlin's support, while army from Ruhr (RUH) takes HOL.
+
+PARSABLE OUTPUT:
+{{
+  "orders": [
+    "A BER S F KIE - DEN",
+    "A MUN - TYR",
+    "F KIE - DEN",
+    "A RUH - HOL",
+    "A SIL - WAR", // Opportunistic move towards Warsaw if Russia is weak or focused elsewhere
+    "F HEL S A RUH - HOL"  // Support Holland capture instead of holding
+  ]
+}}
+
+Example 3: As Italy, Autumn 1902, after securing Tunis and trying to break into Austria, while also defending against a potential French naval attack. My units are A VEN, A ROM, F NAP, F ION, A APU. Austria has F TRI, A VIE, A BUD. France has F WES, F MAR.
+
+Reasoning:
+- My primary goal is to take Trieste (TRI) from Austria. Army in Venice (VEN) will attack, supported by Army in Apulia (APU).
+- Fleet in Ionian Sea (ION) will support the attack on Trieste from the sea.
+- Army in Rome (ROM) must hold - it's the ONLY unit that can defend the capital if France attacks (this is when holding is necessary).
+- Fleet in Naples (NAP) will move to Tyrrhenian Sea (TYS) to defend against a potential French move from Western Mediterranean (WES) towards Naples or Rome.
+
+PARSABLE OUTPUT:
+{{
+  "orders": [
+    "A VEN - TRI",
+    "A APU S A VEN - TRI",
+    "F ION S A VEN - TRI",
+    "A ROM H",
+    "F NAP - TYS"
+  ]
+}}
+
+RESPOND WITH YOUR REASONING AND ORDERS (within PARSABLE OUTPUT) BELOW

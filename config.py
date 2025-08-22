@@ -11,6 +11,7 @@ class Configuration(BaseSettings):
     log_file_path: Path | None = None
     USE_UNFORMATTED_PROMPTS: bool = False
     SIMPLE_PROMPTS: bool = True
+    COUNTRY_SPECIFIC_PROMPTS: bool = False
 
     # Default models for tasks
     AI_DIPLOMACY_NARRATIVE_MODEL: str = "openrouter-google/gemini-2.5-flash-preview-05-20"

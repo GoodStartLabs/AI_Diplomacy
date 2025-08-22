@@ -273,19 +273,19 @@ python lm_game.py --run_dir results/game_run_004 \
 python lm_game.py --run_dir results/game_run_005 --prompts_dir ./prompts/my_variants
 ```
 
-
 ### Setting `--models` (quick guide)
 
-* Pass **one comma-separated list of up to seven model IDs** in this fixed order: AUSTRIA, ENGLAND, FRANCE, GERMANY, ITALY, RUSSIA, TURKEY.
+- Pass **one comma-separated list of up to seven model IDs** in this fixed order: AUSTRIA, ENGLAND, FRANCE, GERMANY, ITALY, RUSSIA, TURKEY.
 
-* **Model-ID syntax**
+- **Model-ID syntax**
 
   ```
   <client prefix:>model[@base_url][#api_key]
   ```
-  * `prefix:` – specify the client (`openai`, `openai-requests`, `openai-responses`, `anthropic`, `gemini`, `deepseek`, `openrouter`, `together`).
-  * `@base_url` – hit a proxy / alt endpoint.
-  * `#api_key` – inline key (overrides env vars).
+
+  - `prefix:` – specify the client (`openai`, `openai-requests`, `openai-responses`, `anthropic`, `gemini`, `deepseek`, `openrouter`, `together`).
+  - `@base_url` – hit a proxy / alt endpoint.
+  - `#api_key` – inline key (overrides env vars).
 
   ```bash
   # gpt-4o on openrouter for all powers:
@@ -293,8 +293,6 @@ python lm_game.py --run_dir results/game_run_005 --prompts_dir ./prompts/my_vari
   # custom URL+apikey for Austria only:
   --models "openai:llama-3.2-3b@http://localhost:8000#myapikey,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o"
   ```
-
-
 
 ### Running Batch Experiments with **`experiment_runner.py`**
 
@@ -775,4 +773,6 @@ if __name__ == '__main__':
 
 ## License
 
-This project is licensed under the APGLv3 License - see the [LICENSE](LICENSE) file for details
+Copyright (C) 2025 Good Start Labs
+
+See the [LICENSE](LICENSE) file for additional details

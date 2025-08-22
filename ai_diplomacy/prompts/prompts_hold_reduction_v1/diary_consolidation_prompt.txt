@@ -1,0 +1,27 @@
+DIARY CONSOLIDATION REQUEST
+Your Power: {power_name}
+
+GAME CONTEXT
+You are playing Diplomacy, a strategic board game set in pre-WWI Europe. Seven powers compete for control by conquering supply centers. Victory requires 18 supply centers.
+
+Key game mechanics:
+- Spring (S) and Fall (F) movement phases where armies/fleets move
+- Fall phases include builds/disbands based on supply center control
+- Units can support, convoy, or attack
+- All orders resolve simultaneously
+- Success often requires negotiated coordination with other powers
+
+FULL DIARY HISTORY
+{full_diary_text}
+
+TASK
+Create a comprehensive consolidated summary of the most important parts of this diary history. It will serve as your long-term memory.
+
+Prioritize the following:
+1.  **Recent Events, Goals & Intentions**
+2.  **Long-Term Strategy:** Enduring goals, rivalries, and alliances that are still relevant.
+3.  **Key Historical Events:** Major betrayals, decisive battles, and significant turning points that shape the current diplomatic landscape.
+4.  **Important Notes:** Any notes you deem important from the history not already included.
+
+RESPONSE FORMAT
+Return ONLY the consolidated summary text. Do not include JSON, formatting markers, or meta-commentary.

@@ -1,0 +1,94 @@
+NEGOTIATION SUMMARY REQUEST
+Power: {power_name}
+Phase: {current_phase}
+
+MESSAGES THIS ROUND
+{messages_this_round}
+{ignored_messages_context}
+
+CURRENT STATUS
+Goals:
+{agent_goals}
+
+Relationships:
+{agent_relationships}
+
+Game State:
+{board_state_str}
+
+TASK
+Analyze the negotiations, goals, relationships, and game state to:
+1. Summarize key outcomes and agreements
+2. State your strategic intent for {current_phase}
+3. Update relationships as needed (Enemy, Unfriendly, Neutral, Friendly, Ally)
+4. Note which powers are not responding to your messages and consider adjusting your approach
+
+When powers ignore your messages, consider:
+- They may be intentionally avoiding commitment
+- They could be prioritizing other relationships
+- Your approach may need adjustment (more direct questions, different incentives)
+- Their silence might indicate hostility or indifference
+
+RESPONSE FORMAT
+Return ONLY a JSON object with this structure:
+
+{
+"negotiation_summary": "Key outcomes from negotiations",
+"intent": "Strategic intent for upcoming orders",
+"updated_relationships": {
+"POWER_NAME": "Enemy|Unfriendly|Neutral|Friendly|Ally"
+}
+}
+
+
+Do not include any text outside the JSON.
+
+EXAMPLES:
+
+Scenario 1: As France, after discussing a joint move against Germany with England, while Italy seems to be posturing aggressively in Piedmont.
+
+{
+"negotiation_summary": "Reached a tentative agreement with England to support their fleet into Belgium (BEL) if they support my army into Ruhr (RUH). Italy's messages are vague but their army in Piedmont (PIE) is concerning; they claim it's defensive against Austria but it also threatens Marseilles (MAR). Russia remains silent. Austria and Turkey are focused on each other.",
+"intent": "Secure Ruhr with English support. Hold Marseilles defensively. Probe Italy's intentions further. If England upholds their end, improve relations. If Italy moves on MAR, downgrade relations severely.",
+"updated_relationships": {
+"ENGLAND": "Friendly",
+"GERMANY": "Enemy",
+"ITALY": "Unfriendly",
+"AUSTRIA": "Neutral",
+"RUSSIA": "Neutral",
+"TURKEY": "Neutral"
+}
+}
+
+Scenario 2: As Turkey, after Germany proposed an alliance against Russia, but France also offered a non-aggression pact and hinted at concerns about Austria.
+
+{
+"negotiation_summary": "Germany is keen on an anti-Russian alliance, offering support into Sevastopol (SEV) if I attack. France proposed a mutual non-aggression pact and expressed worry about Austrian expansion in the Balkans, which aligns with my concerns. England is distant. Italy seems focused on France.",
+"intent": "Prioritize securing Black Sea (BLA) and consider options against Russia, but German support needs to be concrete. Maintain neutrality with France for now, as their non-aggression pact could be useful if Austria becomes a larger threat. Try to confirm German commitment before moving on Russia. Delay any aggressive moves against Austria until my position is stronger.",
+"updated_relationships": {
+"GERMANY": "Friendly",
+"RUSSIA": "Unfriendly",
+"FRANCE": "Neutral",
+"ENGLAND": "Neutral",
+"ITALY": "Neutral",
+"AUSTRIA": "Unfriendly"
+}
+}
+
+Scenario 3: As England, when France hasn't responded to two alliance proposals and Russia is ignoring naval cooperation messages.
+
+{
+"negotiation_summary": "France continues to ignore my alliance proposals regarding Belgium and the Channel, having not responded to messages in the last two phases. Russia similarly hasn't acknowledged my Baltic cooperation suggestions. Meanwhile, Germany actively engaged about Denmark. This silence from France and Russia is telling - they likely have other commitments or see me as a threat.",
+"intent": "Shift focus to Germany as primary partner given their responsiveness. Prepare defensive positions against potentially hostile France. Consider more aggressive Baltic moves since Russia seems uninterested in cooperation. May need to force France's hand with direct questions or public statements.",
+"updated_relationships": {
+"FRANCE": "Unfriendly",
+"GERMANY": "Friendly", 
+"RUSSIA": "Unfriendly",
+"ITALY": "Neutral",
+"AUSTRIA": "Neutral",
+"TURKEY": "Neutral"
+}
+}
+
+Reminder: If you need to quote something, only use single quotes in the actual messages so as not to interfere with the JSON structure.
+JSON ONLY BELOW (DO NOT PREPEND WITH ```json or ``` or any other text)

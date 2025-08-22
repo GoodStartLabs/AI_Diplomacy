@@ -169,6 +169,7 @@ def run(exp_dir: Path, ctx: dict):  # pylint: disable=unused-argument
         sns.set_style("whitegrid")
         plt.figure(figsize=(10, 7))
         sns.boxplot(x="Power", y="SupplyCenters", data=df, palette="pastel")
+        plt.ylim(0, 18)
         plt.title("Supply-center distribution")
         plt.savefig(analysis_dir / "results_summary.png", dpi=150)
         plt.close()
