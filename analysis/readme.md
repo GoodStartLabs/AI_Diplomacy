@@ -131,7 +131,7 @@ output_folder/
 ├── conversations_data/
 │ └── {game_name}conversations_data.csv
 └── phase_data/
-└── {game_name}phase_data.csv
+│ └── {game_name}phase_data.csv
 
 ## Use cases
 
