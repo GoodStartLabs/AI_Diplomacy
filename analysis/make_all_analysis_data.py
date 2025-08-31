@@ -27,7 +27,8 @@ from tqdm import tqdm
 from analysis.p1_make_longform_orders_data import make_longform_order_data
 from analysis.p2_make_convo_data import make_conversation_data   
 from analysis.p3_make_phase_data import make_phase_data
-from analysis.analysis_helpers import get_country_to_model_mapping, process_standard_game_inputs, process_game_inputs_in_zip, COUNTRIES
+from analysis.analysis_helpers import get_country_to_model_mapping, process_standard_game_inputs, process_game_inputs_in_zip
+from analysis.schemas import COUNTRIES
 
 from typing import Dict
 

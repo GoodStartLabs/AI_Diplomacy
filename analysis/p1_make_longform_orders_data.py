@@ -59,10 +59,11 @@ import re
 import argparse
 import warnings
 from pathlib import Path
-from analysis.analysis_helpers import process_standard_game_inputs, get_country_to_model_mapping, COUNTRIES, ALL_SUPPLY_CENTERS, COASTAL_SCs, PLACE_IDENTIFIER, UNIT_IDENTIFIER, UNIT_MOVE, POSSIBLE_COMMANDS
+from analysis.analysis_helpers import process_standard_game_inputs, get_country_to_model_mapping
+from analysis.schemas import COUNTRIES, ALL_SUPPLY_CENTERS, COASTAL_SCs, PLACE_IDENTIFIER, UNIT_IDENTIFIER, UNIT_MOVE, POSSIBLE_COMMANDS
 from tqdm import tqdm
 import traceback
-from typing import List, Optional, Dict, Any 
+from typing import List, Optional, Dict 
 # Suppress pandas warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='pandas.core.strings')
 warnings.filterwarnings('ignore', category=pd.errors.SettingWithCopyWarning)
@@ -154,7 +155,7 @@ def make_longform_order_data(country_to_model : pd.Series, lmvs_data : pd.DataFr
     all_orders_ever["model_short_name"] = all_orders_ever["model"].str.split("/").str[-1]
     all_orders_ever["country_model"] = all_orders_ever["country"] + " (" + all_orders_ever["model_short_name"] + ")"
 
-    def check_location_influence(phase_id, location):
+    def check_location_influence(phase_id : str, location : str) -> str:
         """
         Helper - checks who owns a location at a given phase. Uses the `turn_actions` dataframe from overall context.
         
@@ -208,7 +209,7 @@ def make_longform_order_data(country_to_model : pd.Series, lmvs_data : pd.DataFr
                                                          (all_orders_ever["destination_affiliation"].notnull()) & 
                                                          (all_orders_ever["destination_affiliation"] != "Unowned"))
 
-    def find_owner_of_unit(unit_location, phase) -> Optional[str]:
+    def find_owner_of_unit(unit_location : str, phase : str) -> Optional[str]:
         """
         Helper - finds the owner of a unit at a given phase. Operating on the `turn_actions` dataframe from overall context.
         
@@ -227,7 +228,7 @@ def make_longform_order_data(country_to_model : pd.Series, lmvs_data : pd.DataFr
                     if re.match(f"[AF] {unit_location}", unit):
                         return country
 
-    def find_destination_info(destination, phase) -> Optional[Dict[str, Any]]:
+    def find_destination_info(destination, phase) -> Optional[Dict[str, Optional[str]]]:
         """
         Helper - finds information about the destination of a unit at a given phase. 
         Operating on the `all_orders_ever` dataframe from overall context.
@@ -258,7 +259,7 @@ def make_longform_order_data(country_to_model : pd.Series, lmvs_data : pd.DataFr
     all_orders_ever = pd.concat([all_orders_ever, destination_unit_info], axis=1)
 
     # if a Support action: who were they supporting? what was their support doing?
-    def find_support_recipient_info(unit_order, command, phase) -> Optional[Dict[str, Any]]:
+    def find_support_recipient_info(unit_order, command, phase) -> Optional[Dict[str, Optional[str]]]:
         """
         Helper - finds information about the recipient of a support action at a given phase. 
         Operating on the `all_orders_ever` dataframe from overall context.

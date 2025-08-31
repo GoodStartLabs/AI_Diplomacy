@@ -86,7 +86,8 @@ import copy
 import re 
 import argparse
 from pathlib import Path
-from analysis.analysis_helpers import process_standard_game_inputs, get_country_to_model_mapping, COUNTRIES
+from analysis.analysis_helpers import process_standard_game_inputs, get_country_to_model_mapping
+from analysis.schemas import COUNTRIES
 from tqdm import tqdm
 import traceback 
 
@@ -94,6 +95,18 @@ def make_phase_data(country_to_model : pd.Series,
                     lmvs_data : pd.DataFrame, 
                     conversations_data : pd.DataFrame, 
                     orders_data : pd.DataFrame) -> pd.DataFrame:
+    """
+    takes country-to-model mapping, game state (lmvs_data), conversations, and orders, and returns a dataframe with one row per (power, phase). 
+    
+    Args:
+        country_to_model: mapping of country to model
+        lmvs_data: raw lmvs_data dataframe
+        conversations_data: dataframe of conversations
+        orders_data: dataframe of orders
+        
+    Returns:
+        dataframe with one row per (power, phase) containing phase-level features, convos, relationships, and orders info. 
+    """
 
     longform_conversations_complete = []
     for c in COUNTRIES: 

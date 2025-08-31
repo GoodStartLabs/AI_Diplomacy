@@ -12,22 +12,14 @@ import json
 import zipfile
 
 import pandas as pd
+from analysis.schemas import COUNTRIES
+from analysis.validation import LMVSGame
 
 __all__: list[str] = [
     "process_standard_game_inputs",
     "process_game_inputs_in_zip",
     "get_country_to_model_mapping",
-    "ALL_SUPPLY_CENTERS",
-    "COASTAL_SCs",
-    "COUNTRIES",
-    "PLACE_IDENTIFIER",
-    "PLACE_CAPTURING_REGEX",
-    "UNIT_IDENTIFIER",
-    "UNIT_MOVE",
-    "POSSIBLE_COMMANDS",
 ]
-
-
     
 def process_standard_game_inputs(path_to_folder: Path) -> Dict[str, Union[pd.DataFrame, dict]]:
     """
@@ -53,7 +45,6 @@ def process_standard_game_inputs(path_to_folder: Path) -> Dict[str, Union[pd.Dat
         raise FileNotFoundError(str(lmvsgame_path))
     if lmvsgame_path.stat().st_size == 0:
         raise FileNotFoundError(f"{lmvsgame_path} is empty")
-
     if not llm_resp_path.exists():
         raise FileNotFoundError(str(llm_resp_path))
     if llm_resp_path.stat().st_size == 0:
@@ -64,9 +55,16 @@ def process_standard_game_inputs(path_to_folder: Path) -> Dict[str, Union[pd.Dat
 
     with open(lmvsgame_path, "r") as f:
         lmvs_data = json.load(f)
+    # validate the LMVS data format
+    LMVSGame.model_validate(
+        lmvs_data,
+    )
 
     all_responses = pd.read_csv(llm_resp_path)
-     
+    expected_columns = ['model', 'power', 'phase', 'response_type', 'raw_input', 'raw_response',
+       'success']
+    missing_columns = [col for col in expected_columns if col not in all_responses.columns]
+    assert len(missing_columns) == 0, f"Missing required columns in CSV: {missing_columns}"
     return {"overview":overview, "lmvs_data":lmvs_data, "all_responses":all_responses}
 
 def get_country_to_model_mapping(overview_df : pd.DataFrame, llm_responses_df : pd.DataFrame) -> pd.Series:
@@ -94,33 +92,3 @@ def process_game_inputs_in_zip(zip_path: Path, selected_game: str) -> Dict[str, 
         lmvs_data = json.load(zip_ref.open(f"{zip_name}/{selected_game}/lmvsgame.json"))
         all_responses = pd.read_csv(zip_ref.open(f"{zip_name}/{selected_game}/llm_responses.csv"))
     return {"overview": overview, "lmvs_data": lmvs_data, "all_responses": all_responses}
-
-ALL_SUPPLY_CENTERS = [
-    "ANK", "ARM", "BEL", "BER", "BUD", "BUL", "CON", "DEN", "EDI", "GRE",
-    "HOL", "KIE", "LON", "LVP", "MAR", "MOS", "MUN", "NAP", "PAR", "POR",
-    "ROM", "RUM", "SER", "SEV", "SMY", "SWE", "TRI", "TUN",
-    "VEN", "VIE", "WAR", 
-    "SPA", "STP",  # coastal provinces
-]
-
-COASTAL_SCs = ["SPA/SC", "SPA/NC",
-    "STP/SC", "STP/NC", 'BUL/EC',
-       'BUL/SC',]
-
-COUNTRIES = ['AUSTRIA', 'ENGLAND', 'FRANCE', 'GERMANY', 'ITALY', 'RUSSIA', 'TURKEY']
-
-PLACE_IDENTIFIER = r"[A-Z]{3}(?:/[A-Z]{2})?"
-PLACE_CAPTURING_REGEX = r"([A-Z]{3})"
-UNIT_IDENTIFIER = rf"[AF] {PLACE_IDENTIFIER}"
-UNIT_MOVE = rf"{UNIT_IDENTIFIER} . {PLACE_IDENTIFIER}"
-
-POSSIBLE_COMMANDS = {
-    "Move": f"^"+UNIT_MOVE, # distinguishing this from support
-    "Support Move": f"{UNIT_IDENTIFIER} S {UNIT_MOVE}",
-    "Support Hold": fr"{UNIT_IDENTIFIER} S {UNIT_IDENTIFIER}(?!\s+[.\-]\s+{PLACE_IDENTIFIER})",
-    "Convoy": f"F {PLACE_IDENTIFIER} C {UNIT_MOVE}", # No convoys in here? 
-    "Hold": f"{UNIT_IDENTIFIER} H",
-    "Build": f"{UNIT_IDENTIFIER} B",
-    "Disband": f"{UNIT_IDENTIFIER} D",
-    "Retreat": f"{UNIT_IDENTIFIER} R",
-}
