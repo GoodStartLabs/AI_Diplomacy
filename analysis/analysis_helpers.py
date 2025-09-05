@@ -1,63 +1,94 @@
-# analysis_constants.py 
-import os 
-import json 
+"""Utility functions and constants for loading Diplomacy analysis data.
+
+This module provides helpers to read game data stored either as a folder on disk
+or inside a zip archive, plus a few constant lists and regex patterns that are
+used across the analysis scripts.
+
+"""
+
 from pathlib import Path
-import pandas as pd
+from typing import Dict, Union
+import json
 import zipfile
 
-def process_standard_game_inputs(game_data_folder : Path, selected_game : str) -> dict[str, pd.DataFrame]:
-    path_to_folder = game_data_folder / selected_game
+import pandas as pd
+from analysis.schemas import COUNTRIES
+from analysis.validation import LMVSGame
 
-    assert os.path.exists(path_to_folder / "overview.jsonl"), f"Overview file not found in {path_to_folder}"
-    overview = pd.read_json(path_to_folder / "overview.jsonl", lines=True)
+__all__: list[str] = [
+    "process_standard_game_inputs",
+    "process_game_inputs_in_zip",
+    "get_country_to_model_mapping",
+]
     
-    # get all turn actions from lmvs
-    assert os.path.exists(path_to_folder / "lmvsgame.json"), f"LMVS file not found in {path_to_folder}"
-    path_to_file = path_to_folder / "lmvsgame.json"
+def process_standard_game_inputs(path_to_folder: Path) -> Dict[str, Union[pd.DataFrame, dict]]:
+    """
+    Read in a game folder and return the overview, lmvs_data, and all_responses
+    
+    Args:
+        path_to_folder: Path to the game folder. Must contain overview.jsonl, lmvsgame.json, and llm_responses.csv files.
+    
+    Returns:
+        Dictionary containing overview, lmvs_data, and all_responses
+    """
+    # ----- check files exist -----
+    overview_path = path_to_folder / "overview.jsonl"
+    lmvsgame_path = path_to_folder / "lmvsgame.json"
+    llm_resp_path = path_to_folder / "llm_responses.csv"
 
-    # Use the standard `json` library to load the file into a Python object
-    with open(path_to_file, 'r') as f:
+    if not overview_path.exists():
+        raise FileNotFoundError(str(overview_path))
+    if overview_path.stat().st_size == 0:
+        raise FileNotFoundError(f"{overview_path} is empty")
+
+    if not lmvsgame_path.exists():
+        raise FileNotFoundError(str(lmvsgame_path))
+    if lmvsgame_path.stat().st_size == 0:
+        raise FileNotFoundError(f"{lmvsgame_path} is empty")
+    if not llm_resp_path.exists():
+        raise FileNotFoundError(str(llm_resp_path))
+    if llm_resp_path.stat().st_size == 0:
+        raise FileNotFoundError(f"{llm_resp_path} is empty")
+
+    # ----- load data -----
+    overview = pd.read_json(overview_path, lines=True)
+
+    with open(lmvsgame_path, "r") as f:
         lmvs_data = json.load(f)
-        
-    assert os.path.exists(path_to_folder / "llm_responses.csv"), f"LLM responses file not found in {path_to_folder}"
-    all_responses = pd.read_csv(path_to_folder / "llm_responses.csv")
-    
+    # validate the LMVS data format
+    LMVSGame.model_validate(
+        lmvs_data,
+    )
+
+    all_responses = pd.read_csv(llm_resp_path)
+    expected_columns = ['model', 'power', 'phase', 'response_type', 'raw_input', 'raw_response',
+       'success']
+    missing_columns = [col for col in expected_columns if col not in all_responses.columns]
+    assert len(missing_columns) == 0, f"Missing required columns in CSV: {missing_columns}"
     return {"overview":overview, "lmvs_data":lmvs_data, "all_responses":all_responses}
 
-def process_game_in_zip(zip_path: Path, selected_game: str) -> dict[str, pd.DataFrame]:
+def get_country_to_model_mapping(overview_df : pd.DataFrame, llm_responses_df : pd.DataFrame) -> pd.Series:
+    """ Get a country:model map of which country was played by which model, different in different versions of data"""
+    country_to_model = overview_df.loc[1].reindex(COUNTRIES)
+    if pd.isnull(country_to_model).any(): 
+        if llm_responses_df is not None:
+            country_to_model = llm_responses_df.set_index("power")["model"].reindex(COUNTRIES)
+    return country_to_model
+
+def process_game_inputs_in_zip(zip_path: Path, selected_game: str) -> Dict[str, Union[pd.DataFrame, dict]]:
+    """
+    Read in a game folder and return the overview, lmvs_data, and all_responses
+    
+    Args:
+        zip_path: Path to the zip file
+        selected_game: Name of the game to extract
+    
+    Returns:
+        Dictionary containing overview, lmvs_data, and all_responses
+    """
     zip_name = zip_path.stem  # Gets filename without extension
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         overview = pd.read_json(zip_ref.open(f"{zip_name}/{selected_game}/overview.jsonl"), lines=True)
         lmvs_data = json.load(zip_ref.open(f"{zip_name}/{selected_game}/lmvsgame.json"))
         all_responses = pd.read_csv(zip_ref.open(f"{zip_name}/{selected_game}/llm_responses.csv"))
     return {"overview": overview, "lmvs_data": lmvs_data, "all_responses": all_responses}
-
-supply_centers = [
-    "ANK", "ARM", "BEL", "BER", "BUD", "BUL", "CON", "DEN", "EDI", "GRE",
-    "HOL", "KIE", "LON", "LVP", "MAR", "MOS", "MUN", "NAP", "PAR", "POR",
-    "ROM", "RUM", "SER", "SEV", "SMY", "SWE", "TRI", "TUN",
-    "VEN", "VIE", "WAR", 
-    "SPA", "STP", "BUL" # coastal provinces
-]
-
-coastal_scs = ["SPA/SC", "SPA/NC",
-    "STP/SC", "STP/NC", 'BUL/EC',
-       'BUL/SC',]
-
-COUNTRIES = ['AUSTRIA', 'ENGLAND', 'FRANCE', 'GERMANY', 'ITALY', 'RUSSIA', 'TURKEY']
-
-place_identifier = "[A-Z]{3}(?:/[A-Z]{2})?"
-place_capturing_regex = r"([A-Z]{3})"
-unit_identifier = rf"[AF] {place_identifier}"
-unit_move = rf"{unit_identifier} . {place_identifier}"
-
-possible_commands = {
-    "Move": f"^"+unit_move, # distinguishing this from support
-    "Support Move": f"{unit_identifier} S {unit_move}",
-    "Support Hold": fr"{unit_identifier} S {unit_identifier}(?!\s+[.\-]\s+{place_identifier})",
-    "Convoy": f"F {place_identifier} C {unit_move}", # No convoys in here? 
-    "Hold": f"{unit_identifier} H",
-    "Build": f"{unit_identifier} B",
-    "Disband": f"{unit_identifier} D",
-    "Retreat": f"{unit_identifier} R",
-}

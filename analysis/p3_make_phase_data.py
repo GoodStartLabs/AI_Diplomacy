@@ -74,24 +74,39 @@ etc (a lot of possible combinations here)
 'invalid_order_count', (number of invalid orders given)
 'no_moves_extracted_flag', (flag for if no moves were extracted)
 'valid_order_count', (number of valid orders, calculated as unit_count - invalid_order_count, unless no valid orders were extracted )
+'goals', (list of goals for the phase separated by \n\n)
+'diary', (diary entry for the phase)
 """
 
 import pandas as pd
 import numpy as np
-import os 
+
 import json 
 import copy
 import re 
 import argparse
 from pathlib import Path
-from analysis.analysis_helpers import process_standard_game_inputs, COUNTRIES
+from analysis.analysis_helpers import process_standard_game_inputs, get_country_to_model_mapping
+from analysis.schemas import COUNTRIES
 from tqdm import tqdm
+import traceback 
 
-def make_phase_data(overview : pd.DataFrame, 
+def make_phase_data(country_to_model : pd.Series, 
                     lmvs_data : pd.DataFrame, 
                     conversations_data : pd.DataFrame, 
                     orders_data : pd.DataFrame) -> pd.DataFrame:
-    country_to_model = overview.loc[1, COUNTRIES]
+    """
+    takes country-to-model mapping, game state (lmvs_data), conversations, and orders, and returns a dataframe with one row per (power, phase). 
+    
+    Args:
+        country_to_model: mapping of country to model
+        lmvs_data: raw lmvs_data dataframe
+        conversations_data: dataframe of conversations
+        orders_data: dataframe of orders
+        
+    Returns:
+        dataframe with one row per (power, phase) containing phase-level features, convos, relationships, and orders info. 
+    """
 
     longform_conversations_complete = []
     for c in COUNTRIES: 
@@ -109,12 +124,27 @@ def make_phase_data(overview : pd.DataFrame,
 
     ############ Relationships #############
     agent_relationship_matrix_over_time = {}
-    state_list = {}
     for phase in lmvs_data["phases"]:
         agent_relationship_matrix_over_time[phase["name"]] = pd.DataFrame(phase.get("agent_relationships", {}))
-
     longform_relationships = pd.concat(agent_relationship_matrix_over_time).reset_index(names=["phase", "agent"])
-
+    
+    if longform_relationships.empty:
+        # Then we have v2 of the data log where relationships are stored under state_agents and need a different approach
+        agent_relationship_matrix_over_time = {}
+        for phase in lmvs_data["phases"]:
+            agent_state = phase.get("state_agents", {}) 
+            country_relationships = {}
+            for c in COUNTRIES:
+                country_relationships[c] = agent_state.get(c, {}).get("relationships", {})
+            agent_relationship_matrix_over_time[phase["name"]] = pd.DataFrame(country_relationships)
+        longform_relationships = pd.concat(agent_relationship_matrix_over_time).reset_index(names=["phase", "agent"])
+   
+   
+    longform_relationships.columns = longform_relationships.columns.str.lower()
+    longform_relationships[['austria', 'england', 'france', 'germany', 'italy',
+        'russia', 'turkey']] = longform_relationships[['austria', 'england', 'france', 'germany', 'italy',
+        'russia', 'turkey']].fillna("Self") 
+    longform_relationships = longform_relationships.add_prefix("relationship_")
 
     ########### ORDERS DATA ###########
     # adding results to lmvs
@@ -200,7 +230,7 @@ def make_phase_data(overview : pd.DataFrame,
     # lost a supply center
 
 
-    # territories held, territories moved to? 
+    # territories held, territories moved to
 
     orders_summary = pd.concat([commands_given.unstack().add_prefix("count_").add_suffix("_commands"), 
                                 immediate_outcomes.unstack().add_prefix("count_got_"),
@@ -240,10 +270,33 @@ def make_phase_data(overview : pd.DataFrame,
         state_list[phase["name"]].append(orders_over_time.loc[phase["name"]].rename("orders"))
         state_list[phase["name"]] = pd.concat(state_list[phase["name"]], axis=1)
             
+    # goals and diaries        
+    goals_over_time = {}
+    diary_over_time = {}
+    for phase in lmvs_data["phases"]:
+        agent_state = phase.get("state_agents", {}) 
+        if agent_state: # Not all versions have this
+            country_goals = {}
+            country_diary = {}
+            for c in COUNTRIES:
+                country_goals[c] = "\n\n".join(agent_state.get(c, {}).get("goals", {}))
+                country_diary[c] = "\n\n".join(agent_state.get(c, {}).get("full_private_diary", []))
+            goals_over_time[phase["name"]] = pd.Series(country_goals)
+            diary_over_time[phase["name"]] = pd.Series(country_diary)
+
     state_list = pd.concat(state_list, axis=0)
     state_list.index.names = ["phase", "agent"]
+    if goals_over_time:
+        goals_over_time = pd.DataFrame(goals_over_time).T.stack().reset_index().rename(columns={"level_0":"phase", "level_1":"agent", 0:"goal"}).set_index(["phase", "agent"])
+        state_list = pd.concat([state_list, goals_over_time], axis=1)
+    if diary_over_time:
+        diary_over_time = pd.DataFrame(diary_over_time).T.stack().reset_index().rename(columns={"level_0":"phase", "level_1":"agent", 0:"diary"}).set_index(["phase", "agent"])
+        state_list = pd.concat([state_list, diary_over_time], axis=1)
+        
+    longform_relationships = longform_relationships.set_index(["relationship_phase", "relationship_agent"])
+    longform_relationships.index.names = ["phase", "agent"]
     full_phase_data = pd.merge(state_list, 
-                            longform_relationships.set_index(["phase", "agent"]).add_prefix("relationship_to_").fillna("Self"),
+                            longform_relationships,
                             left_index=True, right_index=True).reset_index()
     full_phase_data["centers_count"] = full_phase_data["centers"].apply(lambda x: len(x))
     full_phase_data["units_count"] = full_phase_data["units"].apply(lambda x: len(x))
@@ -262,7 +315,7 @@ def make_phase_data(overview : pd.DataFrame,
                                                                             "influence_count"]].diff()
 
     full_phase_data = pd.merge(full_phase_data, longform_conversations_complete, 
-                               left_on=["phase", "agent"], right_on=["phase", "power"]).drop(columns=["agent"])
+                               left_on=["phase", "agent"], right_on=["phase", "power"])
     full_phase_data = pd.merge(full_phase_data, orders_summary, how="left", left_on=["power", "phase"],
                                right_index=True)
     full_phase_data["model"] = full_phase_data["power"].map(country_to_model)
@@ -301,32 +354,39 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     current_game_data_folder = Path(args.game_data_folder)
-    analysis_folder = args.analysis_folder
-    output_folder = Path(analysis_folder) / "phase_data"
+    analysis_folder = Path(args.analysis_folder)
+    output_folder = analysis_folder / "phase_data"
 
-    if not os.path.exists(output_folder):
+    if not output_folder.exists():
         print(f"Output folder {output_folder} not found, creating it.")
-        os.makedirs(output_folder)
+        output_folder.mkdir(parents=True, exist_ok=True)
 
     games_to_process = args.selected_game
     if not games_to_process:
-        games_to_process = os.listdir(current_game_data_folder)
+        games_to_process = [p.name for p in current_game_data_folder.iterdir() if p.is_dir()]
 
     for game_name in tqdm(games_to_process):
         if game_name == ".DS_Store":
             continue
         
         game_path = current_game_data_folder / game_name
-        if not os.path.isdir(game_path):
+        if not game_path.is_dir():
             continue
         
-        #try:
-        game_data = process_standard_game_inputs(game_data_folder=game_path, selected_game=game_name)
-        orders_data = pd.read_csv(analysis_folder / "orders_data" / f"{game_name}_orders_data.csv")
-        conversations_data = pd.read_csv(analysis_folder / "conversations_data" / f"{game_name}_conversations_data.csv")
-        data = make_phase_data(overview=game_data["overview"], 
-                               lmvs_data=game_data["lmvs_data"], 
-                               conversations_data=conversations_data, 
-                               orders_data=orders_data)
-        output_path = output_folder / f"{game_name}_phase_data.csv"
-        data.to_csv(output_path, index=False)
+        try:
+            game_data = process_standard_game_inputs(game_path)
+            orders_data = pd.read_csv(analysis_folder / "orders_data" / f"{game_name}_orders_data.csv")
+            conversations_data = pd.read_csv(analysis_folder / "conversations_data" / f"{game_name}_conversations_data.csv")
+            country_to_model = get_country_to_model_mapping(game_data["overview"], game_data["all_responses"])
+            data = make_phase_data(country_to_model=country_to_model, 
+                                   lmvs_data=game_data["lmvs_data"], 
+                                   conversations_data=conversations_data, 
+                                   orders_data=orders_data)
+            output_path = output_folder / f"{game_name}_phase_data.csv"
+            data.to_csv(output_path, index=False)
+        except FileNotFoundError as e:
+            print(f"Could not process {game_name}. Missing file: {e.filename}")
+        except Exception as e:
+            print(f"An unexpected error occurred while processing {game_name}: {e}")
+            print(f"Skipping {game_name}.")
+            traceback.print_exc()

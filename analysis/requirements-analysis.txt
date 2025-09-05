@@ -1,0 +1,19 @@
+# Analysis Pipeline Requirements
+# External packages needed for the analysis scripts
+
+pandas>=1.5.0
+numpy>=1.21.0
+tqdm>=4.64.0
+pydantic>=2.0.0
+
+# Standard library modules (included with Python):
+# - pathlib
+# - typing
+# - json
+# - zipfile
+# - copy
+# - re
+# - argparse
+# - warnings
+# - traceback
+# - itertools

@@ -53,24 +53,33 @@ Return / save
 
 import pandas as pd
 import numpy as np
-import os 
+
 import copy
 import re 
 import argparse
 import warnings
 from pathlib import Path
-from analysis.analysis_helpers import process_standard_game_inputs, COUNTRIES, supply_centers, coastal_scs, place_identifier, unit_identifier, unit_move, possible_commands
+from analysis.analysis_helpers import process_standard_game_inputs, get_country_to_model_mapping
+from analysis.schemas import COUNTRIES, ALL_SUPPLY_CENTERS, COASTAL_SCs, PLACE_IDENTIFIER, UNIT_IDENTIFIER, UNIT_MOVE, POSSIBLE_COMMANDS
 from tqdm import tqdm
-
+import traceback
+from typing import List, Optional, Dict 
 # Suppress pandas warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='pandas.core.strings')
 warnings.filterwarnings('ignore', category=pd.errors.SettingWithCopyWarning)
 
-def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, all_responses : pd.DataFrame) -> pd.DataFrame:
-    try:
-        country_to_model = overview.loc[1, COUNTRIES] # map countries to models
-    except:
-        country_to_model = {country: "not specified in overview.jsonl" for country in COUNTRIES}    
+def make_longform_order_data(country_to_model : pd.Series, lmvs_data : pd.DataFrame, all_responses : pd.DataFrame) -> pd.DataFrame:
+    """
+    Makes a dataframe with a row for each order given by every power, in every phase (see module docstring for more details).
+    
+    Args:
+        country_to_model: A Series mapping country names to model names
+        lmvs_data: A DataFrame containing the game data
+        all_responses: A DataFrame containing the responses from the LLM responses csv
+    
+    Returns:
+        A DataFrame with a row for each order given by every power, in every phase
+    """
     ################## PART 1 ##################
     # build `turn_actions` dataframe
 
@@ -120,22 +129,22 @@ def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, 
 
     # categorize each order based on regex
     # note that this will overwrite if multiple regexes match, which is why we've split support into 2 commands
-    for possible_command, regex in possible_commands.items():
+    for possible_command, regex in POSSIBLE_COMMANDS.items():
         all_orders_ever.loc[all_orders_ever.order.str.contains(regex, regex=True), "command"] = possible_command
         
-    all_orders_ever["unit_location"] = all_orders_ever["order"].str.extract(rf"({place_identifier})")
-    all_orders_ever["location_was_sc"] = all_orders_ever["unit_location"].isin(supply_centers) | all_orders_ever["unit_location"].isin(coastal_scs)
+    all_orders_ever["unit_location"] = all_orders_ever["order"].str.extract(rf"({PLACE_IDENTIFIER})")
+    all_orders_ever["location_was_sc"] = all_orders_ever["unit_location"].isin(ALL_SUPPLY_CENTERS) | all_orders_ever["unit_location"].isin(COASTAL_SCs)
 
     # only MOVE has a destination
     all_orders_ever["destination"] = np.where(
         all_orders_ever["command"]=="Move",
-        all_orders_ever["order"].str.extract(rf"{unit_identifier} . ({place_identifier})", expand=False),
+        all_orders_ever["order"].str.extract(rf"{UNIT_IDENTIFIER} . ({PLACE_IDENTIFIER})", expand=False),
         np.nan
     )
-    all_orders_ever["destination_was_sc"] = all_orders_ever["destination"].isin(supply_centers) | all_orders_ever["destination"].isin(coastal_scs)
+    all_orders_ever["destination_was_sc"] = all_orders_ever["destination"].isin(ALL_SUPPLY_CENTERS) | all_orders_ever["destination"].isin(COASTAL_SCs)
 
     # Retreat also has a destination
-    all_orders_ever.loc[all_orders_ever["command"]=="Retreat", "destination"] = all_orders_ever.loc[all_orders_ever["command"]=="Retreat", "order"].str.extract(rf"{unit_identifier} R ({place_identifier})", expand=False)
+    all_orders_ever.loc[all_orders_ever["command"]=="Retreat", "destination"] = all_orders_ever.loc[all_orders_ever["command"]=="Retreat", "order"].str.extract(rf"{UNIT_IDENTIFIER} R ({PLACE_IDENTIFIER})", expand=False)
 
     all_orders_ever["immediate_result"] = all_orders_ever["order"].str.extract(r"\(([^)]+)\)")
     all_orders_ever["immediate_result"] = all_orders_ever["immediate_result"].fillna("PASS")
@@ -146,7 +155,17 @@ def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, 
     all_orders_ever["model_short_name"] = all_orders_ever["model"].str.split("/").str[-1]
     all_orders_ever["country_model"] = all_orders_ever["country"] + " (" + all_orders_ever["model_short_name"] + ")"
 
-    def check_location_influence(phase_id, location):
+    def check_location_influence(phase_id : str, location : str) -> str:
+        """
+        Helper - checks who owns a location at a given phase. Uses the `turn_actions` dataframe from overall context.
+        
+        Args:
+            phase_id: The phase to check
+            location: The location to check
+        
+        Returns:
+            The country that owns the location, or "Unowned" if no country owns it
+        """
         # checking who owns a location at `phase_id`
         if pd.isnull(location):
             return np.nan
@@ -162,22 +181,45 @@ def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, 
     all_orders_ever["destination_affiliation"] = all_orders_ever.apply(lambda row: check_location_influence(row["phase"],
                                                                                                             row["destination"]), axis=1)
 
-    def find_supporting_country(unit_command, command_type, phase):
+    def find_supporting_country(unit_command, command_type, phase) -> Optional[str]:
+        """
+        Helper - finds which orders support a given unit and records the supporting powers. Operating on the `all_orders_ever` dataframe.
+        
+        Args:
+            unit_command: The unit command to find supporting orders for
+            command_type: The type of command ("Move" or "Hold")
+            phase: The phase to check
+        
+        Returns:
+            A string containing a comma-separated list of countries that issued an order to support that unit, or None if no such orders exist
+        """
         if command_type == "Move" or command_type == "Hold":  # commands that can be supported
             potential_supports = all_orders_ever[(all_orders_ever["phase"] == phase) & 
                                                 (all_orders_ever["command"].isin(["Support Move", "Support Hold"]))]
             potential_supports = potential_supports[potential_supports["order"].str.contains(unit_command, regex=False)]
             if potential_supports.empty:
-                return np.nan
+                return None
             else:
                 return ",".join(potential_supports["country"].tolist())
-        return np.nan
+        return None
 
     all_orders_ever["supported_by"] = all_orders_ever.apply(lambda row: find_supporting_country(row["order"], row["command"], row["phase"]), axis=1)
     all_orders_ever["in_anothers_territory"] =( all_orders_ever["country"] != all_orders_ever["unit_location_affiliation"]) & (all_orders_ever["unit_location_affiliation"] != "Unowned")
-    all_orders_ever["moving_into_anothers_territory"] = (all_orders_ever["country"] != all_orders_ever["destination_affiliation"]) & (all_orders_ever["destination_affiliation"].notnull()) & (all_orders_ever["destination_affiliation"] != "Unowned")
+    all_orders_ever["moving_into_anothers_territory"] = ((all_orders_ever["country"] != all_orders_ever["destination_affiliation"]) & 
+                                                         (all_orders_ever["destination_affiliation"].notnull()) & 
+                                                         (all_orders_ever["destination_affiliation"] != "Unowned"))
 
-    def find_owner_of_unit(unit_location, phase):
+    def find_owner_of_unit(unit_location : str, phase : str) -> Optional[str]:
+        """
+        Helper - finds the owner of a unit at a given phase. Operating on the `turn_actions` dataframe from overall context.
+        
+        Args:
+            unit_location: The location of the unit to find the owner of
+            phase: The phase to check
+        
+        Returns:
+            The country that owns the unit, or None if no country owns it
+        """
         if pd.notnull(unit_location):
             unit_status = turn_actions.loc[turn_actions.index.str.contains("_units"), phase]
             unit_status.index = unit_status.index.str.replace("_units", "")
@@ -186,18 +228,30 @@ def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, 
                     if re.match(f"[AF] {unit_location}", unit):
                         return country
 
-    # where were they going? what was their destination like?
-    def find_destination_info(destination, phase):
+    def find_destination_info(destination, phase) -> Optional[Dict[str, Optional[str]]]:
+        """
+        Helper - finds information about the destination of a unit at a given phase. 
+        Operating on the `all_orders_ever` dataframe from overall context.
+        
+        Args:
+            destination: The location of the unit to find the owner of
+            phase: The phase to check
+        
+        Returns:
+            A dictionary containing information about the destination unit, or None if no such unit exists
+        """
         if pd.notnull(destination):
             country = find_owner_of_unit(destination, phase)
+            # there should only ever be one unit at a given location during a phase
             destination_unit_orders = all_orders_ever[(all_orders_ever["country"] == country) & 
                                                                 (all_orders_ever["phase"] == phase) & 
                                                                 (all_orders_ever["unit_location"] == destination)]
             if not destination_unit_orders.empty:
+                destination_unit_orders = destination_unit_orders.iloc[0] # safe conversion to a series
                 return {"destination_unit_owner": country, 
-                                "destination_unit_order": destination_unit_orders["command"].squeeze(),
-                                "destination_unit_outcome":destination_unit_orders["immediate_result"].squeeze(),
-                                "destination_unit_supported_by": destination_unit_orders["supported_by"].squeeze()}    
+                                "destination_unit_order": destination_unit_orders["command"],
+                                "destination_unit_outcome":destination_unit_orders["immediate_result"],
+                                "destination_unit_supported_by": destination_unit_orders["supported_by"]}
 
     destination_unit_info = all_orders_ever.apply(lambda row: find_destination_info(row["destination"], row["phase"]), axis=1).apply(pd.Series)
     destination_unit_info["destination_was_occupied"] = destination_unit_info["destination_unit_owner"].notnull()
@@ -205,54 +259,90 @@ def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, 
     all_orders_ever = pd.concat([all_orders_ever, destination_unit_info], axis=1)
 
     # if a Support action: who were they supporting? what was their support doing?
-    def find_support_recipient_info(unit_order, command, phase):
+    def find_support_recipient_info(unit_order, command, phase) -> Optional[Dict[str, Optional[str]]]:
+        """
+        Helper - finds information about the recipient of a support action at a given phase. 
+        Operating on the `all_orders_ever` dataframe from overall context.
+        
+        Args:
+            unit_order: The order of the unit to find the recipient of support for
+            command: The type of command ("Support Move" or "Support Hold")
+            phase: The phase to check
+        
+        Returns:
+            A dictionary containing information about the recipient of support, or None if no such recipient exists
+        """
         if "Support" in command:
-            recipient_location = re.match(rf"{unit_identifier} S [AF] ({place_identifier})", unit_order).group(1)
+            recipient_location = re.match(rf"{UNIT_IDENTIFIER} S [AF] ({PLACE_IDENTIFIER})", unit_order).group(1)
             recipient_country = find_owner_of_unit(recipient_location, phase)
+            # there should only ever be one unit at a given location during a phase
             recipient_order_info = all_orders_ever[(all_orders_ever["country"] == recipient_country) & 
                                                 (all_orders_ever["phase"] == phase) & 
-                                                (all_orders_ever["unit_location"] == recipient_location)]
-            return {"recipient_unit_owner": recipient_country, "recipient_unit_outcome": recipient_order_info["immediate_result"].squeeze(),
-                    "recipient_unit_in_anothers_territory": recipient_order_info["in_anothers_territory"].squeeze(),
-                    "recipient_unit_moving_into_anothers_territory": recipient_order_info["moving_into_anothers_territory"].squeeze(),
-                    "recipient_unit_destination_occupied": recipient_order_info["destination_was_occupied"].squeeze()}
+                                                (all_orders_ever["unit_location"] == recipient_location)].iloc[0]
+            return {"recipient_unit_owner": recipient_country, "recipient_unit_outcome": recipient_order_info["immediate_result"],
+                    "recipient_unit_in_anothers_territory": recipient_order_info["in_anothers_territory"],
+                    "recipient_unit_moving_into_anothers_territory": recipient_order_info["moving_into_anothers_territory"],
+                    "recipient_unit_destination_occupied": recipient_order_info["destination_was_occupied"]}
 
-    support_recipient_info = all_orders_ever.apply(lambda row: find_support_recipient_info(row["order"], row["command"], row["phase"]), axis=1).apply(pd.Series)
+    support_recipient_info = all_orders_ever.apply(lambda row: find_support_recipient_info(row["order"], 
+                                                                                           row["command"], 
+                                                                                           row["phase"]), axis=1).apply(pd.Series)
+    # add support recipient info to all_orders_ever as additional columns
     all_orders_ever = pd.concat([all_orders_ever, support_recipient_info], axis=1)
 
     # add relationships with other countries
+    # if original v1
     agent_relationship_matrix_over_time = {}
     for phase in lmvs_data["phases"]:
         agent_relationship_matrix_over_time[phase["name"]] = pd.DataFrame(phase.get("agent_relationships", {}))
     longform_relationships = pd.concat(agent_relationship_matrix_over_time).reset_index(names=["phase", "agent"])
     
     if longform_relationships.empty:
-        print("Warning: no relationship data found in phase data")
-    else: 
-        longform_relationships.columns = longform_relationships.columns.str.lower()
-        longform_relationships[['austria', 'england', 'france', 'germany', 'italy',
-            'russia', 'turkey']] = longform_relationships[['austria', 'england', 'france', 'germany', 'italy',
-            'russia', 'turkey']].fillna("Self") 
-        longform_relationships = longform_relationships.add_prefix("relationship_")
-        all_orders_ever = pd.merge(all_orders_ever, longform_relationships, 
-                left_on=["phase", "country"], right_on=["relationship_phase", "relationship_agent"]).drop(columns=["relationship_phase", "relationship_agent"])
-        
-        alternate_relationship_view = pd.concat(agent_relationship_matrix_over_time)
-        alternate_relationship_view.index.names = ["phase", "agent"]
-        alternate_relationship_view = alternate_relationship_view.stack().reset_index().rename(columns={"level_2":"recipient",
-                0:"status"}).set_index(["phase", "recipient", 
-                "agent"])["status"].unstack("agent").fillna("Self").add_suffix("s_relationship_rating").reset_index()
-        all_orders_ever = pd.merge(all_orders_ever, alternate_relationship_view, 
-                left_on=["phase", "country"], right_on=["phase", "recipient"]).drop(columns=["recipient"])
+        # Then we have v2 of the data log where relationships are stored under state_agents and need a different approach
+        agent_relationship_matrix_over_time = {}
+        for phase in lmvs_data["phases"]:
+            agent_state = phase.get("state_agents", {}) 
+            country_relationships = {}
+            for c in COUNTRIES:
+                country_relationships[c] = agent_state.get(c, {}).get("relationships", {})
+            agent_relationship_matrix_over_time[phase["name"]] = pd.DataFrame(country_relationships)
+        longform_relationships = pd.concat(agent_relationship_matrix_over_time).reset_index(names=["phase", "agent"])
+   
+   
+    longform_relationships.columns = longform_relationships.columns.str.lower()
+    longform_relationships[['austria', 'england', 'france', 'germany', 'italy',
+        'russia', 'turkey']] = longform_relationships[['austria', 'england', 'france', 'germany', 'italy',
+        'russia', 'turkey']].fillna("Self") 
+    longform_relationships = longform_relationships.add_prefix("relationship_")
+    all_orders_ever = pd.merge(all_orders_ever, longform_relationships, 
+            left_on=["phase", "country"], right_on=["relationship_phase", "relationship_agent"]).drop(columns=["relationship_phase", "relationship_agent"])
+    
+    alternate_relationship_view = pd.concat(agent_relationship_matrix_over_time)
+    alternate_relationship_view.index.names = ["phase", "agent"]
+    alternate_relationship_view = alternate_relationship_view.stack().reset_index().rename(columns={"level_2":"recipient",
+            0:"status"}).set_index(["phase", "recipient", 
+            "agent"])["status"].unstack("agent").fillna("Self").add_suffix("s_relationship_rating").reset_index()
+    all_orders_ever = pd.merge(all_orders_ever, alternate_relationship_view, 
+            left_on=["phase", "country"], right_on=["phase", "recipient"]).drop(columns=["recipient"])
 
-    # if action was supporting
+    # if action was supporting, add flags
     all_orders_ever["supporting_self"] = all_orders_ever["country"]==all_orders_ever["recipient_unit_owner"]
     all_orders_ever["supporting_an_ally"] = (all_orders_ever["country"] !=all_orders_ever["recipient_unit_owner"]) & (all_orders_ever["recipient_unit_owner"].notnull())
 
-    def countries_aside_from(a_country):
+    def countries_aside_from(a_country : str) -> List[str]:
         return [country for country in all_orders_ever["country"].unique() if country != a_country]
 
-    def check_country(supporters, country):
+    def check_country(supporters : List[str], country : str) -> bool:
+        """
+        Helper - checks if a given country is in a list of supporters
+        
+        Args:
+            supporters: The list of supporters to check
+            country: The country to check
+        
+        Returns:
+            True if the country is in the list of supporters, False otherwise
+        """
         if pd.isnull(supporters):
             return False
         for other_countries in countries_aside_from(country):
@@ -267,7 +357,7 @@ def make_longform_order_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame, 
 
     all_orders_ever["destination_unit_was_supported"] = all_orders_ever["destination_unit_supported_by"].notnull()
 
-    # add number of unit orders ever made
+    # add number of unit orders ever made during this game
     unit_order_weight = 1 / all_orders_ever.groupby("country").size()
     all_orders_ever["unit_order_weight"] = all_orders_ever["country"].map(unit_order_weight)
 
@@ -317,26 +407,25 @@ if __name__ == "__main__":
     current_game_data_folder = Path(args.game_data_folder)
     analysis_folder = Path(args.analysis_folder) / "orders_data" 
 
-    if not os.path.exists(analysis_folder):
+    if not analysis_folder.exists():
         print(f"Output folder {analysis_folder} not found, creating it.")
-        os.makedirs(analysis_folder)
+        analysis_folder.mkdir(parents=True, exist_ok=True)
 
     games_to_process = args.selected_game
     if not games_to_process:
-        games_to_process = os.listdir(current_game_data_folder)
+        games_to_process = [p.name for p in current_game_data_folder.iterdir() if p.is_dir()]
 
     for game_name in tqdm(games_to_process, desc="Processing games"):
-        if game_name == ".DS_Store":
-            continue
-        
         game_path = current_game_data_folder / game_name
-        if not os.path.isdir(game_path):
+        if not game_path.is_dir():
             continue
 
         try:
-            game_source_data = process_standard_game_inputs(game_path, game_name)
-            data = make_longform_order_data(overview=game_source_data["overview"], 
-                                            lmvs_data=game_source_data["lmvs_data"], 
+            game_source_data = process_standard_game_inputs(game_path)
+            overview_df = game_source_data["overview"]
+            country_to_model = get_country_to_model_mapping(overview_df, game_source_data["all_responses"])
+            data = make_longform_order_data(country_to_model=country_to_model,
+                                            lmvs_data=game_source_data["lmvs_data"],
                                             all_responses=game_source_data["all_responses"])
             output_path = analysis_folder / f"{game_name}_orders_data.csv"
             data.to_csv(output_path, index=False)
@@ -344,3 +433,4 @@ if __name__ == "__main__":
             print(f"Could not process {game_name}. Missing file: {e.filename}")
         except Exception as e:
             print(f"An unexpected error occurred while processing {game_name}: {e}")
+            traceback.print_exc()
