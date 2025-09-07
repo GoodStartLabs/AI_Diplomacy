@@ -1,5 +1,5 @@
 """
-Make conversation data from diplomacy game logs, for convenience in analyzing conversationd data alone.
+Make conversation data from diplomacy game logs.
 
 Resulting columns: 
 ['phase',
@@ -21,23 +21,14 @@ Resulting columns:
 import pandas as pd
 import itertools 
 import argparse
-
+import os
 from tqdm import tqdm
 from pathlib import Path
-from analysis.analysis_helpers import COUNTRIES, process_standard_game_inputs, get_country_to_model_mapping
-import traceback
+from analysis.analysis_helpers import COUNTRIES, process_standard_game_inputs
 
-def make_conversation_data(country_to_model : pd.Series, lmvs_data : pd.DataFrame) -> pd.DataFrame:
-    """
-    Make conversation data from diplomacy game logs.
-    
-    Args:
-        country_to_model: A Series mapping country names to model names
-        lmvs_data: A DataFrame containing the game data
-    
-    Returns:
-        A DataFrame containing the conversation data (a row for every conversation between 2 powers, at every phase)
-    """
+def make_conversation_data(overview : pd.DataFrame, lmvs_data : pd.DataFrame) -> pd.DataFrame:
+    country_to_model = overview.loc[1, COUNTRIES]
+
     COUNTRY_COMBINATIONS = list(itertools.combinations(COUNTRIES, r=2))
     
     # relationship data
@@ -76,12 +67,20 @@ def make_conversation_data(country_to_model : pd.Series, lmvs_data : pd.DataFram
                 
             messages_from_sender = (messages_exchanged['sender']==sender).sum()
             sender_streak = max_consecutive[sender] if sender in max_consecutive.index else 0
-            messages_from_recipient = (messages_exchanged['sender'] == recipient).sum()
-            recipient_streak = max_consecutive.get(recipient, 0)
-            party_1_opinion_series = longform_relationships[(longform_relationships["phase"] == current_phase) & (longform_relationships["agent"] == sender)].reindex(columns=[recipient])
-            party_1_opinion = party_1_opinion_series.iloc[0,0] if not party_1_opinion_series.empty else ""
-            party_2_opinion_series = longform_relationships[(longform_relationships["phase"] == current_phase) & (longform_relationships["agent"] == recipient)].reindex(columns=[sender])
-            party_2_opinion = party_2_opinion_series.iloc[0,0] if not party_2_opinion_series.empty else ""
+            messages_from_recipient = (messages_exchanged['recipient']==sender).sum()
+            recipient_streak = max_consecutive[recipient] if recipient in max_consecutive.index else 0
+            party_1_opinion = longform_relationships[(longform_relationships["phase"]==current_phase) & 
+                                (longform_relationships["agent"]==sender)][recipient]
+            if party_1_opinion.empty:
+                party_1_opinion = ""
+            else: 
+                party_1_opinion = party_1_opinion.squeeze()
+            party_2_opinion = longform_relationships[(longform_relationships["phase"]==current_phase) & 
+                                (longform_relationships["agent"]==recipient)][sender]
+            if party_2_opinion.empty:
+                party_2_opinion = ""
+            else: 
+                party_2_opinion = party_2_opinion.squeeze()
 
             conversation_data = {
                 "party_1": sender,
@@ -133,30 +132,29 @@ if __name__ == "__main__":
     current_game_data_folder = Path(args.game_data_folder)
     analysis_folder = Path(args.analysis_folder) / "conversations_data"
 
-    if not analysis_folder.exists():
+    if not os.path.exists(analysis_folder):
         print(f"Output folder {analysis_folder} not found, creating it.")
-        analysis_folder.mkdir(parents=True, exist_ok=True)
+        os.makedirs(analysis_folder)
 
     games_to_process = args.selected_game
     if not games_to_process:
-        games_to_process = [p.name for p in current_game_data_folder.iterdir() if p.is_dir()]
+        games_to_process = os.listdir(current_game_data_folder)
 
-    for game_name in tqdm(games_to_process, desc="Processing games"):
+    for game_name in tqdm(games_to_process):
+        if game_name == ".DS_Store":
+            continue
+        
         game_path = current_game_data_folder / game_name
-        if not game_path.is_dir():
+        if not os.path.isdir(game_path):
             continue
 
         try:
-            game_data = process_standard_game_inputs(game_path)
-            overview_df = game_data["overview"]
-            country_to_model = get_country_to_model_mapping(overview_df, game_data["all_responses"])
-            data = make_conversation_data(country_to_model=country_to_model,
+            game_data = process_standard_game_inputs(game_data_folder=game_path, 
+                                                     selected_game=game_name)
+            data = make_conversation_data(overview=game_data["overview"], 
                                           lmvs_data=game_data["lmvs_data"])
             output_path = analysis_folder / f"{game_name}_conversations_data.csv"
             data.to_csv(output_path, index=False)
-        except FileNotFoundError as e:
-            print(f"Could not process {game_name}. Missing file: {e.filename}")
         except Exception as e:
             print(f"An unexpected error occurred while processing {game_name}: {e}")
             print(f"Skipping {game_name}.")
-            traceback.print_exc()
