@@ -39,6 +39,12 @@ from config import config
 
 dotenv.load_dotenv()
 
+import mlflow
+
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+mlflow.set_experiment(experiment_id=os.getenv("MLFLOW_EXPERIMENT_ID"))
+mlflow.openai.autolog()
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
@@ -204,6 +210,10 @@ async def main():
     )
     logger.info(f"config.SIMPLE_PROMPTS before update = {config.SIMPLE_PROMPTS}")
 
+    # Start MLflow run for tracing
+    run_timestamp = time.strftime("%Y%m%d_%H%M%S")
+    mlflow.start_run(run_name=f"Run_{run_timestamp}")
+
     # IMPORTANT: Check if user explicitly provided a prompts_dir
     user_provided_prompts_dir = args.prompts_dir is not None
 
@@ -357,6 +367,21 @@ async def main():
             run_config, game, game_history, llm_log_file_path
         )
 
+    # Log game-level parameters to parent MLflow run
+    mlflow.log_param("max_year", run_config.max_year)
+    mlflow.log_param("num_negotiation_rounds", run_config.num_negotiation_rounds)
+    mlflow.log_param("planning_phase", run_config.planning_phase)
+    mlflow.log_param("max_tokens", run_config.max_tokens)
+    mlflow.log_param("simple_prompts", run_config.simple_prompts)
+    mlflow.log_param("generate_phase_summaries", run_config.generate_phase_summaries)
+    mlflow.log_param("use_unformatted_prompts", run_config.use_unformatted_prompts)
+    mlflow.log_param("country_specific_prompts", run_config.country_specific_prompts)
+
+    # Log power-to-model mapping
+    if hasattr(game, "power_model_map"):
+        for power, model in game.power_model_map.items():
+            mlflow.log_param(f"model_{power}", model)
+
     if _detect_victory(game):
         game.is_game_done = True  # short-circuit the main loop
         logger.info(
@@ -381,204 +406,241 @@ async def main():
             )
             break
 
-        logger.info(
-            f"PHASE: {current_phase} (time so far: {time.time() - start_whole:.2f}s)"
-        )
-        game_history.add_phase(current_phase)
+        # Start nested MLflow run for this phase
+        with mlflow.start_run(nested=True, run_name=current_phase):
+            logger.info(
+                f"PHASE: {current_phase} (time so far: {time.time() - start_whole:.2f}s)"
+            )
+            game_history.add_phase(current_phase)
 
-        # --- 4b. Pre-Order Generation Steps (Movement Phases Only) ---
-        if current_short_phase.endswith("M"):
-            if run_config.num_negotiation_rounds > 0:
-                game_history = await conduct_negotiations(
-                    game,
-                    agents,
-                    game_history,
-                    model_error_stats,
-                    max_rounds=run_config.num_negotiation_rounds,
-                    log_file_path=llm_log_file_path,
-                )
-            if run_config.planning_phase:
-                await planning_phase(
-                    game,
-                    agents,
-                    game_history,
-                    model_error_stats,
-                    log_file_path=llm_log_file_path,
-                )
-
-            neg_diary_tasks = [
-                agent.generate_negotiation_diary_entry(
-                    game, game_history, llm_log_file_path
-                )
-                for agent in agents.values()
-                if not game.powers[agent.power_name].is_eliminated()
-            ]
-            if neg_diary_tasks:
-                await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
-
-        # --- 4c. Parallel Order Generation and Diary Consolidation ---
-        # Start diary consolidation in parallel with order generation
-        consolidation_future = None
-        if current_short_phase.startswith("S") and current_short_phase.endswith("M"):
-            consolidation_tasks = [
-                run_diary_consolidation(
-                    agent, game, llm_log_file_path, prompts_dir=agent.prompts_dir
-                )
-                for agent in agents.values()
-                if not game.powers[agent.power_name].is_eliminated()
-            ]
-            if consolidation_tasks:
-                # Start consolidation tasks but don't await yet
-                consolidation_future = asyncio.gather(
-                    *consolidation_tasks, return_exceptions=True
-                )
-
-        # Order Generation (proceeds with current diary state)
-        logger.info("Getting orders from agents...")
-        board_state = game.get_state()
-        order_tasks = []
-        for power_name, agent in agents.items():
-            if not game.powers[power_name].is_eliminated():
-                possible_orders = gather_possible_orders(game, power_name)
-                if not possible_orders:
-                    game.set_orders(power_name, [])
-                    continue
-
-                order_tasks.append(
-                    get_valid_orders(
+            # --- 4b. Pre-Order Generation Steps (Movement Phases Only) ---
+            if current_short_phase.endswith("M"):
+                if run_config.num_negotiation_rounds > 0:
+                    game_history = await conduct_negotiations(
                         game,
-                        agent.client,
-                        board_state,
-                        power_name,
-                        possible_orders,
+                        agents,
                         game_history,
                         model_error_stats,
-                        agent_goals=agent.goals,
-                        agent_relationships=agent.relationships,
-                        agent_private_diary_str=agent.get_latest_phase_diary_entries(),  # only include latest phase in orders prompt
+                        max_rounds=run_config.num_negotiation_rounds,
                         log_file_path=llm_log_file_path,
-                        phase=current_phase,
                     )
-                )
-
-        order_results = await asyncio.gather(*order_tasks, return_exceptions=True)
-
-        # Ensure consolidation completes before proceeding to diary entries
-        if consolidation_future:
-            await consolidation_future
-
-        active_powers = [
-            p for p, a in agents.items() if not game.powers[p].is_eliminated()
-        ]
-        order_power_names = [
-            p for p in active_powers if gather_possible_orders(game, p)
-        ]
-        submitted_orders_this_phase = defaultdict(list)
-
-        for i, result in enumerate(order_results):
-            p_name = order_power_names[i]
-
-            if isinstance(result, Exception):
-                logger.error(
-                    "Error getting orders for %s: %s", p_name, result, exc_info=result
-                )
-                valid, invalid = [], []
-            else:
-                valid = result.get("valid", [])
-                invalid = result.get("invalid", [])
-
-            # what the engine will actually execute
-            game.set_orders(p_name, valid)
-
-            # what we record for prompt/history purposes
-            submitted_orders_this_phase[p_name] = valid + invalid
-
-            # diary entry only for the orders we tried to submit
-            if False:  # disabled for now
-                if valid or invalid:
-                    await agents[p_name].generate_order_diary_entry(
-                        game, valid + invalid, llm_log_file_path
+                if run_config.planning_phase:
+                    await planning_phase(
+                        game,
+                        agents,
+                        game_history,
+                        model_error_stats,
+                        log_file_path=llm_log_file_path,
                     )
 
-        # --- 4d. Process Phase ---
-        completed_phase = current_phase
-        game.process()
-        logger.info(f"Results for {current_phase}:")
-        for power_name, power in game.powers.items():
-            logger.info(f"{power_name}: {power.centers}")
-
-        # --- 4e. Post-Processing and State Updates ---
-        phase_history_from_game = game.get_phase_history()
-        if phase_history_from_game:
-            last_phase_from_game = phase_history_from_game[-1]
-            if last_phase_from_game.name == completed_phase:
-                phase_obj_in_my_history = game_history._get_phase(completed_phase)
-                if phase_obj_in_my_history:
-                    # Store the orders the agents generated
-                    phase_obj_in_my_history.submitted_orders_by_power = (
-                        submitted_orders_this_phase
+                neg_diary_tasks = [
+                    agent.generate_negotiation_diary_entry(
+                        game, game_history, llm_log_file_path
                     )
-                    # Store the orders the engine actually accepted
-                    phase_obj_in_my_history.orders_by_power = (
-                        last_phase_from_game.orders
-                    )
+                    for agent in agents.values()
+                    if not game.powers[agent.power_name].is_eliminated()
+                ]
+                if neg_diary_tasks:
+                    await asyncio.gather(*neg_diary_tasks, return_exceptions=True)
 
-                    # Store the results for the accepted orders
-                    converted_results = defaultdict(list)
-                    if last_phase_from_game.results:
-                        for pwr, res_list in last_phase_from_game.results.items():
-                            converted_results[pwr] = [[res] for res in res_list]
-                    phase_obj_in_my_history.results_by_power = converted_results
-                    logger.debug(
-                        f"Populated submitted/accepted order and result history for phase {completed_phase}."
+            # --- 4c. Parallel Order Generation and Diary Consolidation ---
+            # Start diary consolidation in parallel with order generation
+            consolidation_future = None
+            if current_short_phase.startswith("S") and current_short_phase.endswith(
+                "M"
+            ):
+                consolidation_tasks = [
+                    run_diary_consolidation(
+                        agent, game, llm_log_file_path, prompts_dir=agent.prompts_dir
+                    )
+                    for agent in agents.values()
+                    if not game.powers[agent.power_name].is_eliminated()
+                ]
+                if consolidation_tasks:
+                    # Start consolidation tasks but don't await yet
+                    consolidation_future = asyncio.gather(
+                        *consolidation_tasks, return_exceptions=True
                     )
 
-        phase_summary = game.phase_summaries.get(
-            current_phase, "(Summary not generated)"
-        )
-        all_orders_this_phase = game.order_history.get(current_short_phase, {})
+            # Order Generation (proceeds with current diary state)
+            logger.info("Getting orders from agents...")
+            board_state = game.get_state()
+            order_tasks = []
+            for power_name, agent in agents.items():
+                if not game.powers[power_name].is_eliminated():
+                    possible_orders = gather_possible_orders(game, power_name)
+                    if not possible_orders:
+                        game.set_orders(power_name, [])
+                        continue
 
-        # Phase Result Diary Entries
-        if current_short_phase.endswith("M"):
-            phase_result_diary_tasks = [
-                agent.generate_phase_result_diary_entry(
-                    game,
-                    game_history,
-                    phase_summary,
-                    all_orders_this_phase,
-                    llm_log_file_path,
-                    current_short_phase,
-                )
-                for agent in agents.values()
-                if not game.powers[agent.power_name].is_eliminated()
+                    order_tasks.append(
+                        get_valid_orders(
+                            game,
+                            agent.client,
+                            board_state,
+                            power_name,
+                            possible_orders,
+                            game_history,
+                            model_error_stats,
+                            agent_goals=agent.goals,
+                            agent_relationships=agent.relationships,
+                            agent_private_diary_str=agent.get_latest_phase_diary_entries(),  # only include latest phase in orders prompt
+                            log_file_path=llm_log_file_path,
+                            phase=current_phase,
+                        )
+                    )
+
+            order_results = await asyncio.gather(*order_tasks, return_exceptions=True)
+
+            # Ensure consolidation completes before proceeding to diary entries
+            if consolidation_future:
+                await consolidation_future
+
+            active_powers = [
+                p for p, a in agents.items() if not game.powers[p].is_eliminated()
             ]
-            if phase_result_diary_tasks:
-                await asyncio.gather(*phase_result_diary_tasks, return_exceptions=True)
-
-        # Agent State Updates
-        if (
-            current_short_phase.endswith("M") and run_config.num_negotiation_rounds == 0
-        ):  # r'ships are updated in negotiation round. otherwise in no press, updated in a separate step.
-            current_board_state = game.get_state()
-            state_update_tasks = [
-                agent.analyze_phase_and_update_state(
-                    game,
-                    current_board_state,
-                    phase_summary,
-                    game_history,
-                    llm_log_file_path,
-                )
-                for agent in agents.values()
-                if not game.powers[agent.power_name].is_eliminated()
+            order_power_names = [
+                p for p in active_powers if gather_possible_orders(game, p)
             ]
-            if state_update_tasks:
-                await asyncio.gather(*state_update_tasks, return_exceptions=True)
+            submitted_orders_this_phase = defaultdict(list)
 
-        # --- 4f. Save State At End of Phase ---
-        await save_game_state(
-            game, agents, game_history, game_file_path, run_config, completed_phase
-        )
-        logger.info(f"Phase {current_phase} took {time.time() - phase_start:.2f}s")
+            for i, result in enumerate(order_results):
+                p_name = order_power_names[i]
+
+                if isinstance(result, Exception):
+                    logger.error(
+                        "Error getting orders for %s: %s",
+                        p_name,
+                        result,
+                        exc_info=result,
+                    )
+                    valid, invalid = [], []
+                else:
+                    valid = result.get("valid", [])
+                    invalid = result.get("invalid", [])
+
+                # what the engine will actually execute
+                game.set_orders(p_name, valid)
+
+                # what we record for prompt/history purposes
+                submitted_orders_this_phase[p_name] = valid + invalid
+
+                # diary entry only for the orders we tried to submit
+                if False:  # disabled for now
+                    if valid or invalid:
+                        await agents[p_name].generate_order_diary_entry(
+                            game, valid + invalid, llm_log_file_path
+                        )
+
+            # --- 4d. Process Phase ---
+            completed_phase = current_phase
+            game.process()
+            logger.info(f"Results for {current_phase}:")
+            for power_name, power in game.powers.items():
+                logger.info(f"{power_name}: {power.centers}")
+
+            # --- 4e. Post-Processing and State Updates ---
+            phase_history_from_game = game.get_phase_history()
+            if phase_history_from_game:
+                last_phase_from_game = phase_history_from_game[-1]
+                if last_phase_from_game.name == completed_phase:
+                    phase_obj_in_my_history = game_history._get_phase(completed_phase)
+                    if phase_obj_in_my_history:
+                        # Store the orders the agents generated
+                        phase_obj_in_my_history.submitted_orders_by_power = (
+                            submitted_orders_this_phase
+                        )
+                        # Store the orders the engine actually accepted
+                        phase_obj_in_my_history.orders_by_power = (
+                            last_phase_from_game.orders
+                        )
+
+                        # Store the results for the accepted orders
+                        converted_results = defaultdict(list)
+                        if last_phase_from_game.results:
+                            for pwr, res_list in last_phase_from_game.results.items():
+                                converted_results[pwr] = [[res] for res in res_list]
+                        phase_obj_in_my_history.results_by_power = converted_results
+                        logger.debug(
+                            f"Populated submitted/accepted order and result history for phase {completed_phase}."
+                        )
+
+            phase_summary = game.phase_summaries.get(
+                current_phase, "(Summary not generated)"
+            )
+            all_orders_this_phase = game.order_history.get(current_short_phase, {})
+
+            # Phase Result Diary Entries
+            if current_short_phase.endswith("M"):
+                phase_result_diary_tasks = [
+                    agent.generate_phase_result_diary_entry(
+                        game,
+                        game_history,
+                        phase_summary,
+                        all_orders_this_phase,
+                        llm_log_file_path,
+                        current_short_phase,
+                    )
+                    for agent in agents.values()
+                    if not game.powers[agent.power_name].is_eliminated()
+                ]
+                if phase_result_diary_tasks:
+                    await asyncio.gather(
+                        *phase_result_diary_tasks, return_exceptions=True
+                    )
+
+            # Agent State Updates
+            if (
+                current_short_phase.endswith("M")
+                and run_config.num_negotiation_rounds == 0
+            ):  # r'ships are updated in negotiation round. otherwise in no press, updated in a separate step.
+                current_board_state = game.get_state()
+                state_update_tasks = [
+                    agent.analyze_phase_and_update_state(
+                        game,
+                        current_board_state,
+                        phase_summary,
+                        game_history,
+                        llm_log_file_path,
+                    )
+                    for agent in agents.values()
+                    if not game.powers[agent.power_name].is_eliminated()
+                ]
+                if state_update_tasks:
+                    await asyncio.gather(*state_update_tasks, return_exceptions=True)
+
+            # --- 4f. Save State At End of Phase ---
+            await save_game_state(
+                game, agents, game_history, game_file_path, run_config, completed_phase
+            )
+
+            # Log phase-level metrics to nested MLflow run
+            phase_duration = time.time() - phase_start
+            mlflow.log_metric("phase_duration_seconds", phase_duration)
+            mlflow.log_metric("active_powers_count", len(active_powers))
+
+            # Log order statistics
+            total_valid_orders = sum(
+                len(orders) for orders in submitted_orders_this_phase.values()
+            )
+            mlflow.log_metric("total_orders_submitted", total_valid_orders)
+
+            # Log model error statistics for this phase
+            for model_name, error_dict in model_error_stats.items():
+                mlflow.log_metric(
+                    f"{model_name}_conversation_errors",
+                    error_dict.get("conversation_errors", 0),
+                )
+                mlflow.log_metric(
+                    f"{model_name}_order_decoding_errors",
+                    error_dict.get("order_decoding_errors", 0),
+                )
+
+            # Log phase metadata as parameters
+            mlflow.log_param("phase_type", current_short_phase)
+            mlflow.log_param("year", year_int)
+
+            logger.info(f"Phase {current_phase} took {phase_duration:.2f}s")
 
     # --- 5. Game End ---
     total_time = time.time() - start_whole
@@ -598,6 +660,8 @@ async def main():
         overview_file.write(json.dumps(getattr(game, "power_model_map", {})) + "\n")
         overview_file.write(json.dumps(cfg) + "\n")
 
+    # End the parent MLflow run
+    mlflow.end_run()
     logger.info("Done.")
 
 
