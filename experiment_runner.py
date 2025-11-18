@@ -154,7 +154,7 @@ def _add_lm_game_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--num_negotiation_rounds",
         type=int,
-        default=0,
+        default=3,
         help="Number of negotiation rounds per phase.",
     )
     p.add_argument(

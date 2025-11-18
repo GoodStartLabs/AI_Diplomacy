@@ -59,6 +59,8 @@ async def initialize_agent_state_ext(
 
         formatted_diary = agent.format_private_diary_for_prompt()
 
+        # Pass agent's current relationships to provide historical context to the LLM
+        # This ensures the LLM sees any pre-existing relationship state when setting initial goals
         context = build_context_prompt(
             game=game,
             board_state=board_state,
@@ -66,7 +68,7 @@ async def initialize_agent_state_ext(
             possible_orders=None,  # Don't include orders for initial state setup
             game_history=game_history,
             agent_goals=None,
-            agent_relationships=None,
+            agent_relationships=agent.relationships,  # Pass agent's relationships for LLM context
             agent_private_diary=formatted_diary,
             prompts_dir=effective_prompts_dir,
         )

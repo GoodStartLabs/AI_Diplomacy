@@ -172,11 +172,15 @@ def load_game_state(
     game_file_name: str,
     run_config,
     resume_from_phase: Optional[str] = None,
-) -> Tuple["Game", Dict[str, "DiplomacyAgent"], "GameHistory", Optional[Any]]:
+) -> Tuple["Game", Dict[str, "DiplomacyAgent"], "GameHistory", Optional[Any], Optional[Dict[str, Dict[str, str]]]]:
     """
     Load and fully re-hydrate the game, agents and GameHistory – including
     `orders_by_power`, `results_by_power`, `submitted_orders_by_power`,
     and per-power `phase_summaries`.
+
+    Returns a 5-tuple: (game, agents, game_history, run_config, saved_relationships)
+    where saved_relationships is extracted from agent_relationships field (old format)
+    when state_agents is not available.
     """
     from collections import defaultdict  # local to avoid new global import
 
@@ -235,24 +239,37 @@ def load_game_state(
         else:
             raise ValueError(f"Invalid --models argument: expected 1 or {len(powers_order)} items, got {len(provided)}.")
 
+    # Extract relationships from previous phase for agent initialization
+    saved_relationships = None
     if saved_game_data.get("phases"):
         last_phase_data = saved_game_data["phases"][-2] if len(saved_game_data["phases"]) > 1 else {}
         if "state_agents" not in last_phase_data:
-            raise ValueError("Cannot resume: 'state_agents' key missing in last completed phase.")
-
-        for power_name, agent_data in last_phase_data["state_agents"].items():
-            override_id = power_model_map.get(power_name)
-            prompts_dir_from_config = (
-                run_config.prompts_dir_map.get(power_name)
-                if getattr(run_config, "prompts_dir_map", None)
-                else run_config.prompts_dir
-            )
-            agents[power_name] = deserialize_agent(
-                agent_data,
-                prompts_dir=prompts_dir_from_config,
-                override_model_id=override_id,
-                override_max_tokens=model_max_tokens.get(power_name),
-            )
+            # Try to load relationships from agent_relationships field (older format)
+            if "agent_relationships" in last_phase_data:
+                saved_relationships = last_phase_data["agent_relationships"]
+                logger.info(
+                    "Loaded agent_relationships from previous phase. "
+                    "Agents will be initialized fresh but with historical relationships."
+                )
+            else:
+                logger.warning(
+                    "Cannot resume agents: 'state_agents' key missing in last completed phase. "
+                    "Agents will be initialized fresh (losing prior context/relationships)."
+                )
+        else:
+            for power_name, agent_data in last_phase_data["state_agents"].items():
+                override_id = power_model_map.get(power_name)
+                prompts_dir_from_config = (
+                    run_config.prompts_dir_map.get(power_name)
+                    if getattr(run_config, "prompts_dir_map", None)
+                    else run_config.prompts_dir
+                )
+                agents[power_name] = deserialize_agent(
+                    agent_data,
+                    prompts_dir=prompts_dir_from_config,
+                    override_model_id=override_id,
+                    override_max_tokens=model_max_tokens.get(power_name),
+                )
 
     # --- Rebuild GameHistory --------------------------------------------------
     game_history = GameHistory()
@@ -297,7 +314,7 @@ def load_game_state(
                         submitted[pwr].append(order_str)
         ph_obj.submitted_orders_by_power = submitted
 
-    return game, agents, game_history, run_config
+    return game, agents, game_history, run_config, saved_relationships
 
 
 # ai_diplomacy/game_logic.py
@@ -306,8 +323,15 @@ async def initialize_new_game(
     game: Game,
     game_history: GameHistory,
     llm_log_file_path: str,
+    saved_relationships: Optional[Dict[str, Dict[str, str]]] = None,
 ) -> Dict[str, DiplomacyAgent]:
-    """Initializes agents for a new game (supports per-power prompt directories)."""
+    """
+    Initializes agents for a new game (supports per-power prompt directories).
+
+    Args:
+        saved_relationships: Optional historical relationships to restore from old game format.
+                           Dict mapping power_name -> {other_power: relationship_status}
+    """
 
     powers_order = sorted(list(ALL_POWERS))
 
@@ -357,9 +381,17 @@ async def initialize_new_game(
             try:
                 client = load_model_client(model_id, prompts_dir=prompts_dir_for_power)
                 client.max_tokens = model_max_tokens[power_name]
+
+                # Extract historical relationships if available
+                initial_relationships = None
+                if saved_relationships and power_name in saved_relationships:
+                    initial_relationships = saved_relationships[power_name]
+                    logger.info(f"[{power_name}] Restoring historical relationships: {initial_relationships}")
+
                 agent = DiplomacyAgent(
                     power_name=power_name,
                     client=client,
+                    initial_relationships=initial_relationships,
                     prompts_dir=prompts_dir_for_power,
                 )
                 agents[power_name] = agent

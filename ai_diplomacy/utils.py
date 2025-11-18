@@ -63,7 +63,8 @@ def assign_models_to_powers() -> Dict[str, str]:
     Models supported: o3-mini, o4-mini, o3, gpt-4o, gpt-4o-mini,
                     claude-opus-4-20250514, claude-sonnet-4-20250514, claude-3-5-haiku-20241022, claude-3-5-sonnet-20241022, claude-3-7-sonnet-20250219
                     gemini-2.0-flash, gemini-2.5-flash-preview-04-17, gemini-2.5-pro-preview-03-25,
-                    deepseek-chat, deepseek-reasoner
+                    deepseek-chat, deepseek-reasoner,
+                    kimi-k2-0905-preview,
                     openrouter-meta-llama/llama-3.3-70b-instruct, openrouter-qwen/qwen3-235b-a22b, openrouter-microsoft/phi-4-reasoning-plus:free,
                     openrouter-deepseek/deepseek-prover-v2:free, openrouter-meta-llama/llama-4-maverick:free, openrouter-nvidia/llama-3.3-nemotron-super-49b-v1:free,
                     openrouter-google/gemma-3-12b-it:free, openrouter-google/gemini-2.5-flash-preview-05-20
@@ -72,13 +73,13 @@ def assign_models_to_powers() -> Dict[str, str]:
     # POWER MODELS
     
     return {
-        "AUSTRIA": "o4-mini",
-        "ENGLAND": "o3",
-        "FRANCE": "gpt-5-reasoning-alpha-2025-07-19",
-        "GERMANY": "gpt-4.1",
-        "ITALY": "o4-mini",
-        "RUSSIA": "gpt-5-reasoning-alpha-2025-07-19",
-        "TURKEY": "o4-mini",
+        "AUSTRIA": "gpt-5-mini",
+        "ENGLAND": "gpt-5-mini",
+        "FRANCE": "gpt-5-mini",
+        "GERMANY": "gpt-5-mini",
+        "ITALY": "gemini-2.5-flash",
+        "RUSSIA": "gemini-2.5-flash",
+        "TURKEY": "gemini-2.5-flash",
     }
     
     # TEST MODELS

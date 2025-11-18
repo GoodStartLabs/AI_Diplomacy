@@ -100,7 +100,7 @@ def parse_arguments():
     parser.add_argument(
         "--num_negotiation_rounds",
         type=int,
-        default=0,
+        default=3,
         help="Number of negotiation rounds per phase.",
     )
     parser.add_argument(
@@ -311,9 +311,14 @@ async def main():
     if is_resuming:
         try:
             # When resuming, we always use the provided params (they will override the params used in the saved state)
-            game, agents, game_history, _ = load_game_state(run_dir, game_file_name, run_config, args.resume_from_phase)
+            game, agents, game_history, _, saved_relationships = load_game_state(run_dir, game_file_name, run_config, args.resume_from_phase)
 
             logger.info(f"Successfully resumed game from phase: {game.get_current_phase()}.")
+
+            # If agents is empty (state_agents missing from old game format), initialize fresh agents
+            if not agents:
+                logger.warning("No agents loaded from game state. Initializing fresh agents for all powers.")
+                agents = await initialize_new_game(run_config, game, game_history, llm_log_file_path, saved_relationships=saved_relationships)
         except (FileNotFoundError, ValueError) as e:
             logger.error(f"Could not resume game: {e}. Starting a new game instead.")
             is_resuming = False # Fallback to new game

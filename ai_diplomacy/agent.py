@@ -999,6 +999,10 @@ class DiplomacyAgent:
             # Extract year from the phase name (e.g., "S1901M" -> "1901")
             current_year = last_phase_name[1:5] if len(last_phase_name) >= 5 else "unknown"
 
+            # Format current goals and relationships for the prompt
+            current_goals_str = json.dumps(self.goals, indent=2) if self.goals else "[]"
+            current_relationships_str = json.dumps(self.relationships, indent=2) if self.relationships else "{}"
+
             prompt = prompt_template.format(
                 power_name=power_name,
                 current_year=current_year,
@@ -1006,6 +1010,8 @@ class DiplomacyAgent:
                 board_state_str=context,
                 phase_summary=last_phase_summary,  # Use provided phase_summary
                 other_powers=str(other_powers),  # Pass as string representation
+                current_goals=current_goals_str,
+                current_relationships=current_relationships_str,
             )
             logger.debug(f"[{power_name}] State update prompt:\n{prompt}")
 
