@@ -19,6 +19,7 @@ from enum import StrEnum
 import google.generativeai as genai
 from together import AsyncTogether
 from together.error import APIError as TogetherAPIError  # For specific error handling
+from groq import AsyncGroq
 
 from config import config
 from .game_history import GameHistory
@@ -821,14 +822,14 @@ class OpenAIClient(BaseModelClient):
             # Handle model-specific parameters
             # Check if model name starts with 'nectarine' or is in the specific list
             uses_max_completion_tokens = (
-                self.model_name in ["o4-mini", "o3-mini", "o3", "gpt-4.1"] or
+                self.model_name in ["o4-mini", "o3-mini", "o3", "gpt-4.1", "gpt-5-mini", "willow-alpha-2025-11-03"] or
                 self.model_name.startswith("nectarine")
             )
             
             if uses_max_completion_tokens:
                 completion_params["max_completion_tokens"] = self.max_tokens
-                # o4-mini, o3-mini, o3 only support default temperature of 1.0
-                if self.model_name in ["o4-mini", "o3-mini", "o3"]:
+                # o4-mini, o3-mini, o3, gpt-5-mini, willow-alpha-2025-11-03 only support default temperature of 1.0
+                if self.model_name in ["o4-mini", "o3-mini", "o3", "gpt-5-mini", "willow-alpha-2025-11-03"]:
                     completion_params["temperature"] = 1.0
                 else:
                     completion_params["temperature"] = temperature
@@ -886,7 +887,30 @@ class ClaudeClient(BaseModelClient):
 
     def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
         super().__init__(model_name, prompts_dir=prompts_dir)
-        self.client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+        # Check if this is the special claude-sonnet-4 model with :1m suffix
+        self.use_context_1m = False
+        self.actual_model_name = model_name
+
+        if model_name == "claude-sonnet-4-20250514:1m":
+            self.use_context_1m = True
+            self.actual_model_name = "claude-sonnet-4-20250514"
+            logger.info(f"[{model_name}] Using context-1m-2025-08-07 beta header")
+
+        # Check if this is MiniMax-M2 model (uses Anthropic-compatible API)
+        base_url = None
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+        if "minimax" in model_name.lower():
+            base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.minimax.io/anthropic")
+            api_key = os.environ.get("MINIMAX_API_KEY") or api_key
+            logger.info(f"[{model_name}] Using MiniMax API with base_url: {base_url}")
+
+        # Initialize client with optional base_url
+        if base_url:
+            self.client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+        else:
+            self.client = AsyncAnthropic(api_key=api_key)
 
     async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
         # Updated Claude messages format
@@ -896,16 +920,42 @@ class ClaudeClient(BaseModelClient):
                 random_seed = generate_random_seed()
                 system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
 
-            response = await self.client.messages.create(
-                model=self.model_name,
-                max_tokens=self.max_tokens,
-                system=system_prompt_content,  # system is now a top-level parameter
-                messages=[{"role": "user", "content": prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"}],
-                temperature=temperature,
-            )
-            if not response.content or not response.content[0].text:
-                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
-            return response.content[0].text.strip()
+            # Prepare the create parameters
+            create_params = {
+                "model": self.actual_model_name,
+                "max_tokens": self.max_tokens,
+                "system": system_prompt_content,  # system is now a top-level parameter
+                "messages": [{"role": "user", "content": prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"}],
+                "temperature": temperature,
+            }
+            
+            # Use beta endpoint if needed
+            if self.use_context_1m:
+                create_params["betas"] = ["context-1m-2025-08-07"]
+                response = await self.client.beta.messages.create(**create_params)
+            else:
+                response = await self.client.messages.create(**create_params)
+
+            if not response.content:
+                raise ValueError(f"[{self.model_name}] LLM returned an empty response.")
+
+            # Extract text from response content blocks
+            # Handle both TextBlock and ThinkingBlock (for MiniMax and reasoning models)
+            text_content = ""
+            for content_block in response.content:
+                if hasattr(content_block, 'text'):
+                    # TextBlock with direct text attribute
+                    text_content += content_block.text
+                elif hasattr(content_block, 'thinking'):
+                    # ThinkingBlock - skip the thinking, we want the output text
+                    continue
+                elif content_block.type == 'text' and hasattr(content_block, 'text'):
+                    text_content += content_block.text
+
+            if not text_content:
+                raise ValueError(f"[{self.model_name}] LLM returned content but no text could be extracted.")
+
+            return text_content.strip()
         except json.JSONDecodeError as json_err:
             logger.error(f"[{self.model_name}] JSON decoding failed in generate_response: {json_err}")
             raise
@@ -1000,13 +1050,13 @@ class DeepSeekClient(BaseModelClient):
                 "stream": False,
                 "temperature": temperature,
             }
-            
-            # Use max_completion_tokens for o4-mini, o3-mini models and nectarine models
-            if self.model_name in ["o4-mini", "o3-mini"] or self.model_name.startswith("nectarine"):
+
+            # Use max_completion_tokens for o4-mini, o3-mini, willow-alpha-2025-11-03 models and nectarine models
+            if self.model_name in ["o4-mini", "o3-mini", "willow-alpha-2025-11-03"] or self.model_name.startswith("nectarine"):
                 completion_params["max_completion_tokens"] = self.max_tokens
             else:
                 completion_params["max_tokens"] = self.max_tokens
-            
+
             response = await self.client.chat.completions.create(**completion_params)
 
             logger.debug(f"[{self.model_name}] Raw DeepSeek response:\n{response}")
@@ -1041,6 +1091,71 @@ class DeepSeekClient(BaseModelClient):
                 pass
 
             logger.error(f"[{self.model_name}] DeepSeek client error: {e}{extra}", exc_info=True)
+            raise
+
+
+class KimiClient(BaseModelClient):
+    """
+    For Kimi K2 models from Moonshot AI.
+    Models: kimi-k2-0905-preview, kimi-k2-0711-preview, kimi-k2-turbo-preview
+    """
+
+    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
+        super().__init__(model_name, prompts_dir=prompts_dir)
+        self.api_key = os.environ.get("MOONSHOT_API_KEY")
+        if not self.api_key:
+            raise ValueError("MOONSHOT_API_KEY environment variable is required for KimiClient")
+        self.client = AsyncOpenAI(api_key=self.api_key, base_url="https://api.moonshot.ai/v1")
+        logger.info(f"[{self.model_name}] Initialized Kimi client")
+
+    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+        try:
+            system_prompt_content = self.system_prompt
+            if inject_random_seed:
+                random_seed = generate_random_seed()
+                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
+
+            prompt_with_cta = f"{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"
+
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt_content},
+                    {"role": "user", "content": prompt_with_cta},
+                ],
+                max_tokens=self.max_tokens,
+                temperature=temperature,
+            )
+
+            if not response or not response.choices or not response.choices[0].message.content:
+                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+
+            return response.choices[0].message.content.strip()
+
+        except Exception as e:
+            extra = ""
+            try:
+                from openai import OpenAIError
+                if isinstance(e, OpenAIError):
+                    status = getattr(e, "status_code", None)
+                    if status:
+                        extra += f" (status {status})"
+                    resp = getattr(e, "response", None)
+                    if resp is not None:
+                        try:
+                            body = resp.json() if hasattr(resp, "json") else resp
+                        except Exception:
+                            body = str(resp)
+                        body_str = (
+                            json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+                        )
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                pass
+
+            logger.error(f"[{self.model_name}] Kimi client error: {e}{extra}", exc_info=True)
             raise
 
 
@@ -1095,13 +1210,13 @@ class OpenAIResponsesClient(BaseModelClient):
             payload["max_output_tokens"] = self.max_tokens
             
             # Only add temperature for models that support it
-            models_without_temp = ['o3', 'o4-mini', 'gpt-5-reasoning-alpha-2025-07-19', 'nectarine-alpha-2025-07-25', 'nectarine-alpha-new-reasoning-effort-2025-07-25']
-            if self.model_name not in models_without_temp:
+            models_without_temp = ['o3', 'o4-mini', 'gpt-5-reasoning-alpha-2025-07-19', 'willow-alpha-2025-11-03']
+            if self.model_name not in models_without_temp and not self.model_name.startswith("nectarine"):
                 payload["temperature"] = temperature
 
             # Add reasoning effort for models that support it
-            reasoning_models = ['gpt-5-reasoning-alpha-2025-07-19', 'o4-mini', 'nectarine-alpha-2025-07-25', 'o4-mini-alpha-2025-07-11', 'nectarine-alpha-new-reasoning-effort-2025-07-25']
-            if self.reasoning_effort and self.model_name in reasoning_models:
+            reasoning_models = ['gpt-5-reasoning-alpha-2025-07-19', 'gpt-5', 'o4-mini', 'o4-mini-alpha-2025-07-11']
+            if self.reasoning_effort and (self.model_name in reasoning_models or self.model_name.startswith("nectarine")):
                 payload["reasoning"] = {"effort": self.reasoning_effort}
 
             headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
@@ -1151,12 +1266,84 @@ class OpenAIResponsesClient(BaseModelClient):
             raise
 
 
+class QwenClient(BaseModelClient):
+    """
+    For Qwen models via Alibaba Cloud's DashScope API.
+    Uses OpenAI-compatible endpoint at https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+    Model: qwen3-max
+    """
+
+    def __init__(self, model_name: str = "qwen3-max", prompts_dir: Optional[str] = None):
+        super().__init__(model_name, prompts_dir=prompts_dir)
+        self.api_key = os.environ.get("DASHSCOPE_API_KEY")
+        if not self.api_key:
+            raise ValueError("DASHSCOPE_API_KEY environment variable is required for QwenClient")
+
+        self.client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+        )
+        logger.info(f"[{self.model_name}] Initialized Qwen client via DashScope API")
+
+    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+        """Generate a response using Qwen via DashScope API with robust error handling."""
+        try:
+            system_prompt_content = self.system_prompt
+            if inject_random_seed:
+                random_seed = generate_random_seed()
+                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
+
+            prompt_with_cta = f"{prompt}\n\nPROVIDE YOUR RESPONSE BELOW:"
+
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt_content},
+                    {"role": "user", "content": prompt_with_cta},
+                ],
+                max_tokens=self.max_tokens,
+                temperature=temperature,
+            )
+
+            if not response or not response.choices or not response.choices[0].message.content:
+                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+
+            content = response.choices[0].message.content.strip()
+            return content
+
+        except Exception as e:
+            extra = ""
+            try:
+                from openai import OpenAIError
+                if isinstance(e, OpenAIError):
+                    status = getattr(e, "status_code", None)
+                    if status:
+                        extra += f" (status {status})"
+                    resp = getattr(e, "response", None)
+                    if resp is not None:
+                        try:
+                            body = resp.json() if hasattr(resp, "json") else resp
+                        except Exception:
+                            body = str(resp)
+                        body_str = (
+                            json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+                        )
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                pass
+
+            logger.error(f"[{self.model_name}] Qwen client error: {e}{extra}", exc_info=True)
+            raise
+
+
 class OpenRouterClient(BaseModelClient):
     """
     For OpenRouter models, with default being 'openrouter/quasar-alpha'
     """
 
-    def __init__(self, model_name: str = "openrouter/quasar-alpha", prompts_dir: Optional[str] = None):
+    def __init__(self, model_name: str = "openrouter/quasar-alpha", prompts_dir: Optional[str] = None, reasoning_effort: Optional[str] = None):
         # Allow specifying just the model identifier or the full path
         if not model_name.startswith("openrouter/") and "/" not in model_name:
             model_name = f"openrouter/{model_name}"
@@ -1169,8 +1356,9 @@ class OpenRouterClient(BaseModelClient):
             raise ValueError("OPENROUTER_API_KEY environment variable is required")
 
         self.client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key)
+        self.reasoning_effort = reasoning_effort  # For models that support reasoning effort
 
-        logger.debug(f"[{self.model_name}] Initialized OpenRouter client")
+        logger.debug(f"[{self.model_name}] Initialized OpenRouter client with reasoning_effort={reasoning_effort}")
 
     async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
         """Generate a response using OpenRouter with robust error handling."""
@@ -1183,13 +1371,22 @@ class OpenRouterClient(BaseModelClient):
                 random_seed = generate_random_seed()
                 system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
 
+            # Prepare request parameters
+            request_params = {
+                "model": self.model_name,
+                "messages": [{"role": "system", "content": system_prompt_content}, {"role": "user", "content": prompt_with_cta}],
+                "max_tokens": self.max_tokens,
+                "temperature": temperature,
+            }
+
+            # Add reasoning parameter for models that support it (grok-4 and other reasoning models)
+            reasoning_models = ['grok-4', 'xai/grok-4']
+            if self.reasoning_effort and any(model in self.model_name for model in reasoning_models):
+                request_params["reasoning"] = {"effort": self.reasoning_effort}
+                logger.debug(f"[{self.model_name}] Adding reasoning effort: {self.reasoning_effort}")
+
             # Prepare standard OpenAI-compatible request
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[{"role": "system", "content": system_prompt_content}, {"role": "user", "content": prompt_with_cta}],
-                max_tokens=self.max_tokens,
-                temperature=temperature,
-            )
+            response = await self.client.chat.completions.create(**request_params)
 
             if not response.choices or not response.choices[0].message.content:
                 raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
@@ -1282,6 +1479,59 @@ class TogetherAIClient(BaseModelClient):
 
 
 ##############################################################################
+# GroqClient
+##############################################################################
+class GroqClient(BaseModelClient):
+    """
+    Client for Groq AI models.
+    Model names should start with 'groq-' and include the full model path.
+    Example: 'groq-openai/gpt-oss-20b' -> model sent to API: 'openai/gpt-oss-20b'
+    """
+
+    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
+        super().__init__(model_name, prompts_dir=prompts_dir)
+        self.api_key = os.environ.get("GROQ_API_KEY")
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY environment variable is required for GroqClient")
+        
+        self.client = AsyncGroq(api_key=self.api_key)
+        logger.info(f"[{self.model_name}] Initialized Groq client for model: {self.model_name}")
+
+    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+        """
+        Generates a response from the Groq model.
+        """
+        try:
+            system_prompt_content = self.system_prompt
+            if inject_random_seed:
+                random_seed = generate_random_seed()
+                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
+
+            prompt_with_cta = prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
+
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt_content},
+                    {"role": "user", "content": prompt_with_cta},
+                ],
+                max_completion_tokens=self.max_tokens,
+                temperature=temperature,
+                stream=False,
+            )
+
+            if not response.choices or not response.choices[0].message or not response.choices[0].message.content:
+                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+
+            content = response.choices[0].message.content
+            return content.strip()
+
+        except Exception as e:
+            logger.error(f"[{self.model_name}] Groq client error: {e}", exc_info=True)
+            raise
+
+
+##############################################################################
 # RequestsOpenAIClient – sync requests, wrapped async (original + api_key)
 ##############################################################################
 
@@ -1352,8 +1602,8 @@ class RequestsOpenAIClient(BaseModelClient):
             "temperature": temperature,
         }
         
-        # Use max_completion_tokens for o4-mini, o3-mini, o3, gpt-4.1 models and nectarine models
-        if self.model_name in ["o4-mini", "o3-mini", "o3", "gpt-4.1"] or self.model_name.startswith("nectarine"):
+        # Use max_completion_tokens for o4-mini, o3-mini, o3, gpt-4.1, willow-alpha-2025-11-03 models and nectarine models
+        if self.model_name in ["o4-mini", "o3-mini", "o3", "gpt-4.1", "willow-alpha-2025-11-03"] or self.model_name.startswith("nectarine"):
             payload["max_completion_tokens"] = self.max_tokens
         else:
             payload["max_tokens"] = self.max_tokens
@@ -1364,7 +1614,7 @@ class RequestsOpenAIClient(BaseModelClient):
         #        "allow_fallbacks": False,
         #    }
 
-        if (self.model_name == 'o3' or self.model_name == 'o4-mini'):
+        if (self.model_name == 'o3' or self.model_name == 'o4-mini' or self.model_name == 'willow-alpha-2025-11-03'):
             del payload["temperature"]
             if "max_tokens" in payload:
                 del payload["max_tokens"]
@@ -1426,8 +1676,11 @@ class Prefix(StrEnum):
     ANTHROPIC         = "anthropic"
     GEMINI            = "gemini"
     DEEPSEEK          = "deepseek"
+    KIMI              = "kimi"
+    QWEN              = "qwen"
     OPENROUTER        = "openrouter"
     TOGETHER          = "together"
+    GROQ              = "groq"
 
 def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseModelClient:
     """
@@ -1436,19 +1689,29 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
         anthropic:claude-3.7-sonnet
         openai:llama-3-2-3b@https://localhost:8000#myapikey
         gpt-5-reasoning-alpha-2025-07-19:minimal
+        claude-sonnet-4-20250514:1m
     and returns the appropriate client.
 
     • If a prefix is omitted the function falls back to the original
       heuristic mapping exactly as before.
     • If an inline API-key ('#…') is present it overrides environment vars.
     • For reasoning models, effort can be specified with :minimal, :medium, or :high
+    • For claude-sonnet-4-20250514, :1m can be specified for extended context
     """
+    # Special handling for claude-sonnet-4-20250514 with :1m suffix
+    if model_id.startswith('claude-sonnet-4-20250514'):
+        # This model doesn't use prefixes, just handle it directly
+        logger.info(f"[load_model_client] Detected claude-sonnet-4-20250514 model: {model_id}")
+        return ClaudeClient(model_id, prompts_dir)
+    
     # Extract reasoning effort if present (before general parsing)
     reasoning_effort = None
     actual_model_id = model_id
     
     # Check if this is a reasoning model with effort specified
-    reasoning_models = ['gpt-5-reasoning-alpha-2025-07-19', 'o4-mini', 'nectarine-alpha-2025-07-25', 'nectarine-alpha-new-reasoning-effort-2025-07-25']
+    reasoning_models = ['gpt-5-reasoning-alpha-2025-07-19', 'gpt-5', 'o4-mini']
+    
+    # Check for explicit reasoning models first
     for model in reasoning_models:
         if model_id.startswith(model + ':'):
             parts = model_id.split(':', 1)
@@ -1459,6 +1722,34 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
                 actual_model_id = parts[0]
                 reasoning_effort = effort_part.lower()
                 break
+    
+    # Check for nectarine models
+    if reasoning_effort is None and model_id.startswith('nectarine'):
+        # Check if there's an effort specified after a colon
+        if ':' in model_id:
+            parts = model_id.split(':', 1)
+            effort_part = parts[1]
+            if effort_part.lower() in ['minimal', 'medium', 'high']:
+                actual_model_id = parts[0]
+                reasoning_effort = effort_part.lower()
+
+    # Check for OpenRouter models with reasoning (e.g., openrouter:grok-4:medium)
+    if reasoning_effort is None and 'openrouter' in model_id.lower():
+        # Count colons to determine if effort is specified
+        if model_id.count(':') >= 2:
+            # Format: openrouter:grok-4:medium or similar
+            parts = model_id.rsplit(':', 1)
+            effort_part = parts[1]
+            if effort_part.lower() in ['minimal', 'medium', 'high']:
+                actual_model_id = parts[0]
+                reasoning_effort = effort_part.lower()
+        elif model_id.count(':') == 1 and not model_id.startswith('openrouter:'):
+            # Format: grok-4:medium without openrouter prefix
+            parts = model_id.split(':', 1)
+            effort_part = parts[1]
+            if effort_part.lower() in ['minimal', 'medium', 'high']:
+                actual_model_id = parts[0]
+                reasoning_effort = effort_part.lower()
     
     spec = _parse_model_spec(actual_model_id)
     logger.info(f"[load_model_client] Loading client for model_id='{model_id}', parsed spec: prefix={spec.prefix}, model={spec.model}, reasoning_effort={reasoning_effort}")
@@ -1476,7 +1767,7 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
             raise ValueError(
                 f"[load_model_client] unknown prefix '{spec.prefix}'. "
                 "Allowed prefixes: openai, openai-requests, openai-responses, "
-                "anthropic, gemini, deepseek, openrouter, together."
+                "anthropic, gemini, deepseek, kimi, qwen, openrouter, together, groq."
             ) from exc
 
         match pref:
@@ -1502,10 +1793,16 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
                 return GeminiClient(spec.model, prompts_dir)
             case Prefix.DEEPSEEK:
                 return DeepSeekClient(spec.model, prompts_dir)
+            case Prefix.KIMI:
+                return KimiClient(spec.model, prompts_dir)
+            case Prefix.QWEN:
+                return QwenClient(spec.model, prompts_dir)
             case Prefix.OPENROUTER:
-                return OpenRouterClient(spec.model, prompts_dir)
+                return OpenRouterClient(spec.model, prompts_dir, reasoning_effort=reasoning_effort)
             case Prefix.TOGETHER:
                 return TogetherAIClient(spec.model, prompts_dir)
+            case Prefix.GROQ:
+                return GroqClient(spec.model, prompts_dir)
 
     # ------------------------------------------------------------------ #
     # 2. Heuristic fallback path (identical to the original behaviour)   #
@@ -1514,8 +1811,8 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
     logger.info(f"[load_model_client] Heuristic path: checking model='{spec.model}', lower_id='{lower_id}'")
 
     # Check if this is a reasoning model that should use Responses API
-    reasoning_models_requiring_responses = ['gpt-5-reasoning-alpha-2025-07-19', 'o4-mini', 'nectarine-alpha-2025-07-25', 'nectarine-alpha-new-reasoning-effort-2025-07-25']
-    if spec.model in reasoning_models_requiring_responses:
+    reasoning_models_requiring_responses = ['gpt-5-reasoning-alpha-2025-07-19', 'gpt-5', 'o4-mini']
+    if spec.model in reasoning_models_requiring_responses or spec.model.startswith('nectarine'):
         logger.info(f"[load_model_client] Selected OpenAIResponsesClient for reasoning model '{spec.model}'")
         return OpenAIResponsesClient(spec.model, prompts_dir, api_key=inline_key, reasoning_effort=reasoning_effort)
 
@@ -1530,7 +1827,11 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
 
     if "openrouter" in lower_id:
         logger.info(f"[load_model_client] Selected OpenRouterClient for '{spec.model}'")
-        return OpenRouterClient(spec.model, prompts_dir)
+        return OpenRouterClient(spec.model, prompts_dir, reasoning_effort=reasoning_effort)
+
+    if "minimax" in lower_id:
+        logger.info(f"[load_model_client] Selected ClaudeClient for MiniMax model '{spec.model}'")
+        return ClaudeClient(spec.model, prompts_dir)
 
     if "claude" in lower_id:
         logger.info(f"[load_model_client] Selected ClaudeClient for '{spec.model}'")
@@ -1543,6 +1844,20 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
     if "deepseek" in lower_id:
         logger.info(f"[load_model_client] Selected DeepSeekClient for '{spec.model}'")
         return DeepSeekClient(spec.model, prompts_dir)
+
+    if spec.model.startswith("groq-"):
+        # e.g. "groq-openai/gpt-oss-20b" -> strip "groq-" prefix for the actual model name
+        actual_model_name = spec.model[5:]  # Remove "groq-" prefix
+        logger.info(f"[load_model_client] Selected GroqClient for '{spec.model}', using model name '{actual_model_name}'")
+        return GroqClient(actual_model_name, prompts_dir)
+
+    if spec.model.startswith("kimi-"):
+        logger.info(f"[load_model_client] Selected KimiClient for '{spec.model}'")
+        return KimiClient(spec.model, prompts_dir)
+
+    if "qwen" in lower_id or spec.model == "qwen3-max":
+        logger.info(f"[load_model_client] Selected QwenClient for '{spec.model}'")
+        return QwenClient(spec.model, prompts_dir)
 
     # Default: OpenAI-compatible async client
     logger.info(f"[load_model_client] No specific match found, using default OpenAIClient for '{spec.model}'")
