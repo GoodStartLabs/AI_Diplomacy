@@ -14,6 +14,7 @@ from .agent import ALL_POWERS, ALLOWED_RELATIONSHIPS
 from .utils import run_llm_and_log, log_llm_response, get_prompt_path, load_prompt
 from .prompt_constructor import build_context_prompt
 from .formatter import format_with_gemini_flash, FORMAT_INITIAL_STATE
+from .template_renderer import render_template
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,8 @@ async def initialize_agent_state_ext(
         logger.info(f"[{power_name}] Loading initial state prompt: {prompt_file} from dir: {effective_prompts_dir}")
         initial_prompt_template = load_prompt(prompt_file, prompts_dir=effective_prompts_dir)
 
-        # Format the prompt with variables
-        initial_prompt = initial_prompt_template.format(power_name=power_name, allowed_labels_str=allowed_labels_str)
+        # Format the prompt with variables (supports both {var} and {{var}} syntax)
+        initial_prompt = render_template(initial_prompt_template, {"power_name": power_name, "allowed_labels_str": allowed_labels_str})
         logger.debug(f"[{power_name}] Initial prompt length: {len(initial_prompt)}")
         logger.info(f"[{power_name}] Initial state prompt loaded, length: {len(initial_prompt)}, starts with: {initial_prompt[:50]}...")
 
@@ -71,7 +72,9 @@ async def initialize_agent_state_ext(
             prompts_dir=effective_prompts_dir,
         )
         full_prompt = initial_prompt + "\n\n" + context
-        logger.info(f"[{power_name}] Full prompt constructed. Total length: {len(full_prompt)}, initial_prompt length: {len(initial_prompt)}, context length: {len(context)}")
+        logger.info(
+            f"[{power_name}] Full prompt constructed. Total length: {len(full_prompt)}, initial_prompt length: {len(initial_prompt)}, context length: {len(context)}"
+        )
         logger.info(f"[{power_name}] Full prompt starts with: {full_prompt[:100]}...")
         # Log the end of the prompt to see if JSON format instructions are included
         logger.info(f"[{power_name}] Full prompt ends with: ...{full_prompt[-500:]}")

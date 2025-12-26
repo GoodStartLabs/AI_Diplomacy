@@ -16,6 +16,7 @@ from .clients import BaseModelClient
 # Import load_prompt and the new logging wrapper from utils
 from .utils import load_prompt, run_llm_and_log, log_llm_response, log_llm_response_async, get_prompt_path, get_board_state
 from .prompt_constructor import build_context_prompt  # Added import
+from .template_renderer import render_template
 from .clients import GameHistory
 from diplomacy import Game
 from .formatter import format_with_gemini_flash, FORMAT_ORDER_DIARY, FORMAT_NEGOTIATION_DIARY, FORMAT_STATE_UPDATE
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 # == Best Practice: Define constants at module level ==
 ALL_POWERS = frozenset({"AUSTRIA", "ENGLAND", "FRANCE", "GERMANY", "ITALY", "RUSSIA", "TURKEY"})
 ALLOWED_RELATIONSHIPS = ["Enemy", "Unfriendly", "Neutral", "Friendly", "Ally"]
+
 
 class DiplomacyAgent:
     """
@@ -94,6 +96,13 @@ class DiplomacyAgent:
             system_prompt_content = load_prompt(default_prompt_path)
 
         if system_prompt_content:  # Ensure we actually have content before setting
+            # Render template variables (supports both {var} and {{var}} syntax)
+            # This allows system prompts to use {{power_name}} for dynamic substitution
+            system_prompt_content = render_template(
+                system_prompt_content,
+                {"power_name": power_name},
+                strict=False,  # Don't fail on unknown variables
+            )
             self.client.set_system_prompt(system_prompt_content)
         else:
             logger.error(f"Could not load default system prompt either! Agent {power_name} may not function correctly.")
@@ -489,9 +498,7 @@ class DiplomacyAgent:
 
             messages_this_round = game_history.get_messages_this_round(power_name=self.power_name, current_phase_name=game.current_short_phase)
             if not messages_this_round.strip() or messages_this_round.startswith("\n(No messages"):
-                messages_this_round = (
-                    "(No messages involving your power this round.)"
-                )
+                messages_this_round = "(No messages involving your power this round.)"
 
             current_relationships_str = json.dumps(self.relationships)
             current_goals_str = json.dumps(self.goals)
@@ -518,7 +525,7 @@ class DiplomacyAgent:
 
                 # Escape all curly braces in JSON examples to prevent format() from interpreting them
                 # First, temporarily replace the actual template variables
-            
+
                 temp_vars = [
                     "power_name",
                     "current_phase",
@@ -757,7 +764,7 @@ class DiplomacyAgent:
         try:
             raw_response = await run_llm_and_log(
                 client=self.client,
-                prompt=prompt, 
+                prompt=prompt,
                 power_name=self.power_name,
                 phase=game.current_short_phase,
                 response_type="order_diary",
@@ -870,9 +877,7 @@ class DiplomacyAgent:
             # Get recent negotiations for this phase
             messages_this_round = game_history.get_messages_this_round(power_name=self.power_name, current_phase_name=game.current_short_phase)
             if not messages_this_round.strip() or messages_this_round.startswith("\n(No messages"):
-                messages_this_round = (
-                    "(No messages involving your power this round.)"
-                )
+                messages_this_round = "(No messages involving your power this round.)"
 
             # Format relationships
             relationships_str = "\n".join([f"{p}: {r}" for p, r in self.relationships.items()])
@@ -914,9 +919,7 @@ class DiplomacyAgent:
                     success_status = "TRUE"
                     logger.info(f"[{self.power_name}] Phase result diary entry generated and added.")
                 else:
-                    fallback_diary = (
-                        f"Phase {phase_name} completed."
-                    )
+                    fallback_diary = f"Phase {phase_name} completed."
                     self.add_diary_entry(fallback_diary, phase_name)
                     logger.warning(f"[{self.power_name}] Empty response from LLM. Added fallback phase result diary.")
                     success_status = "FALSE"
@@ -939,7 +942,7 @@ class DiplomacyAgent:
                 )
         except Exception as e:
             logger.error(e)
-            logger.error('!generate_phase_result_diary_entry failed')
+            logger.error("!generate_phase_result_diary_entry failed")
 
     def log_state(self, prefix=""):
         logger.debug(f"[{self.power_name}] {prefix} State: Goals={self.goals}, Relationships={self.relationships}")
@@ -983,14 +986,14 @@ class DiplomacyAgent:
                 game=game,
                 board_state=board_state,  # Use provided board_state parameter
                 power_name=power_name,
-                possible_orders=None, # don't include possible orders in the state update prompt
+                possible_orders=None,  # don't include possible orders in the state update prompt
                 game_history=game_history,  # Pass game_history
-                agent_goals=[], # pass empty goals to force model to regenerate goals each phase
+                agent_goals=[],  # pass empty goals to force model to regenerate goals each phase
                 agent_relationships=self.relationships,
                 agent_private_diary=formatted_diary,  # Pass formatted diary
                 prompts_dir=self.prompts_dir,
                 include_messages=True,
-                display_phase=last_phase_name
+                display_phase=last_phase_name,
             )
 
             # Add previous phase summary to the information provided to the LLM

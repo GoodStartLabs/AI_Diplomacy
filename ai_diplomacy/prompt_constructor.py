@@ -12,6 +12,7 @@ from .possible_order_context import (
     generate_rich_order_context_xml,
 )
 from .game_history import GameHistory  # Assuming GameHistory is correctly importable
+from .template_renderer import render_template
 
 # placeholder for diplomacy.Game to avoid circular or direct dependency if not needed for typehinting only
 # from diplomacy import Game # Uncomment if 'Game' type hint is crucial and available
@@ -86,7 +87,9 @@ def build_context_prompt(
         possible_orders_context_str = "(not relevant in this context)"
     else:
         if _use_simple:
-            possible_orders_context_str = generate_rich_order_context(game, power_name, possible_orders, include_summary=include_possible_moves_summary)
+            possible_orders_context_str = generate_rich_order_context(
+                game, power_name, possible_orders, include_summary=include_possible_moves_summary
+            )
         else:
             possible_orders_context_str = generate_rich_order_context_xml(game, power_name, possible_orders)
 
@@ -114,7 +117,7 @@ def build_context_prompt(
     )
 
     if not include_order_history:
-        order_history_str = "" # !! setting to blank for ablation. REMEMBER TO REVERT!
+        order_history_str = ""  # !! setting to blank for ablation. REMEMBER TO REVERT!
 
     # Replace token only if it exists (template may not include it)
     if "{home_centers}" in context_template:
@@ -131,20 +134,23 @@ def build_context_prompt(
     if "{max_year}" in context_template:
         # For now, we'll use a default value or extract from game if available
         # This could be passed as a parameter or extracted from game settings
-        max_year = getattr(game, 'max_year', 1935)  # Default to 1935 if not available
+        max_year = getattr(game, "max_year", 1935)  # Default to 1935 if not available
         context_template = context_template.replace("{max_year}", str(max_year))
 
-    context = context_template.format(
-        power_name=power_name,
-        current_phase=display_phase,
-        all_unit_locations=units_repr,
-        all_supply_centers=centers_repr,
-        messages_this_round=messages_this_round_text,
-        possible_orders=possible_orders_context_str,
-        agent_goals="\n".join(f"- {g}" for g in agent_goals) if agent_goals else "None specified",
-        agent_relationships="\n".join(f"- {p}: {s}" for p, s in agent_relationships.items()) if agent_relationships else "None specified",
-        agent_private_diary=agent_private_diary if agent_private_diary else "(No diary entries yet)",
-    )
+    # Build context dict for template rendering
+    # Using render_template supports both {var} (legacy) and {{var}} (new) syntax
+    template_context = {
+        "power_name": power_name,
+        "current_phase": display_phase,
+        "all_unit_locations": units_repr,
+        "all_supply_centers": centers_repr,
+        "messages_this_round": messages_this_round_text,
+        "possible_orders": possible_orders_context_str,
+        "agent_goals": "\n".join(f"- {g}" for g in agent_goals) if agent_goals else "None specified",
+        "agent_relationships": "\n".join(f"- {p}: {s}" for p, s in agent_relationships.items()) if agent_relationships else "None specified",
+        "agent_private_diary": agent_private_diary if agent_private_diary else "(No diary entries yet)",
+    }
+    context = render_template(context_template, template_context)
 
     return context
 
@@ -182,7 +188,7 @@ def construct_order_generation_prompt(
     _ = load_prompt("few_shot_example.txt", prompts_dir=prompts_dir)  # Loaded but not used, as per original logic
     # Pick the phase-specific instruction file (using unformatted versions)
     phase_code = board_state["phase"][-1]  # 'M' (movement), 'R', or 'A' / 'B'
-    
+
     # Determine base instruction file name
     if phase_code == "M":
         base_instruction_file = "order_instructions_movement_phase"
@@ -192,13 +198,13 @@ def construct_order_generation_prompt(
         base_instruction_file = "order_instructions_retreat_phase"
     else:  # unexpected – default to movement rules
         base_instruction_file = "order_instructions_movement_phase"
-    
+
     # Check if country-specific prompts are enabled
     if config.COUNTRY_SPECIFIC_PROMPTS:
         # Try to load country-specific version first
         country_specific_file = get_prompt_path(f"{base_instruction_file}_{power_name.lower()}.txt")
         instructions = load_prompt(country_specific_file, prompts_dir=prompts_dir)
-        
+
         # Fall back to generic if country-specific not found
         if not instructions:
             instructions_file = get_prompt_path(f"{base_instruction_file}.txt")
@@ -209,8 +215,8 @@ def construct_order_generation_prompt(
         instructions = load_prompt(instructions_file, prompts_dir=prompts_dir)
     _use_simple = config.SIMPLE_PROMPTS
 
-    include_order_history = False # defaulting to not include order history in order generation prompt for now
-    #if power_name.lower() == 'france':
+    include_order_history = False  # defaulting to not include order history in order generation prompt for now
+    # if power_name.lower() == 'france':
     #    include_order_history = True # REVERT THIS
 
     # Build the context prompt
@@ -230,7 +236,7 @@ def construct_order_generation_prompt(
     )
 
     # delete unused section from context:
-    context = context.replace('Messages This Round\n\n\nEnd Messages', '')
+    context = context.replace("Messages This Round\n\n\nEnd Messages", "")
 
     final_prompt = system_prompt + "\n\n" + context + "\n\n" + instructions
 
