@@ -24,6 +24,7 @@ class Configuration(BaseSettings):
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
     TOGETHER_API_KEY: str | None = None
+    PERPLEXITY_API_KEY: str | None = None
 
     def __init__(self, power_name: Optional[PowerEnum] = None, **kwargs):
         super().__init__(**kwargs)
@@ -45,6 +46,7 @@ class Configuration(BaseSettings):
             "ANTHROPIC_API_KEY",
             "GEMINI_API_KEY",
             "OPENROUTER_API_KEY",
+            "PERPLEXITY_API_KEY",
         ]
 
         for key in api_keys:
