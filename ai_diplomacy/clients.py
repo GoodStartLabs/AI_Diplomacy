@@ -1225,6 +1225,77 @@ class OpenRouterClient(BaseModelClient):
 
 
 ##############################################################################
+# Perplexity Client
+##############################################################################
+class PerplexityClient(BaseModelClient):
+    """
+    For Perplexity models (sonar, sonar-pro, sonar-deep-research, sonar-reasoning, sonar-reasoning-pro).
+    Uses OpenAI-compatible API.
+    """
+
+    def __init__(self, model_name: str, prompts_dir: Optional[str] = None):
+        super().__init__(model_name, prompts_dir=prompts_dir)
+        self.api_key = os.environ.get("PERPLEXITY_API_KEY")
+        if not self.api_key:
+            raise ValueError("PERPLEXITY_API_KEY environment variable is required")
+
+        self.client = AsyncOpenAI(base_url="https://api.perplexity.ai", api_key=self.api_key)
+
+        logger.debug(f"[{self.model_name}] Initialized Perplexity client")
+
+    async def generate_response(self, prompt: str, temperature: float = 0.0, inject_random_seed: bool = True) -> str:
+        """Generate a response using Perplexity with robust error handling."""
+        try:
+            # Append the call to action to the user's prompt
+            prompt_with_cta = prompt + "\n\nPROVIDE YOUR RESPONSE BELOW:"
+
+            system_prompt_content = self.system_prompt
+            if inject_random_seed:
+                random_seed = generate_random_seed()
+                system_prompt_content = f"{random_seed}\n\n{self.system_prompt}"
+
+            # Prepare standard OpenAI-compatible request
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "system", "content": system_prompt_content}, {"role": "user", "content": prompt_with_cta}],
+                max_tokens=self.max_tokens,
+                temperature=temperature,
+            )
+
+            if not response.choices or not response.choices[0].message.content:
+                raise ValueError(f"[{self.model_name}] LLM returned an empty or invalid response.")
+
+            content = response.choices[0].message.content.strip()
+            return content
+
+        except Exception as e:
+            extra = ""
+            try:
+                from openai import OpenAIError
+                if isinstance(e, OpenAIError):
+                    status = getattr(e, "status_code", None)
+                    if status:
+                        extra += f" (status {status})"
+                    resp = getattr(e, "response", None)
+                    if resp is not None:
+                        try:
+                            body = resp.json() if hasattr(resp, "json") else resp
+                        except Exception:
+                            body = str(resp)
+                        body_str = (
+                            json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+                        )
+                        if len(body_str) > 3_000:
+                            body_str = body_str[:3_000] + "…[truncated]"
+                        extra += f" – body: {body_str}"
+            except Exception:
+                pass
+
+            logger.error(f"[{self.model_name}] Perplexity client error: {e}{extra}", exc_info=True)
+            raise
+
+
+##############################################################################
 # TogetherAI Client
 ##############################################################################
 class TogetherAIClient(BaseModelClient):
@@ -1428,6 +1499,7 @@ class Prefix(StrEnum):
     DEEPSEEK          = "deepseek"
     OPENROUTER        = "openrouter"
     TOGETHER          = "together"
+    PERPLEXITY        = "perplexity"
 
 def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseModelClient:
     """
@@ -1476,7 +1548,7 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
             raise ValueError(
                 f"[load_model_client] unknown prefix '{spec.prefix}'. "
                 "Allowed prefixes: openai, openai-requests, openai-responses, "
-                "anthropic, gemini, deepseek, openrouter, together."
+                "anthropic, gemini, deepseek, openrouter, together, perplexity."
             ) from exc
 
         match pref:
@@ -1506,6 +1578,8 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
                 return OpenRouterClient(spec.model, prompts_dir)
             case Prefix.TOGETHER:
                 return TogetherAIClient(spec.model, prompts_dir)
+            case Prefix.PERPLEXITY:
+                return PerplexityClient(spec.model, prompts_dir)
 
     # ------------------------------------------------------------------ #
     # 2. Heuristic fallback path (identical to the original behaviour)   #
