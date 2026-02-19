@@ -13,8 +13,7 @@ if TYPE_CHECKING:
     from diplomacy import Game
 
 logger = logging.getLogger("negotiations")
-logger.setLevel(logging.INFO)
-logging.basicConfig(level=logging.INFO)
+# Level inherited from root (set in lm_game.py); use --debug for DEBUG globally.
 
 load_dotenv()
 

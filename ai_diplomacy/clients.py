@@ -454,6 +454,8 @@ class BaseModelClient:
         else:
             # Load generic conversation instructions
             instructions = load_prompt(get_prompt_path("conversation_instructions.txt"), prompts_dir=self.prompts_dir)
+        
+        logger.debug(f"[{power_name}] Conversation instructions: {instructions}")
 
         # KEEP ORIGINAL: Use build_context_prompt as before
         context = build_context_prompt(
@@ -467,6 +469,8 @@ class BaseModelClient:
             agent_private_diary=agent_private_diary_str,  # Pass diary string
             prompts_dir=self.prompts_dir,
         )
+
+        logger.debug(f"[{power_name}] Conversation context: {context}")
 
         # KEEP ORIGINAL: Get recent messages targeting this power to prioritize responses
         recent_messages_to_power = game_history.get_recent_messages_to_power(power_name, limit=3)
