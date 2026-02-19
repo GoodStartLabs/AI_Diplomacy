@@ -44,17 +44,10 @@ class Phase:
             results.extend([[] for _ in range(len(orders) - len(results))])
         self.results_by_power[power].extend(results)
 
-    def get_global_messages(self) -> str:
-        result = ""
-        for msg in self.messages:
-            if msg.recipient == "GLOBAL":
-                result += f" {msg.sender}: {msg.content}\n"
-        return result
-
     def get_private_messages(self, power: str) -> Dict[str, str]:
         conversations = defaultdict(str)
         for msg in self.messages:
-            if msg.sender == power and msg.recipient != "GLOBAL":
+            if msg.sender == power:
                 conversations[msg.recipient] += f"  {power}: {msg.content}\n"
             elif msg.recipient == power:
                 conversations[msg.sender] += f"  {msg.sender}: {msg.content}\n"
@@ -401,28 +394,15 @@ class GameHistory:
         if not current_phase:
             return f"\n(No messages found for current phase: {current_phase_name})\n"
 
-        messages_str = ""
-
-        global_msgs_content = current_phase.get_global_messages()
-        if global_msgs_content:
-            messages_str += "**GLOBAL MESSAGES THIS ROUND:**\n"
-            messages_str += global_msgs_content
-        else:
-            messages_str += "**GLOBAL MESSAGES THIS ROUND:**\n (No global messages this round)\n"
-
         private_msgs_dict = current_phase.get_private_messages(power_name)
-        if private_msgs_dict:
-            messages_str += "\n**PRIVATE MESSAGES TO/FROM YOU THIS ROUND:**\n"
-            for other_power, conversation_content in private_msgs_dict.items():
-                messages_str += f" Conversation with {other_power}:\n"
-                messages_str += conversation_content
-                messages_str += "\n"
-        else:
-            messages_str += "\n**PRIVATE MESSAGES TO/FROM YOU THIS ROUND:**\n (No private messages this round)\n"
-
-        if not global_msgs_content and not private_msgs_dict:
+        if not private_msgs_dict:
             return f"\n(No messages recorded for current phase: {current_phase_name})\n"
 
+        messages_str = "**MESSAGES TO/FROM YOU THIS ROUND:**\n"
+        for other_power, conversation_content in private_msgs_dict.items():
+            messages_str += f" Conversation with {other_power}:\n"
+            messages_str += conversation_content
+            messages_str += "\n"
         return messages_str.strip()
 
     # New method to get recent messages TO a specific power
@@ -441,11 +421,8 @@ class GameHistory:
         messages_to_power = []
         for phase in recent_phases:
             for msg in phase.messages:
-                # Personal messages to this power or global messages from others
-                if msg.recipient == power_name or (msg.recipient == "GLOBAL" and msg.sender != power_name):
-                    # Skip if sender is this power (don't need to respond to own messages)
-                    if msg.sender != power_name:
-                        messages_to_power.append({"sender": msg.sender, "content": msg.content, "phase": phase.name})
+                if msg.recipient == power_name and msg.sender != power_name:
+                    messages_to_power.append({"sender": msg.sender, "content": msg.content, "phase": phase.name})
 
         # Add debug logging
         logger.info(f"Found {len(messages_to_power)} messages to {power_name} across {len(recent_phases)} phases")
@@ -472,15 +449,14 @@ class GameHistory:
             return ignored_by_power
 
         for i, phase in enumerate(recent_phases):
-            # Get messages sent by sender to specific powers (not global)
+            # Get messages sent by sender to other powers (targeted only)
             sender_messages = []
             for msg in phase.messages:
-                # Handle both Message objects and dict objects
                 if isinstance(msg, Message):
-                    if msg.sender == sender_name and msg.recipient not in ["GLOBAL", "ALL"]:
+                    if msg.sender == sender_name and msg.recipient != sender_name:
                         sender_messages.append(msg)
-                else:  # Assume dict
-                    if msg["sender"] == sender_name and msg["recipient"] not in ["GLOBAL", "ALL"]:
+                else:
+                    if msg["sender"] == sender_name and msg["recipient"] != sender_name:
                         sender_messages.append(msg)
 
             # Check for responses in this and next phases
@@ -498,19 +474,14 @@ class GameHistory:
 
                 # Check remaining phases starting from current
                 for check_phase in recent_phases[i : min(i + 2, len(recent_phases))]:
-                    # Look for messages FROM the recipient TO the sender (direct response)
-                    # or FROM the recipient to GLOBAL/ALL that might acknowledge sender
+                    # Look for direct response: FROM the recipient TO the sender
                     response_msgs = []
                     for m in check_phase.messages:
                         if isinstance(m, Message):
-                            if m.sender == recipient and (
-                                m.recipient == sender_name or (m.recipient in ["GLOBAL", "ALL"] and sender_name in m.content)
-                            ):
+                            if m.sender == recipient and m.recipient == sender_name:
                                 response_msgs.append(m)
-                        else:  # Assume dict
-                            if m["sender"] == recipient and (
-                                m["recipient"] == sender_name or (m["recipient"] in ["GLOBAL", "ALL"] and sender_name in m.get("content", ""))
-                            ):
+                        else:
+                            if m["sender"] == recipient and m["recipient"] == sender_name:
                                 response_msgs.append(m)
 
                     if response_msgs:

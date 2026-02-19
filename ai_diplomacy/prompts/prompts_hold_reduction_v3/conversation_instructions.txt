@@ -36,8 +36,8 @@ Return ONLY a JSON array of aggressive messages:
 
 [
   {
-    "message_type": "global" or "private",
-    "recipient": "POWER_NAME" (private only),
+    "message_type": "private",
+    "recipient": "POWER_NAME",
     "content": "Your expansion-focused message"
   },
   ...
@@ -51,7 +51,8 @@ Example:
     "content": "Germany looks weak. I'm taking Munich next turn. Support me into Munich and I'll help you into Belgium - we can split their centers."
   },
   {
-    "message_type": "global",
-    "content": "Expanding into the Mediterranean this year. Happy to coordinate with anyone interested in Austrian centers."
+    "message_type": "private",
+    "recipient": "ITALY",
+    "content": "Expanding into the Mediterranean this year. Happy to coordinate with you on Austrian centers."
   }
 ]

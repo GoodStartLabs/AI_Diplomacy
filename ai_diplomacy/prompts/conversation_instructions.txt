@@ -11,15 +11,6 @@ Return ONLY a single JSON array containing one or more message objects, remember
 Required JSON structure:
 [
   {
-    "message_type": "global" or "private",
-    "content": "Your message text"
-  },
-  ...
-]
-
-For private messages, also include the recipient:
-[
-  {
     "message_type": "private",
     "recipient": "POWER_NAME",
     "content": "Your message text"

@@ -674,16 +674,19 @@ class BaseModelClient:
                 success_status = "Success: No messages found"
                 # messages_to_return remains empty
             else:
-                # Validate parsed messages
+                # Validate parsed messages: only accept targeted (private) messages with recipient
                 validated_messages = []
                 for msg in parsed_messages:
-                    if isinstance(msg, dict) and "message_type" in msg and "content" in msg:
-                        if msg["message_type"] == "private" and "recipient" not in msg:
-                            logger.warning(f"[{self.model_name}] Private message missing recipient for {power_name}")
-                            continue
-                        validated_messages.append(msg)
-                    else:
+                    if not isinstance(msg, dict) or "content" not in msg:
                         logger.warning(f"[{self.model_name}] Invalid message structure for {power_name}")
+                        continue
+                    if msg.get("message_type") != "private":
+                        logger.debug(f"[{self.model_name}] Skipping non-private message from {power_name} (targeted only).")
+                        continue
+                    if "recipient" not in msg or not msg.get("recipient"):
+                        logger.warning(f"[{self.model_name}] Private message missing recipient for {power_name}")
+                        continue
+                    validated_messages.append(msg)
                 parsed_messages = validated_messages
 
             # Set final status and return value
@@ -1584,7 +1587,6 @@ def get_visible_messages_for_power(conversation_messages, power_name):
     """
     visible = []
     for msg in conversation_messages:
-        # GLOBAL might be 'ALL' or 'GLOBAL' depending on your usage
-        if msg["recipient"] == "ALL" or msg["recipient"] == "GLOBAL" or msg["sender"] == power_name or msg["recipient"] == power_name:
+        if msg["sender"] == power_name or msg["recipient"] == power_name:
             visible.append(msg)
     return visible  # already in chronological order if appended that way

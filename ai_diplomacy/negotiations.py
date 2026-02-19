@@ -3,7 +3,7 @@ import logging
 import asyncio
 from typing import Dict, TYPE_CHECKING
 
-from diplomacy.engine.message import Message, GLOBAL
+from diplomacy.engine.message import Message
 
 from .agent import DiplomacyAgent
 from .utils import gather_possible_orders, normalize_recipient_name
@@ -28,10 +28,10 @@ async def conduct_negotiations(
 ):
     """
     Conducts a round-robin conversation among all non-eliminated powers.
-    Each power can send up to 'max_rounds' messages, choosing between private
-    and global messages each turn. Uses asyncio for concurrent message generation.
+    Each power can send up to 'max_rounds' private (targeted) messages each turn.
+    Uses asyncio for concurrent message generation.
 
-    NEW: Prevents a power from sending a private message to the same recipient
+    Prevents a power from sending a private message to the same recipient
     in two consecutive rounds if that recipient has not replied yet.
     """
     logger.debug(
@@ -143,30 +143,28 @@ async def conduct_negotiations(
                     logger.warning(f"Invalid message format received from {power_name}: {message}. Skipping.")
                     continue
 
-                # Determine recipient
-                if message.get("message_type") == "private":
-                    recipient = normalize_recipient_name(message.get("recipient", GLOBAL))
-                    if recipient not in game.powers and recipient != GLOBAL:
-                        logger.warning(f"Invalid recipient '{recipient}' in message from {power_name}. Sending globally.")
-                        recipient = GLOBAL
-                else:
-                    recipient = GLOBAL
+                # NEW: Only accept targeted (private) messages;
+                if message.get("message_type") != "private":
+                    logger.debug(f"Skipping non-private message from {power_name} (targeted only).")
+                    continue
+                recipient = normalize_recipient_name(message.get("recipient", ""))
+                if not recipient or recipient not in game.powers:
+                    logger.warning(f"Invalid or missing recipient in message from {power_name}. Skipping.")
+                    continue
 
                 # ── repetition guard for private messages ─────────────
-                if recipient != GLOBAL:
-                    pair = (power_name, recipient)
-                    if awaiting_reply.get(pair, False) and last_sent_round.get(pair) == round_index - 1:
-                        logger.info(
-                            f"Discarding repeat private message from {power_name} to {recipient} "
-                            f"(waiting for reply since last round)."
-                        )
-                        continue  # skip this message
+                pair = (power_name, recipient)
+                if awaiting_reply.get(pair, False) and last_sent_round.get(pair) == round_index - 1:
+                    logger.info(
+                        f"Discarding repeat private message from {power_name} to {recipient} "
+                        f"(waiting for reply since last round)."
+                    )
+                    continue  # skip this message
 
-                    # record outbound and set waiting flag
-                    last_sent_round[pair] = round_index
-                    awaiting_reply[pair] = True
-                    # recipient has now been contacted; when they respond, we'll clear the flag for the reverse pair
-                    awaiting_reply[(recipient, power_name)] = False
+                # record outbound and set waiting flag
+                last_sent_round[pair] = round_index
+                awaiting_reply[pair] = True
+                awaiting_reply[(recipient, power_name)] = False
                 # ─────────────────────────────────────────────────────
 
                 diplo_message = Message(
@@ -183,9 +181,8 @@ async def conduct_negotiations(
                     recipient,
                     message.get("content", ""),
                 )
-                journal_recipient = f"to {recipient}" if recipient != GLOBAL else "globally"
                 agent.add_journal_entry(
-                    f"Sent message {journal_recipient} in {game.current_short_phase}: "
+                    f"Sent message to {recipient} in {game.current_short_phase}: "
                     f"{message.get('content', '')[:100]}..."
                 )
                 logger.info(f"[{power_name} -> {recipient}] {message.get('content', '')[:100]}...")

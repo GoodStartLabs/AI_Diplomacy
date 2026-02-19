@@ -7,10 +7,6 @@ If the response contains NO messages to other powers (only strategy discussion o
 Required JSON format:
 [
   {
-    "message_type": "global",
-    "content": "Message text for all powers"
-  },
-  {
     "message_type": "private", 
     "recipient": "POWER_NAME",
     "content": "Private message text"
@@ -19,16 +15,11 @@ Required JSON format:
 
 Example 1 - Multiple messages:
 If the response mentions:
-"Send a global message: 'I propose we all work together against the leader'
-Tell Germany privately: 'I'll support you into Denmark if you help me with Belgium'
+"Tell Germany privately: 'I'll support you into Denmark if you help me with Belgium'
 Message Russia: 'Are you still interested in the Black Sea DMZ?'"
 
 Extract as:
 [
-  {
-    "message_type": "global",
-    "content": "I propose we all work together against the leader"
-  },
   {
     "message_type": "private",
     "recipient": "GERMANY",
@@ -66,8 +57,7 @@ Instructions:
 - Look for phrases like "Tell X", "Message to Y", "Propose to Z", "I suggest we", etc.
 - If the response only contains strategy/orders with NO messages, return []
 - For each message found:
-  - Identify if it's global (to all) or private (to specific power)
-  - For private messages, identify the recipient (AUSTRIA, ENGLAND, FRANCE, GERMANY, ITALY, RUSSIA, TURKEY)
+  - Only private (targeted) messages are supported; each message must have a recipient (AUSTRIA, ENGLAND, FRANCE, GERMANY, ITALY, RUSSIA, TURKEY)
   - Extract the actual message content
   - Use proper JSON escaping for quotes
 

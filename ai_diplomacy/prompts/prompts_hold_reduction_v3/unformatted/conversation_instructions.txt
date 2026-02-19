@@ -41,10 +41,8 @@ RESPOND IN TWO PARTS:
 
 2. ATTACK MESSAGES: List your expansion-focused messages:
    - For EACH message specify:
-     * Type: "global" or "private"
-     * Recipient: If private, which power
+     * Recipient: which power
      * Content: Your aggressive expansion message
    - Examples:
      * Private to ENGLAND: "I'm taking Munich. Support me and I'll help you into Belgium."
-     * Global: "Expanding south this year. Join me or get out of the way."
      * Private to RUSSIA: "Austria looks weak. Let's split their centers - you take Galicia, I'll take Trieste."
