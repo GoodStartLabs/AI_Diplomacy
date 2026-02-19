@@ -188,6 +188,11 @@ def parse_arguments():
             "Falls back to generic prompts if country-specific not found."
         ),
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode: log every LLM input and output to the console.",
+    )
 
     return parser.parse_args()
 
@@ -195,6 +200,12 @@ def parse_arguments():
 async def main():
     args = parse_arguments()
     start_whole = time.time()
+
+    # Apply debug flag so all LLM I/O logging can use it, and show existing logger.debug() calls
+    config.DEBUG = getattr(args, "debug", False)
+    if config.DEBUG:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.info("Debug mode enabled: logger.debug() messages and every LLM input/output will be shown.")
 
     logger.info(f"args.simple_prompts = {args.simple_prompts} (type: {type(args.simple_prompts)}), args.prompts_dir = {args.prompts_dir}")
     logger.info(f"config.SIMPLE_PROMPTS before update = {config.SIMPLE_PROMPTS}")
@@ -296,7 +307,7 @@ async def main():
     file_handler = logging.FileHandler(general_log_file_path, mode='a')
     file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s:%(lineno)d] - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
     logging.getLogger().addHandler(file_handler)
     logger.info(f"General game logs will be appended to: {general_log_file_path}")
 
