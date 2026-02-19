@@ -205,6 +205,8 @@ async def main():
     config.DEBUG = getattr(args, "debug", False)
     if config.DEBUG:
         logging.getLogger().setLevel(logging.DEBUG)
+        # debug_log_llm_io() in ai_diplomacy.utils uses logger.debug(); ensure that logger is not capped at INFO
+        logging.getLogger("utils").setLevel(logging.DEBUG)
         logger.info("Debug mode enabled: logger.debug() messages and every LLM input/output will be shown.")
 
     logger.info(f"args.simple_prompts = {args.simple_prompts} (type: {type(args.simple_prompts)}), args.prompts_dir = {args.prompts_dir}")
