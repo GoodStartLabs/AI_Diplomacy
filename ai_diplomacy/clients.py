@@ -440,6 +440,8 @@ class BaseModelClient:
         agent_goals: Optional[List[str]] = None,
         agent_relationships: Optional[Dict[str, str]] = None,
         agent_private_diary_str: Optional[str] = None,  # Added
+        negotiation_round: Optional[int] = None,
+        max_negotiation_rounds: Optional[int] = None,
     ) -> str:
         # MINIMAL CHANGE: Just change to load unformatted version conditionally
         # Check if country-specific prompts are enabled
@@ -469,6 +471,14 @@ class BaseModelClient:
             agent_private_diary=agent_private_diary_str,  # Pass diary string
             prompts_dir=self.prompts_dir,
         )
+        # Insert negotiation round below Power and Phase when available
+        if negotiation_round is not None and max_negotiation_rounds is not None:
+            phase_pos = context.find("Phase:")
+            if phase_pos != -1:
+                end_of_line = context.find("\n", phase_pos)
+                end_of_line = end_of_line if end_of_line != -1 else len(context)
+                round_line = f"\nNegotiation round: round {negotiation_round} out of {max_negotiation_rounds}.\n"
+                context = context[:end_of_line] + round_line + context[end_of_line:]
 
         logger.debug(f"[{power_name}] Conversation context: {context}")
 
@@ -551,6 +561,8 @@ class BaseModelClient:
         agent_goals: Optional[List[str]] = None,
         agent_relationships: Optional[Dict[str, str]] = None,
         agent_private_diary_str: Optional[str] = None,
+        negotiation_round: Optional[int] = None,
+        max_negotiation_rounds: Optional[int] = None,
     ) -> List[Dict[str, str]]:
         """
         Generates a negotiation message, considering agent state.
@@ -587,6 +599,8 @@ class BaseModelClient:
                 agent_goals=agent_goals,
                 agent_relationships=agent_relationships,
                 agent_private_diary_str=agent_private_diary_str,
+                negotiation_round=negotiation_round,
+                max_negotiation_rounds=max_negotiation_rounds,
             )
 
             logger.debug(f"[{self.model_name}] Conversation prompt for {power_name}:\n{raw_input_prompt}")

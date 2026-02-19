@@ -95,6 +95,8 @@ async def conduct_negotiations(
                     agent_goals=agent.goals,
                     agent_relationships=agent.relationships,
                     agent_private_diary_str=agent.format_private_diary_for_prompt(),
+                    negotiation_round=round_index + 1,
+                    max_negotiation_rounds=max_rounds,
                 )
             )
             power_names_for_tasks.append(power_name)
