@@ -35,6 +35,17 @@ async def conduct_negotiations(
     NEW: Prevents a power from sending a private message to the same recipient
     in two consecutive rounds if that recipient has not replied yet.
     """
+    logger.debug(
+        "conduct_negotiations inputs: game=%s (phase=%s), agents=%s, game_history=%s, "
+        "model_error_stats=%s, log_file_path=%s, max_rounds=%s",
+        type(game).__name__,
+        getattr(game, "current_short_phase", None),
+        list(agents.keys()) if agents else [],
+        type(game_history).__name__,
+        model_error_stats,
+        log_file_path,
+        max_rounds,
+    )
     logger.info("Starting negotiation phase.")
 
     active_powers = [p_name for p_name, p_obj in game.powers.items() if not p_obj.is_eliminated()]
@@ -71,7 +82,6 @@ async def conduct_negotiations(
                 logger.info(f"No orderable locations for {power_name}; skipping message generation.")
                 continue
             board_state = game.get_state()
-
             # Append the coroutine to the tasks list
             tasks.append(
                 client.get_conversation_reply(

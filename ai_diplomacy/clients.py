@@ -551,6 +551,23 @@ class BaseModelClient:
         """
         Generates a negotiation message, considering agent state.
         """
+        logger.debug(
+            "get_conversation_reply inputs: game=%s, board_state type=%s (keys=%s), power_name=%s, "
+            "possible_orders keys=%s, game_history=%s, game_phase=%s, log_file_path=%s, "
+            "active_powers=%s, agent_goals=%s, agent_relationships=%s, agent_private_diary_str len=%s",
+            type(game).__name__,
+            type(board_state).__name__,
+            list(board_state.keys()) if isinstance(board_state, dict) else "n/a",
+            power_name,
+            list(possible_orders.keys()) if possible_orders else [],
+            type(game_history).__name__,
+            game_phase,
+            log_file_path,
+            active_powers,
+            agent_goals,
+            agent_relationships,
+            len(agent_private_diary_str) if agent_private_diary_str else 0,
+        )
         raw_input_prompt = ""  # Initialize for finally block
         raw_response = ""  # Initialize for finally block
         success_status = "Failure: Initialized"  # Default status
