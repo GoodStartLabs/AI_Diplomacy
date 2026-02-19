@@ -8,7 +8,8 @@ from typing import Optional
 from pathlib import Path
 
 # Import logging function and model configuration
-from .utils import log_llm_response, get_special_models
+from .utils import log_llm_response, get_special_models, debug_log_llm_io
+from config import config
 
 # Import client loading function
 from .clients import load_model_client
@@ -78,6 +79,9 @@ async def format_with_gemini_flash(
         system_content = "You are a precise formatting assistant. Extract and format information exactly as requested."
         formatter_client.set_system_prompt(system_content)
 
+        if getattr(config, "DEBUG", False):
+            debug_log_llm_io("INPUT", model_name, None, "formatter", format_type, format_prompt)
+
         # Use the client's generate_response method
         formatted_response = await formatter_client.generate_response(
             prompt=format_prompt,
@@ -88,6 +92,9 @@ async def format_with_gemini_flash(
         if not formatted_response:
             logger.warning(f"[FORMATTER] {model_name} returned empty response")
             return ""
+
+        if getattr(config, "DEBUG", False):
+            debug_log_llm_io("OUTPUT", model_name, None, "formatter", format_type, formatted_response)
 
         # Log successful formatting
         logger.info(f"[FORMATTER] Successfully formatted {format_type} response")

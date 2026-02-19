@@ -405,6 +405,31 @@ RETRYABLE_EXCEPTIONS = (
     ValueError,  # We explicitly raise this for empty responses, which might be a temporary glitch.
 )
 
+def debug_log_llm_io(
+    kind: str,
+    model_name: str,
+    power_name: Optional[str],
+    phase: str,
+    response_type: str,
+    text: str,
+    max_chars: int = 16000,
+) -> None:
+    """When config.DEBUG is True, log LLM input or output at DEBUG level (console and file when --debug)."""
+    if not getattr(config, "DEBUG", False):
+        return
+    excerpt = text if len(text) <= max_chars else text[:max_chars] + "\n... [truncated]"
+    logger.debug(
+        "=== LLM DEBUG %s [model=%s power=%s phase=%s type=%s] ===\n%s\n=== END LLM %s ===",
+        kind,
+        model_name,
+        power_name or "N/A",
+        phase or "N/A",
+        response_type or "N/A",
+        excerpt,
+        kind,
+    )
+
+
 async def run_llm_and_log(
     client: "BaseModelClient",
     prompt: str,
@@ -430,6 +455,9 @@ async def run_llm_and_log(
     """
     last_exception: Optional[Exception] = None
 
+    if getattr(config, "DEBUG", False):
+        debug_log_llm_io("INPUT", client.model_name, power_name, phase, response_type, prompt)
+
     for attempt in range(attempts):
         try:
             raw_response = await client.generate_response(prompt, temperature=temperature)
@@ -437,6 +465,9 @@ async def run_llm_and_log(
             # The clients now raise ValueError, but this is a final safeguard.
             if not raw_response or not raw_response.strip():
                 raise ValueError("LLM client returned an empty or whitespace-only string.")
+
+            if getattr(config, "DEBUG", False):
+                debug_log_llm_io("OUTPUT", client.model_name, power_name, phase, response_type, raw_response)
 
             # Success!
             return raw_response

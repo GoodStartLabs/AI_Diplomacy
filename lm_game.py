@@ -1,5 +1,6 @@
 import argparse
 import logging
+import random
 import time
 import dotenv
 import os
@@ -7,7 +8,7 @@ import json
 import asyncio
 from collections import defaultdict
 from argparse import Namespace
-from typing import Dict
+from typing import Dict, List, Tuple
 import shutil
 import sys
 
@@ -29,6 +30,8 @@ from ai_diplomacy.game_logic import (
     save_game_state,
     load_game_state,
     initialize_new_game,
+    serialize_agent,
+    deserialize_agent,
 )
 from ai_diplomacy.diary_logic import run_diary_consolidation
 from config import config
