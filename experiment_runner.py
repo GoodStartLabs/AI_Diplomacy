@@ -172,6 +172,14 @@ def _add_lm_game_flags(p: argparse.ArgumentParser) -> None:
         help="Enable the planning phase for each power to set strategic directives.",
     )
     p.add_argument(
+        "--ndai",
+        type=_str2bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="When true, use NDAI negotiation logic.",
+    )
+    p.add_argument(
         "--max_tokens",
         type=int,
         default=16000,

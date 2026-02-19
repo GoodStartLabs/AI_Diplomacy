@@ -7,6 +7,7 @@ from diplomacy.engine.message import Message
 
 from .agent import DiplomacyAgent
 from .utils import gather_possible_orders, normalize_recipient_name
+from . import ndai_server
 
 if TYPE_CHECKING:
     from .game_history import GameHistory
@@ -25,6 +26,7 @@ async def conduct_negotiations(
     model_error_stats: Dict[str, Dict[str, int]],
     log_file_path: str,
     max_rounds: int = 3,
+    ndai: bool = False,
 ):
     """
     Conducts a round-robin conversation among all non-eliminated powers.
@@ -55,6 +57,28 @@ async def conduct_negotiations(
         logger.info(f"Eliminated powers (skipped): {eliminated_powers}")
     else:
         logger.info("No eliminated powers yet.")
+
+    phase = game.current_short_phase
+
+    if ndai:
+        # NDAI flow: init server, each power enters, then each round get_released_info per power
+        await ndai_server.init_game_phase(phase)
+        for power_name in active_powers:
+            await ndai_server.enter_game_phase(phase, power_name)
+        for round_index in range(max_rounds):
+            logger.info(f"NDAI negotiation round {round_index + 1}/{max_rounds}: fetching released info.")
+            for power_name in active_powers:
+                released = await ndai_server.get_released_info(phase, round_index + 1, power_name)
+                logger.info(f"Released info for {power_name}: {released}")
+                # Store released info as messages (other_power -> power_name)
+                for other_power, text in (released or {}).items():
+                    if text and other_power and other_power != power_name:
+                        game_history.add_message(phase, other_power, power_name, text.strip())
+                        logger.info(f"Added message: {other_power} -> {power_name}: {text.strip()}")
+                    else:
+                        logger.info(f"No message added for {other_power} -> {power_name}")
+        logger.info("NDAI negotiation phase complete.")
+        return game_history
 
     # ── new tracking for consecutive private messages ───────────────
     last_sent_round: Dict[tuple[str, str], int] = {}

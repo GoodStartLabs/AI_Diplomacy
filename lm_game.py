@@ -189,6 +189,14 @@ def parse_arguments():
         ),
     )
     parser.add_argument(
+        "--ndai",
+        type=_str2bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="When true, use NDAI negotiation logic.",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug mode: log every LLM input and output to the console.",
@@ -371,6 +379,7 @@ async def main():
                 game_history = await conduct_negotiations(
                     game, agents, game_history, model_error_stats,
                     max_rounds=run_config.num_negotiation_rounds, log_file_path=llm_log_file_path,
+                    ndai=getattr(run_config, "ndai", False),
                 )
             if run_config.planning_phase:
                 await planning_phase(
@@ -378,7 +387,7 @@ async def main():
                 )
             
             neg_diary_tasks = [
-                agent.generate_negotiation_diary_entry(game, game_history, llm_log_file_path)
+                agent.generate_negotiation_diary_entry(game, game_history, llm_log_file_path, ndai=getattr(run_config, "ndai", False))
                 for agent in agents.values() if not game.powers[agent.power_name].is_eliminated()
             ]
             if neg_diary_tasks:

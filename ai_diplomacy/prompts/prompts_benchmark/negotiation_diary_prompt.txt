@@ -8,7 +8,7 @@ Game State:
 Private Diary:
 {private_diary_summary}
 
-Messages This Round:
+{section_label}:
 {messages_this_round}
 
 Goals:
