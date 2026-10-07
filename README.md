@@ -283,7 +283,7 @@ python lm_game.py --run_dir results/game_run_005 --prompts_dir ./prompts/my_vari
   <client prefix:>model[@base_url][#api_key]
   ```
 
-  - `prefix:` – specify the client (`openai`, `openai-requests`, `openai-responses`, `anthropic`, `gemini`, `deepseek`, `openrouter`, `together`).
+  - `prefix:` – specify the client (`openai`, `openai-requests`, `openai-responses`, `anthropic`, `gemini`, `deepseek`, `openrouter`, `together`, `claude-cli`, `codex-cli`).
   - `@base_url` – hit a proxy / alt endpoint.
   - `#api_key` – inline key (overrides env vars).
 
@@ -293,6 +293,64 @@ python lm_game.py --run_dir results/game_run_005 --prompts_dir ./prompts/my_vari
   # custom URL+apikey for Austria only:
   --models "openai:llama-3.2-3b@http://localhost:8000#myapikey,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o,openai:gpt-4o"
   ```
+
+### Running with Claude Code and Codex CLI
+
+Install recent versions of the official `claude` and `codex` CLIs and sign in
+using their own login flows (`claude auth login` and `codex login`). The game
+invokes those binaries directly; they own authentication and account usage.
+API keys in the game's environment are removed from these subprocesses so they
+do not override the CLI login. An existing CLI login that uses API billing
+still uses that account; sign in with your subscription account to use your plan.
+
+Use `claude-cli:sonnet`, `claude-cli:opus`, or a full Claude model ID, and
+`codex-cli:<model-id>` for a model available to your Codex account. The special
+model name `default` omits `--model` and lets the CLI choose its default.
+You can mix CLI providers and API providers across countries.
+
+```bash
+# Route helper tasks through the CLI as well (otherwise they default to OpenRouter).
+export AI_DIPLOMACY_FORMATTER_MODEL="claude-cli:sonnet"
+export AI_DIPLOMACY_NARRATIVE_MODEL="codex-cli:default"
+
+# Austria/France/Italy/Turkey use Claude; England/Germany/Russia use Codex.
+python lm_game.py --run_dir results/cli_game --max_year 1902 \
+  --num_negotiation_rounds 1 \
+  --models "claude-cli:sonnet,codex-cli:default,claude-cli:sonnet,codex-cli:default,claude-cli:sonnet,codex-cli:default,claude-cli:sonnet"
+```
+
+Each call starts a fresh CLI process with the game's assembled history, goals,
+and diary in its prompt. CLI sessions are not resumed or reconstructed. Calls
+run in temporary directories; Claude built-in tools and MCP servers are
+disabled, and Codex uses a read-only sandbox with shell and web search disabled.
+Recent CLIs supporting the isolation flags are required. Codex ignores user
+configuration, so specify a model explicitly if you want a particular model.
+Codex may still load global instructions and skills; the flag skips its user
+configuration file, rather than all customizations.
+Verified with Claude Code 2.1.292 and Codex CLI 0.160.1.
+
+Optional environment settings:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `AI_DIPLOMACY_CLAUDE_BIN` | `claude` | Executable name or path |
+| `AI_DIPLOMACY_CODEX_BIN` | `codex` | Executable name or path |
+| `AI_DIPLOMACY_CLI_TIMEOUT_SECONDS` | `300` | Timeout for each running CLI call |
+| `AI_DIPLOMACY_CLI_MAX_CONCURRENCY` | `2` | Combined simultaneous CLI calls in one game event loop |
+
+CLI providers retain their prefixes when saved and resumed. They do not accept
+`@base_url` or `#api_key` suffixes. The CLI interfaces do not expose the same
+temperature, random seed, or output token controls as the API interfaces:
+`--max_tokens` and temperature are not enforced for CLI calls. The game's
+random-seed prompt text is still included when requested. Subscription limits
+apply; batch experiment processes and separate event loops each have their own
+concurrency limit. A normal game runs in one event loop.
+Auth failures, usage limits, malformed output, and timeouts are surfaced through
+the game's existing error handling and retries. Cancellation terminates the
+CLI process group on POSIX systems.
+
+CLI references: [Claude Code](https://code.claude.com/docs/en/cli-reference)
+and [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive).
 
 ### Running Batch Experiments with **`experiment_runner.py`**
 

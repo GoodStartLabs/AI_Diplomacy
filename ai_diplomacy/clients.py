@@ -1420,6 +1420,8 @@ def _parse_model_spec(raw: str) -> ModelSpec:
     return ModelSpec(prefix, model, base_part or None, key_part or None)
 
 class Prefix(StrEnum):
+    CLAUDE_CLI        = "claude-cli"
+    CODEX_CLI         = "codex-cli"
     OPENAI            = "openai"
     OPENAI_REQUESTS   = "openai-requests"
     OPENAI_RESPONSES  = "openai-responses"
@@ -1476,10 +1478,19 @@ def load_model_client(model_id: str, prompts_dir: Optional[str] = None) -> BaseM
             raise ValueError(
                 f"[load_model_client] unknown prefix '{spec.prefix}'. "
                 "Allowed prefixes: openai, openai-requests, openai-responses, "
-                "anthropic, gemini, deepseek, openrouter, together."
+                "anthropic, gemini, deepseek, openrouter, together, claude-cli, codex-cli."
             ) from exc
 
         match pref:
+            case Prefix.CLAUDE_CLI | Prefix.CODEX_CLI:
+                from .cli_clients import ClaudeCliClient, CodexCliClient
+
+                if spec.base or spec.key:
+                    raise ValueError("CLI providers use the CLI's login; @base_url and #api_key are not supported.")
+                if not spec.model:
+                    raise ValueError("CLI providers require a model name or 'default'.")
+                client_class = ClaudeCliClient if pref == Prefix.CLAUDE_CLI else CodexCliClient
+                return client_class(spec.model, prompts_dir=prompts_dir)
             case Prefix.OPENAI:
                 return OpenAIClient(
                     model_name=spec.model,
