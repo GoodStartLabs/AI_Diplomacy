@@ -463,7 +463,8 @@ Focus on:
             (r'a (\w+) h', 'hold'),
             (r'f (\w+) h', 'hold'),
             # No attack promises  
-            (r'(?:will |won\'t |will not )attack (\w+)', 'no_attack'),
+            # An announced attack is not a promise to refrain from attacking.
+            (r'(?:won\'t |will not )attack (\w+)', 'no_attack'),
             (r'no (?:moves?|attacks?) (?:on|against|to) (\w+)', 'no_attack'),
             (r'stay(?:ing)? out of (\w+)', 'no_attack'),
             # DMZ promises
