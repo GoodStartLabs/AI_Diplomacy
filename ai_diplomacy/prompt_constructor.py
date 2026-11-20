@@ -91,7 +91,7 @@ def build_context_prompt(
             possible_orders_context_str = generate_rich_order_context_xml(game, power_name, possible_orders)
 
     if include_messages:
-        messages_this_round_text = game_history.get_messages_this_round(power_name=power_name, current_phase_name=year_phase)
+        messages_this_round_text = game_history.get_messages_this_round(power_name=power_name, current_phase_name=display_phase or year_phase)
         if not messages_this_round_text.strip():
             messages_this_round_text = "\n(No messages this round)\n"
     else:
