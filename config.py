@@ -29,7 +29,7 @@ class Configuration(BaseSettings):
         super().__init__(**kwargs)
         # Add a '-POWER' to the end of the file name if it's for a specific power
         log_power_path = "-" + power_name if power_name else None
-        self.log_file_path = Path(f"./logs/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}/logs{log_power_path} .txt")
+        self.log_file_path = Path(f"./logs/{datetime.datetime.now().strftime('%d-%m-%y_%H-%M')}/logs{log_power_path} .txt")
         # Make the path absolute, gets rid of weirdness of calling this in different places
         self.log_file_path = self.log_file_path.resolve()
         self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
