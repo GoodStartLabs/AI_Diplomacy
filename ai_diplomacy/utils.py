@@ -44,7 +44,7 @@ def atomic_write_json(data: dict, filepath: str):
             json.dump(data, f, indent=4)
 
         # Atomically rename the temporary file to the final destination
-        os.rename(temp_filepath, filepath)
+        os.replace(temp_filepath, filepath)
     except Exception as e:
         logger.error(f"Failed to perform atomic write to {filepath}: {e}", exc_info=True)
         # Clean up temp file if it exists
