@@ -868,7 +868,7 @@ class DiplomacyAgent:
             board_state_str = f"Units Held:\n{units_str}\n\nSupply Centers Held:\n{centers_str}"
 
             # Get recent negotiations for this phase
-            messages_this_round = game_history.get_messages_this_round(power_name=self.power_name, current_phase_name=game.current_short_phase)
+            messages_this_round = game_history.get_messages_this_round(power_name=self.power_name, current_phase_name=phase_name)
             if not messages_this_round.strip() or messages_this_round.startswith("\n(No messages"):
                 messages_this_round = (
                     "(No messages involving your power this round.)"
